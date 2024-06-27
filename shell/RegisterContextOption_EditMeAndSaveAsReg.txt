@@ -1,0 +1,8 @@
+Windows Registry Editor Version 5.00
+
+[HKEY_CLASSES_ROOT\*\shell\Ads Send File]
+@="Ads send file to target"
+
+[HKEY_CLASSES_ROOT\*\shell\Ads Send File\command]
+@="\"C:\\Path\\To\\Your\\Built\\FileTransferContextLogic.exe\" \"%1\""
+
