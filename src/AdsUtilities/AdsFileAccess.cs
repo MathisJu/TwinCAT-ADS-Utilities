@@ -79,15 +79,15 @@ namespace AdsUtilities
         private void FileClose(uint hFile)
         {
             adsClient.Connect(_netId, (int)Constants.AdsPortSystemService);
-            adsClient.ReadWrite(Constants.SystemServiceFClose, hFile, new Memory<byte>(), new Memory<byte>());
+            adsClient.ReadWrite(Constants.SystemServiceFClose, hFile, Array.Empty<byte>(), Array.Empty<byte>());
             adsClient.Disconnect();
         }
 
         private Structs.FileInfoByteMapped FileInfo(string fileName)
         {
             uint hFile = FileOpenR(fileName, false);
-            Memory<byte> wrBfr = new(Encoding.UTF8.GetBytes(fileName));
-            Memory<byte> rdBfr = new(new byte[Marshal.SizeOf(typeof(Structs.FileInfoByteMapped))]);      // Allocate memory buffer the size of the byte stream returned by a file info request  
+            byte[] wrBfr = Encoding.UTF8.GetBytes(fileName);
+            byte[] rdBfr = new byte[Marshal.SizeOf(typeof(Structs.FileInfoByteMapped))];      // Allocate memory buffer the size of the byte stream returned by a file info request  
 
             adsClient.Connect(_netId, (int)Constants.AdsPortSystemService);
             adsClient.ReadWrite(Constants.SystemServiceFFind, hFile, rdBfr, wrBfr);
@@ -289,9 +289,5 @@ namespace AdsUtilities
             res.ThrowOnError();
             
         }
-
-
     }
-
-
 }

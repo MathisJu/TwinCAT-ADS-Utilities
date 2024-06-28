@@ -33,10 +33,20 @@ namespace AdsUtilities
             _netId = netId;
         }
 
-        public void AddRoute(string netIdTarget, string ipAddressTarget, string routeName, string usernameTarget, string passwordTarget)
+        public void AddRoute(string netIdTarget, string ipAddressTarget, string routeName, string usernameTarget, string passwordTarget, string remoteRouteName)
         {
             AddLocalRouteEntry(netIdTarget, ipAddressTarget, routeName);
-            AddRemoteRouteEntry(ipAddressTarget, usernameTarget, passwordTarget);
+            AddRemoteRouteEntry(ipAddressTarget, usernameTarget, passwordTarget, remoteRouteName);
+        }
+
+        public void RemoveLocalRouteEntry(string routeName)
+        {
+            adsClient.Connect(_netId, (int)Constants.AdsPortSystemService);
+            IWriteRequest deleteRouteReq = RequestFactory.CreateWriteRequest(routeName.Length + 1);
+            deleteRouteReq.AddStringUTF8(routeName);
+
+            adsClient.Write(Constants.SystemServiceDelRemote, 0, deleteRouteReq);
+            adsClient.Disconnect();
         }
 
         /// <summary>
@@ -70,8 +80,9 @@ namespace AdsUtilities
         /// <param name="ipAddressRemote">IP address of the remote system. The address needs to be in the same address range as a network adapter of the local system</param>
         /// <param name="usernameRemote">Credentials of the remote system</param>
         /// <param name="passwordRemote">Credentials of the remote system</param>
+        /// <param name="remoteRouteName">Name of the route on the remote system (usually the device name this method is called on)</param>
         /// <returns>Returns true if ADS call succeeded</returns>
-        public void AddRemoteRouteEntry(string ipAddressRemote, string usernameRemote, string passwordRemote) 
+        public void AddRemoteRouteEntry(string ipAddressRemote, string usernameRemote, string passwordRemote, string remoteRouteName) 
         {
             static bool IsIpAddressInRange(string ipAddressStr, string subnetMaskStr, string defaultGatewayStr)
             {
@@ -130,16 +141,15 @@ namespace AdsUtilities
             addRouteRequest.Add(Segments.HEADER);
             addRouteRequest.Add(new byte[4]);
             addRouteRequest.Add(Segments.REQUEST_ADDROUTE);
-            addRouteRequest.Add(AmsNetId.Local.ToBytes());  // may want to use netIdEntry.Split('.').Select(byte.Parse).ToArray() to add remote routes for other systems than the local one
+            addRouteRequest.Add(_netId.ToBytes());
             addRouteRequest.Add(Segments.PORT);
             addRouteRequest.Add(Segments.ROUTETYPE_STATIC);
-            string remoteRouteName = Environment.MachineName;   // see above
             byte[] Segment_ROUTENAME_LENGTH = Segments.ROUTENAME_L;
             Segment_ROUTENAME_LENGTH[2] = (byte)(remoteRouteName.Length + 1);
             addRouteRequest.Add(Segment_ROUTENAME_LENGTH);
             addRouteRequest.AddStringUTF8(remoteRouteName);
             addRouteRequest.Add(Segments.AMSNETID_L);
-            addRouteRequest.Add(AmsNetId.Local.ToBytes());  // see above
+            addRouteRequest.Add(_netId.ToBytes());
             byte[] Segment_USERNAME_LENGTH = Segments.USERNAME_L;
             Segment_USERNAME_LENGTH[2] = (byte)(usernameRemote.Length + 1);
             addRouteRequest.Add(Segment_USERNAME_LENGTH);
@@ -164,7 +174,7 @@ namespace AdsUtilities
                     addRouteRequest.Add(Segment_IPADDRESS_LENGTH);
                     addRouteRequest.AddStringUTF8(nic.ipAddress);
 
-                    Memory<byte> rdBfr = new(new byte[2048]);
+                    byte[] rdBfr = new byte[2048];
 
                     adsClient.Connect(_netId, (int)Constants.AdsPortSystemService);
                     AdsErrorCode rwError = adsClient.TryReadWrite(Constants.SystemServiceBroadcast, 0, rdBfr, addRouteRequest.GetBytes(), out _);    
@@ -180,6 +190,51 @@ namespace AdsUtilities
                 _logger?.LogError("Error occurred when trying to add a remote route entry. No network adapter on the local system matched address range of the provided IP address. Please check the provided IP or the DHCP settings / the static IP on the remote system");
             if (!rwSuccessAny)
                 _logger?.LogError("ADS call to add remote route entry failed on all network adapters");
+        }
+
+        /// <summary>
+        /// Adds an ADS route to a remote system using a third system as a gateway. An existing route between gateway-system and sub-route-system is required.
+        /// </summary>
+        /// <param name="netIdGateway"></param>
+        /// <param name="netIdSubRoute"></param>
+        /// <param name="nameSubRoute"></param>
+        public void AddSubRoute(string netIdGateway, string netIdSubRoute, string nameSubRoute)
+        {
+            var routesGateway = new AdsRoutingAccess(netIdGateway).GetRoutesList();     // Check if there is a route between gateway and sub-route-system - mandatory for sub-route to work
+            if (!routesGateway.Where(r => r.NetId == netIdSubRoute).Any())
+            {
+                _logger?.LogCritical("Sub-Route to {netIdSub} with gateway {netIdGate} could not be added because there is no existing route entry to the sub-route on the gateway. Make sure to add the remote route first.", netIdSubRoute, netIdGateway);
+                return;
+            }
+            string staticRoutesPath = GetTwinCatDirectory() + "/3.1/Target/StaticRoutes.xml";
+            AdsFileAccess routesEditor = new(_netId);
+            byte[] staticRoutesContent = routesEditor.FileRead(staticRoutesPath, false);
+            string staticRoutesString = Encoding.UTF8.GetString(staticRoutesContent.Where(c => c is not 0).ToArray());
+            XDocument routesXml = XDocument.Parse(staticRoutesString);
+
+            var gatewayEntry = routesXml.Descendants("Route")
+                                 .FirstOrDefault(route => route.Element("NetId")?.Value == netIdGateway);
+
+            if (gatewayEntry != null)
+            {
+                XElement subRoute = new XElement("SubRoute",
+                                    new XElement("Name", nameSubRoute),
+                                    new XElement("NetId", netIdSubRoute));
+
+                gatewayEntry.Add(subRoute);
+                
+                routesEditor.FileWrite(staticRoutesPath, Encoding.UTF8.GetBytes(routesXml.ToString()), false);
+                _logger?.LogInformation("Sub-Route to {netIdSub} with gateway {netIdGate} was successfully added.", netIdSubRoute, netIdGateway);
+            }
+            else
+            {
+                _logger?.LogError("Sub-Route to {netIdSub} with gateway {netIdGate} could not be added due to a parsing error with the StaticRoutesXml of {netIdLocal}", netIdSubRoute, netIdGateway, _netId);
+            }
+        }
+
+        private string GetTwinCatDirectory()
+        {
+            return "C:/TwinCAT";    // ToDo: Return installation path dynamically. There may be an ADS command to read this. Otherwise use AdsSystemAccess to read OS and implement logic for each OS (e.g. registry / env variables for windows)
         }
 
         public Structs.SystemInfo GetSystemInfo()
@@ -265,7 +320,7 @@ namespace AdsUtilities
                     break;
                 }
 
-                string netIdRd = String.Join(".", rdBfr.Take(6).Where(b => b != 0).Select(b => b.ToString()));  // ToDo: Test if this works with zeros in netId, may need to change the b!=0 part
+                string netIdRd = String.Join(".", rdBfr.Take(6).Where(b => b != 0).Select(b => b.ToString()));
 
                 int flags = rdBfr[8];       // ToDo: Add interpretation for remaining infos from data stream
                 int unknown1 = rdBfr[12];
@@ -426,29 +481,29 @@ namespace AdsUtilities
             {
                 const int startingOffset = 4;
 
-                int startIp = startingOffset;
-                int lenIp = 4;
+                const int startIp = startingOffset;
+                const int lenIp = 4;
                 byte[] ip = broadcastReturn.Skip(startIp).Take(lenIp).ToArray();
                 string ipAddr = $"{ip[0]}.{ip[1]}.{ip[2]}.{ip[3]}";
 
                 // ToDo: Add route for remaining info returned from broadcast including Port, Route Type
 
-                int startNetId = 28;
-                int lenNetId = 6;
+                const int startNetId = 28;
+                const int lenNetId = 6;
                 byte[] netId = broadcastReturn.Skip(startNetId).Take(lenNetId).ToArray();
                 string netIdStr = $"{netId[0]}.{netId[1]}.{netId[2]}.{netId[3]}.{netId[4]}.{netId[5]}";
 
-                int startName = 44;
+                const int startName = 44;
                 int lenName = broadcastReturn[42] - 1;
                 byte[] name = broadcastReturn.Skip(startName).Take(lenName).ToArray();
                 string deviceName = Encoding.UTF8.GetString(name);
 
                 int startTcType = startName + lenName;
-                int lenTcType = 8;
+                const int lenTcType = 8;
                 byte[] tcType = broadcastReturn.Skip(startTcType).Take(lenTcType).ToArray();    // {4,0,148,0,148,0,0,0} for engineering and {4,0,20,1,20,1,00} for runtime
 
                 int startOsVer = startTcType + lenTcType + 1;
-                int lenOsVer = 12;
+                const int lenOsVer = 12;
                 byte[] osVer = broadcastReturn.Skip(startOsVer).Take(lenOsVer).ToArray();
                 ushort osKey = (ushort)(osVer[0] * 256 + osVer[4]);
                 ushort osBuildKey = (ushort)(osVer[8] * 256 + osVer[9]);
@@ -486,7 +541,7 @@ namespace AdsUtilities
         }
 
         /// <summary>
-        /// Requests a change of the NetId at next system start
+        /// Requests a change of the NetId at next system start. Only works with full Windows OS
         /// </summary>
         /// <param name="netIdNew"></param>
         public void ChangeNetId(string netIdNew)
@@ -516,14 +571,12 @@ namespace AdsUtilities
                 RouterMemoryBytesAvailable = readRequest.ExtractUint32(),
                 registeredPorts = readRequest.ExtractUint32(),
                 registeredDrivers = readRequest.ExtractUint32()
-        };
+            };
             return routerInfo;
         }
 
         public short GetPlatformLevel()
         {
-            byte[] rdBfr = new byte[2];
-            
             adsClient.Connect(_netId, (int)Constants.AdsPortLicenseServer);
             short platformLevel = adsClient.ReadAny<short>(0x01010004, 0x2);  // ToDo: Add idx to constants
             adsClient.Disconnect();

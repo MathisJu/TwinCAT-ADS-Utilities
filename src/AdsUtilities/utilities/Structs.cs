@@ -78,7 +78,7 @@ namespace AdsUtilities.Structs
                 lastWriteTime = DateTime.FromFileTime((long)fileEntry.lastWriteTimeHigh << 32 | fileEntry.lastWriteTimeLow),
                 fileSize = (long)fileEntry.nFileSizeHigh << 32 | fileEntry.nFileSizeLow,
                 fileName = Encoding.UTF8.GetString(fileEntry.sFileName.Take(fileNameLength).ToArray()),
-                alternativeFileName = Encoding.UTF8.GetString(fileEntry.sAlternativeFileName.Take(fileNameLength).ToArray()),
+                alternativeFileName = Encoding.UTF8.GetString(fileEntry.sAlternativeFileName.Take(altFileNameLength).ToArray()),
                 isReadOnly = (fileEntry.dwFileAttributes[0] & (1 << 0)) != 0,
                 isHidden = (fileEntry.dwFileAttributes[0] & (1 << 1)) != 0,
                 isSystemFile = (fileEntry.dwFileAttributes[0] & (1 << 2)) != 0,
