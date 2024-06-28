@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging;
 using System.Collections.Generic;
 using System.Net;
 using System.Text;
+using System.Web;
 using System.Xml;
 using System.Xml.Linq;
 using TwinCAT.Ads;
@@ -229,6 +230,55 @@ namespace AdsUtilities
             else
             {
                 _logger?.LogError("Sub-Route to {netIdSub} with gateway {netIdGate} could not be added due to a parsing error with the StaticRoutesXml of {netIdLocal}", netIdSubRoute, netIdGateway, _netId);
+            }
+        }
+
+        public void AddAdsMqttRoute(string brokerAddress, uint brokerPort, bool unidirectional = false, string topic = default, uint qualityOfService = default, string user = default, string password = default)
+        {
+            string staticRoutesPath = GetTwinCatDirectory() + "/3.1/Target/StaticRoutes.xml";
+            AdsFileAccess routesEditor = new(_netId);
+            byte[] staticRoutesContent = routesEditor.FileRead(staticRoutesPath, false);
+            string staticRoutesString = Encoding.UTF8.GetString(staticRoutesContent.Where(c => c is not 0).ToArray());
+            XDocument routesXml = XDocument.Parse(staticRoutesString);
+
+            var connectionsEntry = routesXml.Element("RemoteConnections");
+
+            XElement mqttRoute = new XElement("Mqtt",
+            new XElement("Address", brokerAddress, new XAttribute("Port", $"{brokerPort}")));
+
+            if (unidirectional)
+                mqttRoute.Add(new XAttribute("Unidirectional", "true"));
+            if (!string.IsNullOrEmpty(topic))
+                mqttRoute.Add(new XElement("Topic", topic));
+            if (qualityOfService > 0)
+                mqttRoute.Add(new XElement("QoS", qualityOfService));
+            if (!string.IsNullOrEmpty(user))
+                mqttRoute.Add(new XElement("User", user));
+            if (!string.IsNullOrEmpty(password))
+                mqttRoute.Add(new XElement("Pwd", password));
+
+            connectionsEntry.Add(mqttRoute);
+
+            routesEditor.FileWrite(staticRoutesPath, Encoding.UTF8.GetBytes(routesXml.ToString()), false);
+        }
+
+        public void AddAdsMqttRoute(string brokerAddress, uint brokerPort, AdsMqttTlsParameters tlsParameters, bool unidirectional = false, string topic = default, uint qualityOfService = default, string user = default, string password = default)
+        {
+
+        }
+
+        public struct AdsMqttTlsParameters
+        {
+            public string CertificateAuthority;
+            public string? ClientCert = default;
+            public string? Key = default;
+            public string? KeyPassword = default;
+            public string? Version = default;
+            public List<string>? Cipher = default;
+            public string? RevocationList = default;
+
+            public AdsMqttTlsParameters(string CertificateAuthority) {
+                this.CertificateAuthority = CertificateAuthority;
             }
         }
 
