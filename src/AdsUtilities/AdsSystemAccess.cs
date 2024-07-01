@@ -6,6 +6,8 @@ namespace AdsUtilities
 {
     public class AdsSystemAccess
     {
+        public string NetId { get { return _netId.ToString(); } }
+
         private static readonly AdsClient adsClient = new();
 
         private readonly AmsNetId _netId;

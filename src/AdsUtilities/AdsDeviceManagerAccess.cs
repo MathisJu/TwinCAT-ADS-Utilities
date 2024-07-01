@@ -12,21 +12,29 @@ namespace AdsUtilities
 {
     public class AdsDeviceManagerAccess
     {
-        private readonly Dictionary<ushort, uint> Areas;
+        public string NetId { get { return _netId.ToString(); } }
 
-        public string NetId { get; }
+        private readonly Dictionary<ushort, uint> Areas;
 
         private readonly AdsClient adsClient = new();
 
+        private readonly AmsNetId _netId;
+
+        public AdsDeviceManagerAccess(AmsNetId netId)
+        {
+            _netId = netId;
+            Areas = ReadAvailableAreas();
+        }
+
         public AdsDeviceManagerAccess(string netId) 
         {
-            NetId = netId;
+            _netId = AmsNetId.Parse(netId);
             Areas = ReadAvailableAreas();
         }
 
         private Dictionary<ushort, uint> ReadAvailableAreas()
         {
-            adsClient.Connect(NetId, (int)Constants.AdsPortSystemService);
+            adsClient.Connect(_netId, (int)Constants.AdsPortSystemService);
             ushort mdpModuleCount = (ushort)adsClient.ReadAny(Constants.AdsIGrpCoe,     // CoE = CAN over EtherCAT (profile definition)
                                                         0xF0200000, // index to get module ID List - Flag and Subindex 0
                                                         typeof(ushort) // first short in list is the count of items 
@@ -69,7 +77,7 @@ namespace AdsUtilities
             if (Areas.ContainsKey(areaNumber))
             {
                 uint mdpAddress = GetMdpAddress(areaNumber, table, subidx); // MDP address of parameter -> ADS idx offset
-                adsClient.Connect(NetId, (int)Constants.AdsPortSystemService);
+                adsClient.Connect(_netId, (int)Constants.AdsPortSystemService);
                 adsClient.WriteAny(Constants.AdsIGrpCoe, mdpAddress, value);
                 adsClient.Disconnect();
             }
@@ -80,7 +88,7 @@ namespace AdsUtilities
             if(Areas.ContainsKey(areaNumber))
             {
                 uint mdpAddress = GetMdpAddress(areaNumber, table, subidx); // MDP address of parameter -> ADS idx offset
-                adsClient.Connect(NetId, (int)Constants.AdsPortSystemService);
+                adsClient.Connect(_netId, (int)Constants.AdsPortSystemService);
                 T res = (T)adsClient.ReadAny(Constants.AdsIGrpCoe, mdpAddress, typeof(T));
                 adsClient.Disconnect();
                 return res;

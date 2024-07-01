@@ -13,6 +13,8 @@ namespace AdsUtilities
 {
     public class AdsRoutingAccess
     {
+        public string NetId { get { return _netId.ToString(); } }
+
         private ILogger? _logger;
 
         private readonly AdsClient adsClient = new();
@@ -40,6 +42,10 @@ namespace AdsUtilities
             AddRemoteRouteEntry(ipAddressTarget, usernameTarget, passwordTarget, remoteRouteName);
         }
 
+        /// <summary>
+        /// This method removes an entry from the local (=on selected target) routes list.
+        /// </summary>
+        /// <param name="routeName">The route's "Name" parameter</param>
         public void RemoveLocalRouteEntry(string routeName)
         {
             adsClient.Connect(_netId, (int)Constants.AdsPortSystemService);
@@ -51,7 +57,7 @@ namespace AdsUtilities
         }
 
         /// <summary>
-        /// This method adds an entry to the local routes list with the specified parameters. For a communication to be established, a corresponding route entry must also be added to the remote routes list
+        /// This method adds an entry to the local (=on selected target) routes list with the specified parameters. For a communication to be established, a corresponding route entry must also be added to the remote routes list
         /// </summary>
         /// <param name="netIdEntry"></param>
         /// <param name="ipAddressEntry"></param>
@@ -262,10 +268,10 @@ namespace AdsUtilities
             routesEditor.FileWrite(staticRoutesPath, Encoding.UTF8.GetBytes(routesXml.ToString()), false);
         }
 
-        public void AddAdsMqttRoute(string brokerAddress, uint brokerPort, AdsMqttTlsParameters tlsParameters, bool unidirectional = false, string topic = default, uint qualityOfService = default, string user = default, string password = default)
+        /*public void AddAdsMqttRoute(string brokerAddress, uint brokerPort, AdsMqttTlsParameters tlsParameters, bool unidirectional = false, string topic = default, uint qualityOfService = default, string user = default, string password = default)
         {
 
-        }
+        }*/
 
         public struct AdsMqttTlsParameters
         {
@@ -560,11 +566,11 @@ namespace AdsUtilities
                 string os = OS_IDS.ContainsKey(osKey) ? OS_IDS[osKey] : osKey.ToString("X2");
                 string osVersionString;
                 if (osKey > 0x0C00) //TCBSD has no BuildKey
-                    osVersionString = "TwinCAT/BSD" + " (" + osVer[0] + "." + osVer[4] + ")";
+                    osVersionString = $"TwinCAT/BSD ({osVer[0]}.{osVer[4]})";
                 else if (os.Contains("Windows")) //Windows 10 has BulidKey
                     osVersionString = os + " " + (OS_BUILDIDS.ContainsKey(osBuildKey) ? OS_BUILDIDS[osBuildKey] : osBuildKey.ToString("X2"));
                 else if (osKey < 0x0500) //TCRTOS
-                    osVersionString = "TC/RTOS" + " (" + osVer[0] + "." + osVer[4] + ")";
+                    osVersionString = $"TC/RTOS ({osVer[0]}.{osVer[4]})";
                 else
                     osVersionString = os;
 

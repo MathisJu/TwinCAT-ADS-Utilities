@@ -12,6 +12,8 @@ namespace AdsUtilities
 {
     public class AdsIoAccess
     {
+        public string NetId { get { return _netId.ToString(); } }
+
         private readonly AdsClient adsClient = new();
 
         private readonly AmsNetId _netId;
@@ -38,7 +40,7 @@ namespace AdsUtilities
             adsClient.Connect(_netId, (int)Constants.AdsPortR0Io);
             uint readLen = adsClient.ReadAny<uint>(Constants.AdsIGrpIoDeviceStateBase + deviceId, Constants.AdsIOffsReadDeviceFullInfo);
 
-            IReadRequest readRequest = RequestFactory.CreateReadRequest(new byte[readLen]);
+            IReadRequest readRequest = RequestFactory.CreateReadRequest((int)readLen);
 
             adsClient.Read(Constants.AdsIGrpIoDeviceStateBase + deviceId, Constants.AdsIOffsReadDeviceFullInfo, readRequest);
 
@@ -75,7 +77,7 @@ namespace AdsUtilities
 
         public List<Structs.IoDevice> GetIoDevices()
         {
-            IReadRequest readRequest = RequestFactory.CreateReadRequest(new byte[402]);
+            IReadRequest readRequest = RequestFactory.CreateReadRequest(402);
 
             adsClient.Connect(_netId, (int)Constants.AdsPortR0Io);
             adsClient.Read(Constants.AdsIGrpIoDeviceStateBase, Constants.AdsIOffsReadDeviceId, readRequest);

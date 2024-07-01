@@ -7,16 +7,16 @@ namespace FileTransferContextLogic
     {
         static void Main(string[] args)
         {
+        
             if (args.Length == 0)
             {
                 Console.WriteLine("No file specified.");
                 return;
             }
 
-            Console.ReadLine();
+            string filePath = args[0];            
 
-            string filePath = args[0];
-            filePath = filePath.Substring(1, filePath.Length-2);
+            Console.WriteLine("Selected file: " + filePath);
 
             string xmlPath = @"C:\TwinCAT\3.1\Target\StaticRoutes.xml";
 

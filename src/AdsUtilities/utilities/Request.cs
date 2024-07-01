@@ -145,9 +145,10 @@ namespace AdsUtilities
     {
         void Add(byte data);
         void Add(byte[] data);
-        void AddStringUTF8(string str);
-        void AddStringAscii(string str);
+        void AddStringUTF8(string data);
+        void AddStringAscii(string data);
         void AddInt(int data);
+        void AddStruct<T>(T data) where T:struct;
         byte[] GetBytes();
         void TrimEnd(int terminationLength);
     }
@@ -185,6 +186,24 @@ namespace AdsUtilities
         public void AddInt(int data)
         {
             _requestBytes.AddRange(BitConverter.GetBytes(data));
+        }
+
+        public void AddStruct<T>(T data) where T : struct
+        {
+            int size = Marshal.SizeOf(typeof(T));
+            byte[] structAsBytes = new byte[size];
+
+            IntPtr ptr = Marshal.AllocHGlobal(size);
+            try
+            {
+                Marshal.StructureToPtr(data, ptr, false);
+                Marshal.Copy(ptr, structAsBytes, 0, size);
+            }
+            finally
+            {
+                Marshal.FreeHGlobal(ptr);
+            }
+            _requestBytes.AddRange(structAsBytes);
         }
 
         public byte[] GetBytes()
@@ -270,6 +289,29 @@ namespace AdsUtilities
             _currentIndex += sizeof(int);
         }
 
+        public void AddStruct<T>(T data) where T : struct
+        {
+            int size = Marshal.SizeOf(typeof(T));
+            if (_currentIndex + size > _requestBytes.Length)
+            {
+                throw new InvalidOperationException("Not enough space in the request that was instanced with a fixed size.");
+            }
+            byte[] structAsBytes = new byte[size];
+
+            IntPtr ptr = Marshal.AllocHGlobal(size);
+            try
+            {
+                Marshal.StructureToPtr(data, ptr, false);
+                Marshal.Copy(ptr, structAsBytes, 0, size);
+            }
+            finally
+            {
+                Marshal.FreeHGlobal(ptr);
+            }
+            structAsBytes.CopyTo(_requestBytes, _currentIndex);
+            _currentIndex += size;
+        }
+
         public void TrimEnd(int terminationLength = 0)
         {
             int lastIndex = -1;
@@ -331,10 +373,7 @@ namespace AdsUtilities
             }
         }
 
-        public static IReadRequest CreateReadRequest(byte[] data)
-        {
-            return new ReadRequest(data);
-        }
+
         public static IReadRequest CreateReadRequest(int length)
         {
             return new ReadRequest(length);

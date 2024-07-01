@@ -10,6 +10,8 @@ namespace AdsUtilities
 {
     public class AdsFileAccess
     {
+        public string NetId { get { return _netId.ToString(); } }
+
         private readonly AdsClient adsClient = new();
 
         private readonly AmsNetId _netId;
@@ -281,7 +283,6 @@ namespace AdsUtilities
             startProcessRequest.AddStringAscii(applicationPath);
             startProcessRequest.AddStringAscii(workingDirectory);
             startProcessRequest.AddStringAscii(commandLineParameters);
-
 
             adsClient.Connect(new AmsAddress(_netId, AmsPort.SystemService));
             var res = await adsClient.WriteAsync(Constants.SystemServiceStartProcess, 0, startProcessRequest.GetBytes(), cancel);
