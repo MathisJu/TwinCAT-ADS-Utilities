@@ -13,7 +13,7 @@
 <!-- ABOUT THE PROJECT -->
 ## About The Project
 
-The Automation Device Specification (ADS) protocol is a crucial component for any PLC running TwinCAT. It serves as a communication layer for many of TwinCAT's basic functionalities outside the real-time environment. This project provides a collection of ADS client wrappers that allow you to access these functions via an easy-to-use .NET class library. *TwinCAT-ADS-Utilities* uses the .Net API provided by [Beckhoff.TwinCAT.Ads](https://www.nuget.org/packages/Beckhoff.TwinCAT.Ads/). Comprehensive documentation for the ADS API is available on [infosys.beckhoff.com](infosys.beckhoff.com).
+The Automation Device Specification (ADS) protocol is a crucial component for any PLC running TwinCAT. It serves as a communication layer for many of TwinCAT's basic functionalities outside the real-time environment. This project provides a collection of ADS client wrappers that allow you to access these functions via an easy-to-use .NET class library. *TwinCAT-ADS-Utilities* uses the .Net API provided by [Beckhoff.TwinCAT.Ads](https://www.nuget.org/packages/Beckhoff.TwinCAT.Ads/). Comprehensive documentation for the ADS API is available on [infosys.beckhoff.com](https://infosys.beckhoff.com/).
 
 ### Features
 * __Remote File System Access:__ Interact with the file system and registry of your PLCs remotely.
