@@ -3,6 +3,7 @@
 using Microsoft.Extensions.Logging;
 using System.Collections.Generic;
 using System.Net;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Web;
 using System.Xml;
@@ -11,7 +12,7 @@ using TwinCAT.Ads;
 
 namespace AdsUtilities
 {
-    public class AdsRoutingAccess
+    public class AdsRoutingClient : IDisposable
     {
         public string NetId { get { return _netId.ToString(); } }
 
@@ -26,12 +27,12 @@ namespace AdsUtilities
             _logger = logger;
         } 
 
-        public AdsRoutingAccess(string netId)
+        public AdsRoutingClient(string netId)
         {
             _netId = AmsNetId.Parse(netId);
         }
 
-        public AdsRoutingAccess(AmsNetId netId)
+        public AdsRoutingClient(AmsNetId netId)
         {
             _netId = netId;
         }
@@ -207,7 +208,7 @@ namespace AdsUtilities
         /// <param name="nameSubRoute"></param>
         public void AddSubRoute(string netIdGateway, string netIdSubRoute, string nameSubRoute)
         {
-            var routesGateway = new AdsRoutingAccess(netIdGateway).GetRoutesList();     // Check if there is a route between gateway and sub-route-system - mandatory for sub-route to work
+            var routesGateway = new AdsRoutingClient(netIdGateway).GetRoutesList();     // Check if there is a route between gateway and sub-route-system - mandatory for sub-route to work
             if (!routesGateway.Where(r => r.NetId == netIdSubRoute).Any())
             {
                 _logger?.LogCritical("Sub-Route to {netIdSub} with gateway {netIdGate} could not be added because there is no existing route entry to the sub-route on the gateway. Make sure to add the remote route first.", netIdSubRoute, netIdGateway);
@@ -239,7 +240,7 @@ namespace AdsUtilities
             }
         }
 
-        public void AddAdsMqttRoute(string brokerAddress, uint brokerPort, bool unidirectional = false, string topic = default, uint qualityOfService = default, string user = default, string password = default)
+        public void AddAdsMqttRoute(string brokerAddress, uint brokerPort, string topic, bool unidirectional = false, uint qualityOfService = default, string user = default, string password = default)
         {
             string staticRoutesPath = GetTwinCatDirectory() + "/3.1/Target/StaticRoutes.xml";
             AdsFileAccess routesEditor = new(_netId);
@@ -271,22 +272,18 @@ namespace AdsUtilities
         /*public void AddAdsMqttRoute(string brokerAddress, uint brokerPort, AdsMqttTlsParameters tlsParameters, bool unidirectional = false, string topic = default, uint qualityOfService = default, string user = default, string password = default)
         {
 
-        }*/
+        }
 
         public struct AdsMqttTlsParameters
         {
             public string CertificateAuthority;
-            public string? ClientCert = default;
-            public string? Key = default;
-            public string? KeyPassword = default;
-            public string? Version = default;
+            public string ClientCert;
+            public string Key;
+            public string TlsVersion;
+            public string? KeyPassword = default;           
             public List<string>? Cipher = default;
             public string? RevocationList = default;
-
-            public AdsMqttTlsParameters(string CertificateAuthority) {
-                this.CertificateAuthority = CertificateAuthority;
-            }
-        }
+        }*/
 
         private string GetTwinCatDirectory()
         {
@@ -488,7 +485,7 @@ namespace AdsUtilities
             
             uint notiHdl  = adsClient.AddDeviceNotification(Constants.SystemServiceBroadcast, 0, 2048, sttngs, null);   
 
-            foreach (Structs.NetworkInterfaceInfo nic in  interfacesToBroadcastOn)
+            foreach (Structs.NetworkInterfaceInfo nic in interfacesToBroadcastOn)
             {
                 if (nic.ipAddress is "0.0.0.0" or null)
                 {
@@ -509,7 +506,7 @@ namespace AdsUtilities
                 byte[] wrBfr = Structs.Converter.StructureToByteArray(brPacket);
                 try
                 {
-                    adsClient.Write(Constants.SystemServiceBroadcast, 1, wrBfr);     
+                    await adsClient.WriteAsync(Constants.SystemServiceBroadcast, 1, wrBfr, cancellationToken);     
                 }
                 catch (AdsErrorException ex)
                 {
@@ -532,68 +529,167 @@ namespace AdsUtilities
                 adsClient.Disconnect();
             }
             return broadcastResults;
+        }
 
-            Structs.TargetInfo ParseBroadcastReturn(byte[] broadcastReturn)
+        public async IAsyncEnumerable<Structs.TargetInfo> AdsBroadcastSearchAsyncStream(
+            List<Structs.NetworkInterfaceInfo> interfacesToBroadcastOn,
+            ushort secondsTimeout = 5,
+            [EnumeratorCancellation] CancellationToken cancellationToken = default)
+        {
+            var broadcastResults = new List<Structs.TargetInfo>();
+            var completionSource = new TaskCompletionSource();
+
+            void RecievedBroadcastResponse(object sender, AdsNotificationEventArgs e)
             {
-                const int startingOffset = 4;
-
-                const int startIp = startingOffset;
-                const int lenIp = 4;
-                byte[] ip = broadcastReturn.Skip(startIp).Take(lenIp).ToArray();
-                string ipAddr = $"{ip[0]}.{ip[1]}.{ip[2]}.{ip[3]}";
-
-                // ToDo: Add route for remaining info returned from broadcast including Port, Route Type
-
-                const int startNetId = 28;
-                const int lenNetId = 6;
-                byte[] netId = broadcastReturn.Skip(startNetId).Take(lenNetId).ToArray();
-                string netIdStr = $"{netId[0]}.{netId[1]}.{netId[2]}.{netId[3]}.{netId[4]}.{netId[5]}";
-
-                const int startName = 44;
-                int lenName = broadcastReturn[42] - 1;
-                byte[] name = broadcastReturn.Skip(startName).Take(lenName).ToArray();
-                string deviceName = Encoding.UTF8.GetString(name);
-
-                int startTcType = startName + lenName;
-                const int lenTcType = 8;
-                byte[] tcType = broadcastReturn.Skip(startTcType).Take(lenTcType).ToArray();    // {4,0,148,0,148,0,0,0} for engineering and {4,0,20,1,20,1,00} for runtime
-
-                int startOsVer = startTcType + lenTcType + 1;
-                const int lenOsVer = 12;
-                byte[] osVer = broadcastReturn.Skip(startOsVer).Take(lenOsVer).ToArray();
-                ushort osKey = (ushort)(osVer[0] * 256 + osVer[4]);
-                ushort osBuildKey = (ushort)(osVer[8] * 256 + osVer[9]);
-                string os = OS_IDS.ContainsKey(osKey) ? OS_IDS[osKey] : osKey.ToString("X2");
-                string osVersionString;
-                if (osKey > 0x0C00) //TCBSD has no BuildKey
-                    osVersionString = $"TwinCAT/BSD ({osVer[0]}.{osVer[4]})";
-                else if (os.Contains("Windows")) //Windows 10 has BulidKey
-                    osVersionString = os + " " + (OS_BUILDIDS.ContainsKey(osBuildKey) ? OS_BUILDIDS[osBuildKey] : osBuildKey.ToString("X2"));
-                else if (osKey < 0x0500) //TCRTOS
-                    osVersionString = $"TC/RTOS ({osVer[0]}.{osVer[4]})";
-                else
-                    osVersionString = os;
-
-                // TC Type
-
-                // ???? currently unknown parameters
-
-                // ToDo: There should be indicators as to where in the byte array the fingerprint starts. for now we look for the sequence 0-65-0 that indicates the start of the 65 bytes field of the fingerprint
-                int startFingerprint = startOsVer + lenOsVer; // + something else
-                for (int i = startFingerprint; i < broadcastReturn.Length - 2; i++)
-                {
-                    if (broadcastReturn[i] == 0 && broadcastReturn[i + 1] == 65 && broadcastReturn[i + 2] == 0)
-                    {
-                        startFingerprint = i + 3;
-                        break;
-                    }
-                }
-                int lenFingerprint = 64;
-                byte[] fingerprint = broadcastReturn.Skip(startFingerprint).Take(lenFingerprint).ToArray();
-                string fingerprintStr = Encoding.UTF8.GetString(fingerprint);
-
-                return new Structs.TargetInfo { IpAddress = ipAddr, Name = deviceName, NetId = netIdStr, OsVersion = osVersionString, Fingerprint = fingerprintStr };
+                var targetInfo = ParseBroadcastReturn(e.Data.ToArray());
+                broadcastResults.Add(targetInfo);
+                completionSource.TrySetResult();
             }
+
+            // Register a notification
+            adsClient.AdsNotification += RecievedBroadcastResponse;
+            NotificationSettings sttngs = new(AdsTransMode.OnChange, 100, 0);
+
+            adsClient.Connect(_netId, (int)Constants.AdsPortSystemService);
+            uint notiHdl = adsClient.AddDeviceNotification(Constants.SystemServiceBroadcast, 0, 2048, sttngs, null);
+
+            foreach (var nic in interfacesToBroadcastOn)
+            {
+                if (nic.ipAddress is "0.0.0.0" or null)
+                {
+                    _logger?.LogInformation("The NIC '{nicName}' has no assigned IP address. The request for an ADS broadcast search was aborted.", nic.name);
+                    continue;
+                }
+
+                IPAddress gatewayAddress = IPAddress.Parse(nic.defaultGateway);
+                IPAddress subnetAddress = IPAddress.Parse(nic.subnetMask);
+                byte[] gatewayBytes = gatewayAddress.GetAddressBytes();
+                byte[] subnetBytes = subnetAddress.GetAddressBytes();
+                byte[] broadcastBytes = new byte[4];
+                for (int i = 0; i < 4; i++)
+                {
+                    broadcastBytes[i] = (byte)(gatewayBytes[i] | ~subnetBytes[i]);
+                }
+
+                Structs.TriggerBroadcastPacket brPacket = new(broadcastBytes, AmsNetId.Local.ToBytes());
+                byte[] wrBfr = Structs.Converter.StructureToByteArray(brPacket);
+                try
+                {
+                    await adsClient.WriteAsync(Constants.SystemServiceBroadcast, 1, wrBfr, cancellationToken);
+                }
+                catch (AdsErrorException ex)
+                {
+                    _logger?.LogInformation("Could not perform an ADS broadcast search on adapter '{nicName}'. The request was aborted due to error: '{error}'.", nic.name, ex.Message);
+                }
+            }
+
+            var timeout = TimeSpan.FromSeconds(secondsTimeout);
+            var startTime = DateTime.UtcNow;
+
+            try
+            {
+                while (DateTime.UtcNow - startTime < timeout)
+                {
+                    if (cancellationToken.IsCancellationRequested)
+                    {
+                        _logger?.LogInformation("ADS broadcast search was canceled by caller. The list of available TwinCAT systems may be incomplete.");
+                        yield break;
+                    }
+
+                    if (broadcastResults.Any())
+                    {
+                        foreach (var result in broadcastResults)
+                        {
+                            yield return result;
+                        }
+                        broadcastResults.Clear();
+                    }
+
+                    // Wait for new broadcast res or timeout
+                    await Task.WhenAny(completionSource.Task, Task.Delay(100, cancellationToken));
+                    completionSource = new TaskCompletionSource();
+                }
+            }
+            finally
+            {
+                // Unregister the Event / Handle
+                adsClient.DeleteDeviceNotification(notiHdl);
+                adsClient.AdsNotification -= RecievedBroadcastResponse;
+                adsClient.Disconnect();
+            }
+        }
+
+        public async IAsyncEnumerable<Structs.TargetInfo> AdsBroadcastSearchAsyncStream(
+        ushort secondsTimeout = 5,
+        [EnumeratorCancellation] CancellationToken cancellationToken = default)
+        {
+            var nicsInfo = GetNetworkInterfaces();
+            await foreach (var targetInfo in AdsBroadcastSearchAsyncStream(nicsInfo, secondsTimeout, cancellationToken))
+            {
+                yield return targetInfo;
+            }
+        }
+
+        private Structs.TargetInfo ParseBroadcastReturn(byte[] broadcastReturn)
+        {
+            const int startingOffset = 4;
+
+            const int startIp = startingOffset;
+            const int lenIp = 4;
+            byte[] ip = broadcastReturn.Skip(startIp).Take(lenIp).ToArray();
+            string ipAddr = $"{ip[0]}.{ip[1]}.{ip[2]}.{ip[3]}";
+
+            // ToDo: Add route for remaining info returned from broadcast including Port, Route Type
+
+            const int startNetId = 28;
+            const int lenNetId = 6;
+            byte[] netId = broadcastReturn.Skip(startNetId).Take(lenNetId).ToArray();
+            string netIdStr = $"{netId[0]}.{netId[1]}.{netId[2]}.{netId[3]}.{netId[4]}.{netId[5]}";
+
+            const int startName = 44;
+            int lenName = broadcastReturn[42] - 1;
+            byte[] name = broadcastReturn.Skip(startName).Take(lenName).ToArray();
+            string deviceName = Encoding.UTF8.GetString(name);
+
+            int startTcType = startName + lenName;
+            const int lenTcType = 8;
+            byte[] tcType = broadcastReturn.Skip(startTcType).Take(lenTcType).ToArray();    // {4,0,148,0,148,0,0,0} for engineering and {4,0,20,1,20,1,00} for runtime
+
+            int startOsVer = startTcType + lenTcType + 1;
+            const int lenOsVer = 12;
+            byte[] osVer = broadcastReturn.Skip(startOsVer).Take(lenOsVer).ToArray();
+            ushort osKey = (ushort)(osVer[0] * 256 + osVer[4]);
+            ushort osBuildKey = (ushort)(osVer[8] * 256 + osVer[9]);
+            string os = OS_IDS.ContainsKey(osKey) ? OS_IDS[osKey] : osKey.ToString("X2");
+            string osVersionString;
+            if (osKey > 0x0C00) //TCBSD has no BuildKey
+                osVersionString = $"TwinCAT/BSD ({osVer[0]}.{osVer[4]})";
+            else if (os.Contains("Windows")) //Windows 10 has BulidKey
+                osVersionString = os + " " + (OS_BUILDIDS.ContainsKey(osBuildKey) ? OS_BUILDIDS[osBuildKey] : osBuildKey.ToString("X2"));
+            else if (osKey < 0x0500) //TCRTOS
+                osVersionString = $"TC/RTOS ({osVer[0]}.{osVer[4]})";
+            else
+                osVersionString = os;
+
+            // TC Type
+
+            // ???? currently unknown parameters
+
+            // ToDo: There should be indicators as to where in the byte array the fingerprint starts. for now we look for the sequence 0-65-0 that indicates the start of the 65 bytes field of the fingerprint
+            int startFingerprint = startOsVer + lenOsVer; // + something else
+            for (int i = startFingerprint; i < broadcastReturn.Length - 2; i++)
+            {
+                if (broadcastReturn[i] == 0 && broadcastReturn[i + 1] == 65 && broadcastReturn[i + 2] == 0)
+                {
+                    startFingerprint = i + 3;
+                    break;
+                }
+            }
+            int lenFingerprint = 64;
+            byte[] fingerprint = broadcastReturn.Skip(startFingerprint).Take(lenFingerprint).ToArray();
+            string fingerprintStr = Encoding.UTF8.GetString(fingerprint);
+
+            return new Structs.TargetInfo { IpAddress = ipAddr, Name = deviceName, NetId = netIdStr, OsVersion = osVersionString, Fingerprint = fingerprintStr };
         }
 
         /// <summary>
@@ -612,8 +708,9 @@ namespace AdsUtilities
                     return;
                 }
             }
-            new AdsSystemAccess(_netId).SetRegEntry(@"Software\Beckhoff\TwinCAT3\System", "RequestedAmsNetId", Enums.RegEditTypeCode.REG_BINARY, bytesNetId);
+            new AdsSystemClient(_netId).SetRegEntry(@"Software\Beckhoff\TwinCAT3\System", "RequestedAmsNetId", Enums.RegEditTypeCode.REG_BINARY, bytesNetId);
         }
+
 
         public Structs.RouterStatusInfo GetRouterStatusInfo()
         {
@@ -663,6 +760,17 @@ namespace AdsUtilities
             adsClient.Disconnect();
 
             return volumeNo;
+        }
+
+        public void Dispose()
+        {
+            if (adsClient.IsConnected)
+                adsClient.Disconnect();
+            if (!adsClient.IsDisposed)
+            {
+                adsClient.Dispose();
+                GC.SuppressFinalize(this);
+            }
         }
 
         private static readonly Dictionary<ushort, string> OS_IDS =

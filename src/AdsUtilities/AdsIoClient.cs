@@ -10,7 +10,7 @@ using TwinCAT.Ads;
 
 namespace AdsUtilities
 {
-    public class AdsIoAccess
+    public class AdsIoClient : IDisposable
     {
         public string NetId { get { return _netId.ToString(); } }
 
@@ -25,12 +25,12 @@ namespace AdsUtilities
             _logger = logger;
         }
 
-        public AdsIoAccess(string netId)
+        public AdsIoClient(string netId)
         {
             _netId = AmsNetId.Parse(netId);
         }
 
-        public AdsIoAccess(AmsNetId netId)
+        public AdsIoClient(AmsNetId netId)
         {
             _netId = netId;
         }
@@ -127,5 +127,15 @@ namespace AdsUtilities
             adsClient.Disconnect();
         }
 
+        public void Dispose()
+        {
+            if (adsClient.IsConnected)
+                adsClient.Disconnect();
+            if (!adsClient.IsDisposed)
+            {
+                adsClient.Dispose();
+                GC.SuppressFinalize(this);
+            }
+        }
     }
 }

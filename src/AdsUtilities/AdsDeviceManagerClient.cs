@@ -10,7 +10,7 @@ using TwinCAT.TypeSystem;
 
 namespace AdsUtilities
 {
-    public class AdsDeviceManagerAccess
+    public class AdsDeviceManagerClient : IDisposable
     {
         public string NetId { get { return _netId.ToString(); } }
 
@@ -20,13 +20,13 @@ namespace AdsUtilities
 
         private readonly AmsNetId _netId;
 
-        public AdsDeviceManagerAccess(AmsNetId netId)
+        public AdsDeviceManagerClient(AmsNetId netId)
         {
             _netId = netId;
             Areas = ReadAvailableAreas();
         }
 
-        public AdsDeviceManagerAccess(string netId) 
+        public AdsDeviceManagerClient(string netId) 
         {
             _netId = AmsNetId.Parse(netId);
             Areas = ReadAvailableAreas();
@@ -103,5 +103,15 @@ namespace AdsUtilities
             return mdpAddr;
         }
 
+        public void Dispose()
+        {
+            if (adsClient.IsConnected)
+                adsClient.Disconnect();
+            if (!adsClient.IsDisposed)
+            {
+                adsClient.Dispose();
+                GC.SuppressFinalize(this);
+            }
+        }
     }
 }

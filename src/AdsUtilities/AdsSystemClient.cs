@@ -4,7 +4,7 @@ using TwinCAT.Ads;
 
 namespace AdsUtilities
 {
-    public class AdsSystemAccess
+    public class AdsSystemClient : IDisposable
     {
         public string NetId { get { return _netId.ToString(); } }
 
@@ -12,12 +12,12 @@ namespace AdsUtilities
 
         private readonly AmsNetId _netId;
 
-        public AdsSystemAccess(AmsNetId netId)
+        public AdsSystemClient(AmsNetId netId)
         {
             _netId = netId;
         }
 
-        public AdsSystemAccess(string netId)
+        public AdsSystemClient(string netId)
         {
             _netId = AmsNetId.Parse(netId);
         }
@@ -74,6 +74,17 @@ namespace AdsUtilities
             adsClient.Connect(_netId, (int)Constants.AdsPortSystemService);
             adsClient.ReadWrite(Constants.SystemServiceRegHkeyLocalMachine, 0, data, readRegRequest.GetBytes());
             adsClient.Disconnect();
+        }
+
+        public void Dispose()
+        {
+            if (adsClient.IsConnected)
+                adsClient.Disconnect();
+            if (!adsClient.IsDisposed)
+            {
+                adsClient.Dispose();
+                GC.SuppressFinalize(this);
+            }
         }
     }
 }

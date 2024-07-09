@@ -42,23 +42,29 @@ The Automation Device Specification (ADS) protocol is a crucial component for an
 
 #### Copy a file to a remote system
 ```csharp
-AdsFileAccess localFileAccess = new(AmsNetId.Local);
-byte[] fileContent = localFileAccess.FileRead("C:/temp/someFile.txt");
-AdsFileAccess remoteFileAccess = new("192.168.8.188.1.1");
-remoteFileAccess.FileWrite("C:/temp/someNewFile.txt", fileContent);
+AdsFileClient localFileClient = new(AmsNetId.Local);
+byte[] fileContent = localFileClient.FileRead("C:/temp/someFile.txt");
+AdsFileClient remoteFileClient = new("192.168.8.188.1.1");
+remoteFileClient.FileWrite("C:/temp/someNewFile.txt", fileContent);
 ```
 
 #### Perform a broadcast search
 ```csharp
-AdsRoutingAccess localRouting = new(AmsNetId.Local);
+// Option 1:
+AdsRoutingClient localRouting = new(AmsNetId.Local);
 List<TargetInfo> devicesFound = await localRouting.AdsBroadcastSearchAsync(secondsTimeout: 5);
 foreach (TargetInfo device in devicesFound)
+    Console.WriteLine(device.Name);
+
+// Option 2:
+AdsRoutingClient localRouting = new(AmsNetId.Local);
+await foreach (TargetInfo device in localRouting.AdsBroadcastSearchAsyncStream(secondsTimeout: 5))
     Console.WriteLine(device.Name);
  ```
 
 #### Add an ADS route to a remote system
 ```csharp
-AdsRoutingAccess localRouting = new(AmsNetId.Local);
+AdsRoutingClient localRouting = new(AmsNetId.Local);
 localRouting.AddRoute("192.168.1.100.1.1", "192.168.1.100", "CX5130-Office", "Administrator", "1");
 ```
 
@@ -68,9 +74,9 @@ localRouting.AddRoute("192.168.1.100.1.1", "192.168.1.100", "CX5130-Office", "Ad
 
 Contributions are very much appreachiated. Please fork the repo and create a pull request or simply open an issue with the tag "enhancement".
 
-If you would like to contribute by implementing of a useful ADS function, but don't know how, here is a quick guide:
+If you would like to contribute by implementing a useful ADS function, but don't know how, here is a quick guide:
 
-1. Download the Beckhoff [TF60110 | TwinCAT 3 ADS Monitor](https://www.beckhoff.com/en-us/products/automation/twincat/tfxxxx-twincat-3-functions/tf6xxx-connectivity/tf6010.html) and start an ADS recording.
+1. Download the Beckhoff [TF6010 | TwinCAT 3 ADS Monitor](https://www.beckhoff.com/en-us/products/automation/twincat/tfxxxx-twincat-3-functions/tf6xxx-connectivity/tf6010.html) and start an ADS recording.
 
 2. Perform the TwinCAT-action you would like to recreate.
 

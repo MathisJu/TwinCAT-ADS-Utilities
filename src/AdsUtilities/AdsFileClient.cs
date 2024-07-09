@@ -8,7 +8,7 @@ using TwinCAT.Ads;
 
 namespace AdsUtilities
 {
-    public class AdsFileAccess
+    public class AdsFileAccess : IDisposable
     {
         public string NetId { get { return _netId.ToString(); } }
 
@@ -289,6 +289,16 @@ namespace AdsUtilities
             adsClient.Disconnect();
             res.ThrowOnError();
             
+        }
+        public void Dispose()
+        {
+            if (adsClient.IsConnected)
+                adsClient.Disconnect();
+            if (!adsClient.IsDisposed)
+            {
+                adsClient.Dispose();
+                GC.SuppressFinalize(this);
+            }
         }
     }
 }
