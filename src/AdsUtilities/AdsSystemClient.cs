@@ -46,11 +46,11 @@ namespace AdsUtilities
         /// /// <returns>Returns true if Reg entry was set successfully</returns>
         public void SetRegEntry(string subKey, string valueName, Enums.RegEditTypeCode registryTypeCode, byte[] value)
         {
-            IWriteRequest setRegRequest = RequestFactory.CreateWriteRequest(subKey.Length + valueName.Length + value.Length + 6);
-            setRegRequest.AddStringUTF8(subKey);
-            setRegRequest.AddStringUTF8(valueName);
-            setRegRequest.Add(new byte[] { 0, (byte)registryTypeCode, 0, 0, 0 });
-            setRegRequest.Add(value);
+            WriteRequestHelper setRegRequest = new WriteRequestHelper()
+                .AddStringUTF8(subKey)
+                .AddStringUTF8(valueName)
+                .Add(new byte[] { 0, (byte)registryTypeCode, 0, 0, 0 })
+                .Add(value);
 
             adsClient.Connect(_netId, (int)Constants.AdsPortSystemService);
             adsClient.Write(Constants.SystemServiceRegHkeyLocalMachine, 0, setRegRequest.GetBytes());
@@ -67,9 +67,9 @@ namespace AdsUtilities
         /// <returns>Returns true if Reg entry was read successfully</returns>
         public void QueryRegEntry(string subKey, string valueName, ref byte[] data)
         {
-            IWriteRequest readRegRequest = RequestFactory.CreateWriteRequest(subKey.Length + valueName.Length + 2);
-            readRegRequest.AddStringUTF8(subKey);
-            readRegRequest.AddStringUTF8(valueName);
+            WriteRequestHelper readRegRequest = new WriteRequestHelper()
+                .AddStringUTF8(subKey)
+                .AddStringUTF8(valueName);
 
             adsClient.Connect(_netId, (int)Constants.AdsPortSystemService);
             adsClient.ReadWrite(Constants.SystemServiceRegHkeyLocalMachine, 0, data, readRegRequest.GetBytes());

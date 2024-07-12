@@ -50,8 +50,8 @@ namespace AdsUtilities
         public void RemoveLocalRouteEntry(string routeName)
         {
             adsClient.Connect(_netId, (int)Constants.AdsPortSystemService);
-            IWriteRequest deleteRouteReq = RequestFactory.CreateWriteRequest(routeName.Length + 1);
-            deleteRouteReq.AddStringUTF8(routeName);
+            WriteRequestHelper deleteRouteReq = new WriteRequestHelper()
+                .AddStringUTF8(routeName);
 
             adsClient.Write(Constants.SystemServiceDelRemote, 0, deleteRouteReq);
             adsClient.Disconnect();
@@ -66,19 +66,19 @@ namespace AdsUtilities
         /// <returns>Returns true if ADS call succeeded</returns>
         public void AddLocalRouteEntry(string netIdEntry, string ipAddressEntry, string routeNameEntry) 
         {
-            IWriteRequest addRouteRequest = RequestFactory.CreateWriteRequest();
-            addRouteRequest.Add(netIdEntry.Split('.').Select(byte.Parse).ToArray());
-            addRouteRequest.Add(new byte[] { 1, 0, 32 });   // ToDo: Add to Segments List
-            addRouteRequest.Add(new byte[23]);
-            addRouteRequest.Add((byte)(ipAddressEntry.Length + 1));
-            addRouteRequest.Add(new byte[3]);
-            addRouteRequest.Add((byte)(routeNameEntry.Length + 1));
-            addRouteRequest.Add(new byte[7]);
-            addRouteRequest.AddStringUTF8(ipAddressEntry);
-            addRouteRequest.AddStringUTF8(routeNameEntry);
+            WriteRequestHelper addRouteRequest = new WriteRequestHelper()
+                .Add(netIdEntry.Split('.').Select(byte.Parse).ToArray())
+                .Add(new byte[] { 1, 0, 32 })   // ToDo: Add to Segments List
+                .Add(new byte[23])
+                .Add((byte)(ipAddressEntry.Length + 1))
+                .Add(new byte[3])
+                .Add((byte)(routeNameEntry.Length + 1))
+                .Add(new byte[7])
+                .AddStringUTF8(ipAddressEntry)
+                .AddStringUTF8(routeNameEntry);
 
             adsClient.Connect(_netId, (int)Constants.AdsPortSystemService);
-            adsClient.Write(Constants.SystemServiceAddRemote, 0, addRouteRequest.GetBytes());
+            adsClient.Write(Constants.SystemServiceAddRemote, 0, addRouteRequest);
             adsClient.Disconnect();
         }
 
@@ -92,112 +92,121 @@ namespace AdsUtilities
         /// <returns>Returns true if ADS call succeeded</returns>
         public void AddRemoteRouteEntry(string ipAddressRemote, string usernameRemote, string passwordRemote, string remoteRouteName) 
         {
-            static bool IsIpAddressInRange(string ipAddressStr, string subnetMaskStr, string defaultGatewayStr)
-            {
-                static long IPAddressToLong(IPAddress ip)
-                {
-                    byte[] bytes = ip.GetAddressBytes();
-                    long value = 0;
-                    for (int i = 0; i < bytes.Length; i++)
-                    {
-                        value |= (long)bytes[i] << (8 * (3 - i));
-                    }
-                    return value;
-                }
-
-                // convert inputs to ip address objects
-                IPAddress ipAddress = IPAddress.Parse(ipAddressStr);
-                IPAddress subnetMask = IPAddress.Parse(subnetMaskStr);
-                IPAddress defaultGateway = IPAddress.Parse(defaultGatewayStr);
-
-                // Get network address
-                byte[] ipAdressBytes = ipAddress.GetAddressBytes();
-                byte[] subnetMaskBytes = subnetMask.GetAddressBytes();
-                byte[] networkAddressBytes = new byte[ipAdressBytes.Length];
-                for (int i = 0; i < networkAddressBytes.Length; i++)
-                {
-                    networkAddressBytes[i] = (byte)(ipAdressBytes[i] & subnetMaskBytes[i]);
-                }
-                IPAddress networkAddress = new (networkAddressBytes);
-
-                // Get broadcast address
-                byte[] broadcastAddressBytes = new byte[ipAdressBytes.Length];
-                for (int i = 0; i < broadcastAddressBytes.Length; i++)
-                {
-                    broadcastAddressBytes[i] = (byte)(networkAddressBytes[i] | ~subnetMaskBytes[i]);
-                }
-                IPAddress broadcastAddress = new(broadcastAddressBytes);
-
-                // Check if default gateway is in range
-                long ipAddrNumeric = IPAddressToLong(ipAddress);
-                long networkAddrNumeric = IPAddressToLong(networkAddress);
-                long broadcastAddrNumeric = IPAddressToLong(broadcastAddress);
-                return ipAddrNumeric >= networkAddrNumeric && ipAddrNumeric <= broadcastAddrNumeric;
-            }
-
-            
             if (!IPAddress.TryParse(ipAddressRemote, out IPAddress? ipBytes))
             {
                 _logger?.LogError("Could not add a route entry on remote system because the provided IP address is invalid");
                 return;
             }
 
-            IWriteRequest addRouteRequest = RequestFactory.CreateWriteRequest();
-            addRouteRequest.Add(new byte[]{ 2, 0, 191, 03 });   // ToDo: Check these write entries, constants might be wrong, ToDo: Add to Segments list
-            addRouteRequest.Add(ipBytes.GetAddressBytes());
-            addRouteRequest.Add(new byte[8]);
-            addRouteRequest.Add(Segments.HEADER);
-            addRouteRequest.Add(new byte[4]);
-            addRouteRequest.Add(Segments.REQUEST_ADDROUTE);
-            addRouteRequest.Add(_netId.ToBytes());
-            addRouteRequest.Add(Segments.PORT);
-            addRouteRequest.Add(Segments.ROUTETYPE_STATIC);
             byte[] Segment_ROUTENAME_LENGTH = Segments.ROUTENAME_L;
             Segment_ROUTENAME_LENGTH[2] = (byte)(remoteRouteName.Length + 1);
-            addRouteRequest.Add(Segment_ROUTENAME_LENGTH);
-            addRouteRequest.AddStringUTF8(remoteRouteName);
-            addRouteRequest.Add(Segments.AMSNETID_L);
-            addRouteRequest.Add(_netId.ToBytes());
             byte[] Segment_USERNAME_LENGTH = Segments.USERNAME_L;
             Segment_USERNAME_LENGTH[2] = (byte)(usernameRemote.Length + 1);
-            addRouteRequest.Add(Segment_USERNAME_LENGTH);
-            addRouteRequest.AddStringUTF8(usernameRemote);
             byte[] Segment_PASSWORD_LENGTH = Segments.PASSWORD_L;
             Segment_PASSWORD_LENGTH[2] = (byte)(passwordRemote.Length + 1);
-            addRouteRequest.Add(Segment_PASSWORD_LENGTH);
-            addRouteRequest.AddStringUTF8(passwordRemote);
 
+            WriteRequestHelper addRouteRequest = new WriteRequestHelper()
+                .Add(Segments.IPADDRESS_L)
+                .Add(ipBytes.GetAddressBytes())
+                .Add(new byte[8])
+                .Add(Segments.HEADER)
+                .Add(new byte[4])
+                .Add(Segments.REQUEST_ADDROUTE)
+                .Add(_netId.ToBytes())
+                .Add(Segments.PORT)
+                .Add(Segments.ROUTETYPE_STATIC)
+                .Add(Segment_ROUTENAME_LENGTH)
+                .AddStringUTF8(remoteRouteName)
+                .Add(Segments.AMSNETID_L)
+                .Add(_netId.ToBytes())
+                .Add(Segment_USERNAME_LENGTH)
+                .AddStringUTF8(usernameRemote)
+                .Add(Segment_PASSWORD_LENGTH)
+                .AddStringUTF8(passwordRemote);
 
             List<Structs.NetworkInterfaceInfo> nicsInfo = GetNetworkInterfaces();
             bool foundNwAdapterInRange = false;
             bool rwSuccessAny = false;
             foreach (var nic in nicsInfo)
             {
-                if(IsIpAddressInRange(nic.ipAddress, nic.subnetMask, nic.defaultGateway))   // look for a NIC with an IP that's in the same address range as the remote system and use this IP for the remote route entry
-                {
-                    foundNwAdapterInRange = true;
+                if (!IsIpAddressInRange(nic.ipAddress, nic.subnetMask, nic.defaultGateway))   // look for a NIC with an IP that's in the same address range as the remote system and use this IP for the remote route entry
+                    continue;
 
-                    byte[] Segment_IPADDRESS_LENGTH = Segments.LOCALHOST_L;
-                    Segment_IPADDRESS_LENGTH[2] = (byte)(nic.ipAddress.Length + 1);
-                    addRouteRequest.Add(Segment_IPADDRESS_LENGTH);
-                    addRouteRequest.AddStringUTF8(nic.ipAddress);
+                byte[] Segment_IPADDRESS_LENGTH = Segments.LOCALHOST_L;
+                Segment_IPADDRESS_LENGTH[2] = (byte)(nic.ipAddress.Length + 1);
+                addRouteRequest.Add(Segment_IPADDRESS_LENGTH);
+                addRouteRequest.AddStringUTF8(nic.ipAddress);
 
-                    byte[] rdBfr = new byte[2048];
+                byte[] rdBfr = new byte[2048];
 
-                    adsClient.Connect(_netId, (int)Constants.AdsPortSystemService);
-                    AdsErrorCode rwError = adsClient.TryReadWrite(Constants.SystemServiceBroadcast, 0, rdBfr, addRouteRequest.GetBytes(), out _);    
-                    adsClient.Disconnect();
+                adsClient.Connect(_netId, (int)Constants.AdsPortSystemService);
+                AdsErrorCode rwError = adsClient.TryReadWrite(Constants.SystemServiceBroadcast, 0, rdBfr, addRouteRequest.GetBytes(), out _);    
+                adsClient.Disconnect();
 
-                    if (rwError == AdsErrorCode.NoError)
-                        rwSuccessAny = true;
+                if (rwError == AdsErrorCode.NoError)
+                    rwSuccessAny = true;
 
-                    break;
-                }
+                foundNwAdapterInRange = true;
+                break;
             }
             if (!foundNwAdapterInRange)
                 _logger?.LogError("Error occurred when trying to add a remote route entry. No network adapter on the local system matched address range of the provided IP address. Please check the provided IP or the DHCP settings / the static IP on the remote system");
             if (!rwSuccessAny)
                 _logger?.LogError("ADS call to add remote route entry failed on all network adapters");
+        }
+
+        private static bool IsIpAddressInRange(string ipAddressStr, string subnetMaskStr, string defaultGatewayStr)
+        {
+            IPAddress ipAddress = IPAddress.Parse(ipAddressStr);
+            IPAddress subnetMask = IPAddress.Parse(subnetMaskStr);
+            IPAddress defaultGateway = IPAddress.Parse(defaultGatewayStr);
+
+            IPAddress networkAddress = GetNetworkAddress(ipAddress, subnetMask);
+            IPAddress broadcastAddress = GetBroadcastAddress(networkAddress, subnetMask);
+
+            long ipAddrNumeric = IPAddressToLong(ipAddress);
+            long networkAddrNumeric = IPAddressToLong(networkAddress);
+            long broadcastAddrNumeric = IPAddressToLong(broadcastAddress);
+
+            return ipAddrNumeric >= networkAddrNumeric && ipAddrNumeric <= broadcastAddrNumeric;
+        }
+
+        private static IPAddress GetNetworkAddress(IPAddress address, IPAddress subnetMask)
+        {
+            byte[] ipAdressBytes = address.GetAddressBytes();
+            byte[] subnetMaskBytes = subnetMask.GetAddressBytes();
+            byte[] networkAddressBytes = new byte[ipAdressBytes.Length];
+
+            for (int i = 0; i < networkAddressBytes.Length; i++)
+            {
+                networkAddressBytes[i] = (byte)(ipAdressBytes[i] & subnetMaskBytes[i]);
+            }
+
+            return new IPAddress(networkAddressBytes);
+        }
+
+        private static IPAddress GetBroadcastAddress(IPAddress networkAddress, IPAddress subnetMask)
+        {
+            byte[] networkAddressBytes = networkAddress.GetAddressBytes();
+            byte[] subnetMaskBytes = subnetMask.GetAddressBytes();
+            byte[] broadcastAddressBytes = new byte[networkAddressBytes.Length];
+
+            for (int i = 0; i < broadcastAddressBytes.Length; i++)
+            {
+                broadcastAddressBytes[i] = (byte)(networkAddressBytes[i] | ~subnetMaskBytes[i]);
+            }
+
+            return new IPAddress(broadcastAddressBytes);
+        }
+
+        private static long IPAddressToLong(IPAddress ip)
+        {
+            byte[] bytes = ip.GetAddressBytes();
+            if (BitConverter.IsLittleEndian)
+            {
+                Array.Reverse(bytes);
+            }
+            return BitConverter.ToUInt32(bytes, 0);
         }
 
         /// <summary>
@@ -215,7 +224,7 @@ namespace AdsUtilities
                 return;
             }
             string staticRoutesPath = GetTwinCatDirectory() + "/3.1/Target/StaticRoutes.xml";
-            AdsFileAccess routesEditor = new(_netId);
+            AdsFileClient routesEditor = new(_netId);
             byte[] staticRoutesContent = routesEditor.FileRead(staticRoutesPath, false);
             string staticRoutesString = Encoding.UTF8.GetString(staticRoutesContent.Where(c => c is not 0).ToArray());
             XDocument routesXml = XDocument.Parse(staticRoutesString);
@@ -243,7 +252,7 @@ namespace AdsUtilities
         public void AddAdsMqttRoute(string brokerAddress, uint brokerPort, string topic, bool unidirectional = false, uint qualityOfService = default, string user = default, string password = default)
         {
             string staticRoutesPath = GetTwinCatDirectory() + "/3.1/Target/StaticRoutes.xml";
-            AdsFileAccess routesEditor = new(_netId);
+            AdsFileClient routesEditor = new(_netId);
             byte[] staticRoutesContent = routesEditor.FileRead(staticRoutesPath, false);
             string staticRoutesString = Encoding.UTF8.GetString(staticRoutesContent.Where(c => c is not 0).ToArray());
             XDocument routesXml = XDocument.Parse(staticRoutesString);
@@ -364,14 +373,11 @@ namespace AdsUtilities
             for (uint i = 0; i < 100; i++)
             {
                 byte[] rdBfr = new byte[235];
-                try
-                {
-                    adsClient.Read((int)Constants.SystemServiceEnumRemote, i, rdBfr); 
-                }
-                catch (Exception)   // ToDo: Read how many route entries there are beforehand instead of trying to read until an exception is thrown or specify the handled exception
-                {
+
+                AdsErrorCode readError = adsClient.TryRead((int)Constants.SystemServiceEnumRemote, i, rdBfr, out _);
+
+                if (readError != AdsErrorCode.NoError)
                     break;
-                }
 
                 string netIdRd = String.Join(".", rdBfr.Take(6).Where(b => b != 0).Select(b => b.ToString()));
 
@@ -424,12 +430,14 @@ namespace AdsUtilities
             byte[] readBfr = new byte[4];
             adsClient.Connect(_netId, (int)Constants.AdsPortSystemService);
             adsClient.Read(Constants.SystemServiceIpHelperApi, Constants.IpHelperApiAdaptersInfo, readBfr);
+
             uint nicBfrSize = BitConverter.ToUInt32(readBfr, 0);  
             byte[] nicBfr = new byte[nicBfrSize];
+
             adsClient.Read(Constants.SystemServiceIpHelperApi, Constants.IpHelperApiAdaptersInfo, nicBfr);
             adsClient.Disconnect();
 
-            const uint bytesPerNic = 640;             // Info on every NIC takes 640 bytes. There might be a data field in the byte array that contains that size. For now it's statically defined however
+            const uint bytesPerNic = 640;             // Info on every NIC takes 640 bytes. There might be a data field in the byte array that contains that size. For now it's statically defined
             uint numOfNics = nicBfrSize / bytesPerNic;  
             List<Structs.NetworkInterfaceInfo> nicList = new();
             for (int i = 0; i < numOfNics; i++)
@@ -492,21 +500,13 @@ namespace AdsUtilities
                     _logger?.LogInformation("The NIC '{nicName}' has no assigned IP address. The request for an ADS broadcast search was aborted.", nic.name);
                     continue;
                 }
-                    
-                IPAddress gatewayAddress = IPAddress.Parse(nic.defaultGateway);
-                IPAddress subnetAddress = IPAddress.Parse(nic.subnetMask);
-                byte[] gatewayBytes = gatewayAddress.GetAddressBytes();
-                byte[] subnetBytes = subnetAddress.GetAddressBytes();
-                byte[] broadcastBytes = new byte[4];
-                for (int i = 0; i < 4; i++)
-                {
-                    broadcastBytes[i] = (byte)(gatewayBytes[i] | ~subnetBytes[i]);
-                }
-                Structs.TriggerBroadcastPacket brPacket = new(broadcastBytes,AmsNetId.Local.ToBytes());
-                byte[] wrBfr = Structs.Converter.StructureToByteArray(brPacket);
+
+                IPAddress broadcastAddress = CalculateBroadcastAddress(nic);
+
+                Structs.TriggerBroadcastPacket broadcastPacket = new(broadcastAddress.GetAddressBytes(), AmsNetId.Local.ToBytes());
                 try
                 {
-                    await adsClient.WriteAsync(Constants.SystemServiceBroadcast, 1, wrBfr, cancellationToken);     
+                    await adsClient.WriteAsync(Constants.SystemServiceBroadcast, 1, Structs.Converter.StructureToByteArray(broadcastPacket), cancellationToken);     
                 }
                 catch (AdsErrorException ex)
                 {
@@ -543,15 +543,14 @@ namespace AdsUtilities
             {
                 var targetInfo = ParseBroadcastReturn(e.Data.ToArray());
                 broadcastResults.Add(targetInfo);
-                completionSource.TrySetResult();
+                completionSource.TrySetResult();    // Signals that there is a new response to the broadcast search
             }
 
-            // Register a notification
+            // Register a notification and set callback method - the system service generates notification responses for every remote system found on the broadcast
             adsClient.AdsNotification += RecievedBroadcastResponse;
             NotificationSettings sttngs = new(AdsTransMode.OnChange, 100, 0);
-
             adsClient.Connect(_netId, (int)Constants.AdsPortSystemService);
-            uint notiHdl = adsClient.AddDeviceNotification(Constants.SystemServiceBroadcast, 0, 2048, sttngs, null);
+            uint notiHdl = adsClient.AddDeviceNotification(Constants.SystemServiceBroadcast, 0, 2048, sttngs, null); 
 
             foreach (var nic in interfacesToBroadcastOn)
             {
@@ -561,21 +560,12 @@ namespace AdsUtilities
                     continue;
                 }
 
-                IPAddress gatewayAddress = IPAddress.Parse(nic.defaultGateway);
-                IPAddress subnetAddress = IPAddress.Parse(nic.subnetMask);
-                byte[] gatewayBytes = gatewayAddress.GetAddressBytes();
-                byte[] subnetBytes = subnetAddress.GetAddressBytes();
-                byte[] broadcastBytes = new byte[4];
-                for (int i = 0; i < 4; i++)
-                {
-                    broadcastBytes[i] = (byte)(gatewayBytes[i] | ~subnetBytes[i]);
-                }
+                IPAddress broadcastAddress = CalculateBroadcastAddress(nic);
 
-                Structs.TriggerBroadcastPacket brPacket = new(broadcastBytes, AmsNetId.Local.ToBytes());
-                byte[] wrBfr = Structs.Converter.StructureToByteArray(brPacket);
+                Structs.TriggerBroadcastPacket broadcastPacket = new(broadcastAddress.GetAddressBytes(), AmsNetId.Local.ToBytes());
                 try
                 {
-                    await adsClient.WriteAsync(Constants.SystemServiceBroadcast, 1, wrBfr, cancellationToken);
+                    await adsClient.WriteAsync(Constants.SystemServiceBroadcast, 1, Structs.Converter.StructureToByteArray(broadcastPacket), cancellationToken);  // This tells the system service to send a broadcast telegram on the selected NIC
                 }
                 catch (AdsErrorException ex)
                 {
@@ -588,7 +578,7 @@ namespace AdsUtilities
 
             try
             {
-                while (DateTime.UtcNow - startTime < timeout)
+                while (DateTime.UtcNow - startTime < timeout)   // Wait for broadcast responses to arrive. After the specified timeout
                 {
                     if (cancellationToken.IsCancellationRequested)
                     {
@@ -596,23 +586,23 @@ namespace AdsUtilities
                         yield break;
                     }
 
-                    if (broadcastResults.Any())
+                    if (broadcastResults.Any())     // Check for new broadcast responses
                     {
-                        foreach (var result in broadcastResults)
+                        foreach (var result in broadcastResults)    
                         {
                             yield return result;
                         }
                         broadcastResults.Clear();
                     }
 
-                    // Wait for new broadcast res or timeout
+                    // Check for new responses every 100ms and when a new response is signaled
                     await Task.WhenAny(completionSource.Task, Task.Delay(100, cancellationToken));
-                    completionSource = new TaskCompletionSource();
+                    completionSource = new TaskCompletionSource();  // reset for next response
                 }
             }
             finally
             {
-                // Unregister the Event / Handle
+                // Unregister the Event / Handle after timeout has elapsed or the action was canceled 
                 adsClient.DeleteDeviceNotification(notiHdl);
                 adsClient.AdsNotification -= RecievedBroadcastResponse;
                 adsClient.Disconnect();
@@ -628,6 +618,22 @@ namespace AdsUtilities
             {
                 yield return targetInfo;
             }
+        }
+
+        private static IPAddress CalculateBroadcastAddress(Structs.NetworkInterfaceInfo nic)
+        {
+            IPAddress gatewayAddress = IPAddress.Parse(nic.defaultGateway);
+            IPAddress subnetAddress = IPAddress.Parse(nic.subnetMask);
+            byte[] gatewayBytes = gatewayAddress.GetAddressBytes();
+            byte[] subnetBytes = subnetAddress.GetAddressBytes();
+            byte[] broadcastBytes = new byte[4];
+
+            for (int i = 0; i < 4; i++)
+            {
+                broadcastBytes[i] = (byte)(gatewayBytes[i] | ~subnetBytes[i]);
+            }
+
+            return new IPAddress(broadcastBytes);
         }
 
         private Structs.TargetInfo ParseBroadcastReturn(byte[] broadcastReturn)
@@ -671,7 +677,7 @@ namespace AdsUtilities
             else
                 osVersionString = os;
 
-            // TC Type
+            // TC version
 
             // ???? currently unknown parameters
 
@@ -714,7 +720,7 @@ namespace AdsUtilities
 
         public Structs.RouterStatusInfo GetRouterStatusInfo()
         {
-            IReadRequest readRequest = RequestFactory.CreateReadRequest(32);
+            ReadRequestHelper readRequest = new(32);
             adsClient.Connect(_netId, (int)Constants.AdsPortRouter);
             adsClient.Read(1, 1, readRequest);  // ToDo: Add idx to constants
 
@@ -737,7 +743,7 @@ namespace AdsUtilities
             return platformLevel;
         }
 
-        public string GetSystemId()
+        private byte[] GetSystemIdBytes()
         {
             byte[] rdBfr = new byte[16];
 
@@ -745,11 +751,23 @@ namespace AdsUtilities
             adsClient.Read(0x01010004, 0x1, rdBfr);  // ToDo: Add idx to constants
             adsClient.Disconnect();
 
+            return rdBfr;
+        }
+
+        public Guid GetSystemIdGuid() 
+        {
+            byte[] sysId = GetSystemIdBytes();
+            return new Guid(sysId);
+        }
+
+        public string GetSystemIdString()
+        {
+            byte[] sysId = GetSystemIdBytes();
             return string.Format("{0:X2}{1:X2}{2:X2}{3:X2}-{4:X2}{5:X2}-{6:X2}{7:X2}-{8:X2}{9:X2}-{10:X2}{11:X2}{12:X2}{13:X2}{14:X2}{15:X2}",
-                rdBfr[3], rdBfr[2], rdBfr[1], rdBfr[0],
-                rdBfr[5], rdBfr[4], rdBfr[7], rdBfr[6],
-                rdBfr[8], rdBfr[9], rdBfr[10], rdBfr[11], 
-                rdBfr[12], rdBfr[13], rdBfr[14], rdBfr[15]
+                sysId[3], sysId[2], sysId[1], sysId[0],
+                sysId[5], sysId[4], sysId[7], sysId[6],
+                sysId[8], sysId[9], sysId[10], sysId[11],
+                sysId[12], sysId[13], sysId[14], sysId[15]
             );
         }
 

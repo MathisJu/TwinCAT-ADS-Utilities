@@ -11,40 +11,24 @@ using TwinCAT.PlcOpen;
 
 namespace AdsUtilities
 {
-    internal interface IReadRequest
-    {
-        byte[] data { set; get; }
-        void Skip(int length = 1);
-        int GetIndex();
-        void SetIndex(int index);
-        bool IsFullyProcessed();
-        byte ExtractByte();
-        T ExtractStruct<T>() where T : struct;
-        uint ExtractUint32();
-        byte[] ExtractBytes(int length);
-        string ExtractNetId();
-        string ExtractString();
-        ushort ExtractUint16();
-    }
-
-    internal class ReadRequest : IReadRequest
+    internal class ReadRequestHelper
     {
         public byte[] data { set; get; }
         private int _currentIndex;
 
-        public ReadRequest(byte[] data)
+        public ReadRequestHelper(byte[] data)
         {
             this.data = data;
             _currentIndex = 0;
         }
 
-        public ReadRequest(int length)
+        public ReadRequestHelper(int length)
         {
             this.data = new byte[length];
             _currentIndex = 0;
         }
 
-        public void Skip(int length)
+        public void Skip(int length=1)
         {
             _currentIndex += length;
         }
@@ -138,57 +122,47 @@ namespace AdsUtilities
         }
     }
 
-    /// <summary>
-    /// Simple interface to create ADS write requests. Acts as a wrapper for either an array or a list of bytes
-    /// </summary>
-    internal interface IWriteRequest
-    {
-        void Add(byte data);
-        void Add(byte[] data);
-        void AddStringUTF8(string data);
-        void AddStringAscii(string data);
-        void AddInt(int data);
-        void AddStruct<T>(T data) where T:struct;
-        byte[] GetBytes();
-        void TrimEnd(int terminationLength);
-    }
-
-    internal class DynamicWriteRequest : IWriteRequest
+    internal class WriteRequestHelper 
     {
         private List<byte> _requestBytes { get; set; }
 
-        public DynamicWriteRequest()
+        public WriteRequestHelper()
         {
             _requestBytes = new List<byte>();
         }
 
-        public void Add(byte data)
+        public WriteRequestHelper Add(byte data)
         {
             _requestBytes.Add(data);
+            return this;
         }
 
-        public void Add(byte[] data)
+        public WriteRequestHelper Add(byte[] data)
         {
             _requestBytes.AddRange(data);
+            return this;
         }
 
-        public void AddStringUTF8(string str)
+        public WriteRequestHelper AddStringUTF8(string str)
         {
             _requestBytes.AddRange(Encoding.UTF8.GetBytes(str));
             _requestBytes.Add(0);   // add string termination
+            return this;
         }
-        public void AddStringAscii(string str)
+        public WriteRequestHelper AddStringAscii(string str)
         {
             _requestBytes.AddRange(Encoding.ASCII.GetBytes(str));
             _requestBytes.Add(0);   // add string termination
+            return this;
         }
 
-        public void AddInt(int data)
+        public WriteRequestHelper AddInt(int data)
         {
             _requestBytes.AddRange(BitConverter.GetBytes(data));
+            return this;
         }
 
-        public void AddStruct<T>(T data) where T : struct
+        public WriteRequestHelper AddStruct<T>(T data) where T : struct
         {
             int size = Marshal.SizeOf(typeof(T));
             byte[] structAsBytes = new byte[size];
@@ -204,14 +178,10 @@ namespace AdsUtilities
                 Marshal.FreeHGlobal(ptr);
             }
             _requestBytes.AddRange(structAsBytes);
+            return this;
         }
 
-        public byte[] GetBytes()
-        {
-            return _requestBytes.ToArray();
-        }
-
-        public void TrimEnd(int terminationLength)
+        public WriteRequestHelper TrimEnd(int terminationLength)
         {
             while (_requestBytes.Count > 0 && _requestBytes[_requestBytes.Count - 1] == 0)
             {
@@ -224,162 +194,15 @@ namespace AdsUtilities
                     _requestBytes.Add(0);
                 }
             }
-
-        }
-    }
-
-    internal class FixedSizeWriteRequest : IWriteRequest
-    {
-        private byte[] _requestBytes;
-        private int _currentIndex;
-
-        public FixedSizeWriteRequest(int size)
-        {
-            _requestBytes = new byte[size];
-            _currentIndex = 0;
-        }
-
-        public void Add(byte data)
-        {
-            if (_currentIndex >= _requestBytes.Length)
-            {
-                throw new InvalidOperationException("Not enough space in the request that was instanced with a fixed size.");
-            }
-            _requestBytes[_currentIndex++] = data;
-        }
-
-        public void Add(byte[] data)
-        {
-            if (_currentIndex + data.Length > _requestBytes.Length)
-            {
-                throw new InvalidOperationException("Not enough space in the request that was instanced with a fixed size.");
-            }
-            Array.Copy(data, 0, _requestBytes, _currentIndex, data.Length);
-            _currentIndex += data.Length;
-        }
-
-        public void AddStringUTF8(string str)
-        {
-            if (_currentIndex + str.Length + 1 > _requestBytes.Length)
-            {
-                throw new InvalidOperationException("Not enough space in the request that was instanced with a fixed size.");
-            }
-            Array.Copy(Encoding.UTF8.GetBytes(str), 0, _requestBytes, _currentIndex, str.Length);
-            _currentIndex += str.Length;
-            _requestBytes[_currentIndex++] = 0;     // add string termination
-        }
-        public void AddStringAscii(string str)
-        {
-            if (_currentIndex + str.Length + 1 > _requestBytes.Length)
-            {
-                throw new InvalidOperationException("Not enough space in the request that was instanced with a fixed size.");
-            }
-            Array.Copy(Encoding.ASCII.GetBytes(str), 0, _requestBytes, _currentIndex, str.Length);
-            _currentIndex += str.Length;
-            _requestBytes[_currentIndex++] = 0;     // add string termination
-        }
-
-        public void AddInt(int data)
-        {
-            if (_currentIndex + sizeof(int) > _requestBytes.Length)
-            {
-                throw new InvalidOperationException("Not enough space in the request that was instanced with a fixed size.");
-            }
-            BitConverter.GetBytes(data).CopyTo(_requestBytes, _currentIndex);
-            _currentIndex += sizeof(int);
-        }
-
-        public void AddStruct<T>(T data) where T : struct
-        {
-            int size = Marshal.SizeOf(typeof(T));
-            if (_currentIndex + size > _requestBytes.Length)
-            {
-                throw new InvalidOperationException("Not enough space in the request that was instanced with a fixed size.");
-            }
-            byte[] structAsBytes = new byte[size];
-
-            IntPtr ptr = Marshal.AllocHGlobal(size);
-            try
-            {
-                Marshal.StructureToPtr(data, ptr, false);
-                Marshal.Copy(ptr, structAsBytes, 0, size);
-            }
-            finally
-            {
-                Marshal.FreeHGlobal(ptr);
-            }
-            structAsBytes.CopyTo(_requestBytes, _currentIndex);
-            _currentIndex += size;
-        }
-
-        public void TrimEnd(int terminationLength = 0)
-        {
-            int lastIndex = -1;
-            for (int i = _requestBytes.Length - 1; i >= 0; i--)
-            {
-                if (_requestBytes[i] != 0)
-                {
-                    lastIndex = i;
-                    break;
-                }
-            }
-
-            int newLength = (lastIndex + 1) + terminationLength;
-            byte[] newArray = new byte[newLength];
-
-            for (int i = 0; i <= lastIndex; i++)
-            {
-                newArray[i] = _requestBytes[i];
-            }
-
-            for (int i = lastIndex + 1; i < newLength; i++)
-            {
-                newArray[i] = 0;
-            }
-
-            _currentIndex = newLength;
-            _requestBytes = newArray;
+            return this;
         }
 
         public byte[] GetBytes()
         {
-            /*if (_currentIndex < _requestBytes.Length)
-            {
-                // Optionally, resize the array to remove unused space
-                byte[] result = new byte[_currentIndex];
-                Array.Copy(_requestBytes, result, _currentIndex);
-                return result;
-            }*/
-            return _requestBytes;
+            return _requestBytes.ToArray();
         }
     }
-
-    internal static class RequestFactory
-    {
-        /// <summary>
-        /// Create instance of IWriteRequest - wrapper for easier creation of ADS write requests
-        /// </summary>
-        /// <param name="size">If given a size, the IWriteRequest will use an array - otherwise a list. For better performance, use this param whenever possible</param>
-        /// <returns></returns>
-        public static IWriteRequest CreateWriteRequest(int? size = null)
-        {
-            if (size.HasValue)
-            {
-                return new FixedSizeWriteRequest(size.Value);
-            }
-            else
-            {
-                return new DynamicWriteRequest();
-            }
-        }
-
-
-        public static IReadRequest CreateReadRequest(int length)
-        {
-            return new ReadRequest(length);
-        }
-    }
-
+        
     internal static class Segments
     {
         public static readonly byte[] HEADER = { 0x03, 0x66, 0x14, 0x71 };
@@ -393,6 +216,7 @@ namespace AdsUtilities
         public static readonly byte[] ROUTETYPE_STATIC = { 5, 0, 0, 0 };
         public static readonly byte[] TEMPROUTE_TAIL = { 9, 0, 4, 0, 1, 0, 0, 0 };
         public static readonly byte[] ROUTENAME_L = { 0x0c, 0, 0, 0 };
+        public static readonly byte[] IPADDRESS_L = { 2, 0, 191, 03 };
         public static readonly byte[] USERNAME_L = { 0x0d, 0, 0, 0 };
         public static readonly byte[] PASSWORD_L = { 2, 0, 0, 0 };
         public static readonly byte[] LOCALHOST_L = { 5, 0, 0, 0 };

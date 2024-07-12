@@ -8,7 +8,7 @@ using TwinCAT.Ads;
 
 namespace AdsUtilities
 {
-    public class AdsFileAccess : IDisposable
+    public class AdsFileClient : IDisposable
     {
         public string NetId { get { return _netId.ToString(); } }
 
@@ -24,12 +24,12 @@ namespace AdsUtilities
             _logger = logger;
         }        
 
-        public AdsFileAccess(string netId) 
+        public AdsFileClient(string netId) 
         { 
             _netId = AmsNetId.Parse(netId);
         }
 
-        public AdsFileAccess(AmsNetId netId)
+        public AdsFileClient(AmsNetId netId)
         {
             _netId = netId;
         }
@@ -134,49 +134,11 @@ namespace AdsUtilities
             adsClient.Disconnect();
         }
 
-        /// <summary>
-        /// This function tries to read the content of a file as a string and determines if the result is valid
-        /// </summary>
-        /// <param name="path"></param>
-        /// <param name="fileContent"></param>
-        /// <returns>returns true if the interpreted file content is assumed to be a valid string</returns>
-        public bool TryReadFileAsText(string path, out string fileContent)
-        {
-            byte[] data = FileRead(path, false);            
-            try
-            {
-                string dataAsString = Encoding.UTF8.GetString(data);
-                bool eof = false;
-                foreach (char c in dataAsString)
-                {
-                    if (c == '\0')
-                        eof = true;
-                    if (eof && c != '\0')
-                    {
-                        fileContent = dataAsString;
-                        return false;   // content continued after e o f character - content probably is not text
-                    }
-                    if (char.IsControl(c) && c != '\0' && c != '\r' && c != '\n' && c != '\t')
-                    {
-                        fileContent = dataAsString;
-                        return false;   // found control char that is not a white space
-                    }
-                }
-                fileContent = dataAsString;              
-                return true;    // all characters appear valid - content probably is text
-            }
-            catch (DecoderFallbackException)
-            {
-                fileContent = string.Empty;
-                return false;   // exception during decoding - content probably is not text
-            }
-        }
-
         public void RenameFile(string filePathCurrent, string filePathNew)
         {
-            IWriteRequest renameRequest = RequestFactory.CreateWriteRequest(filePathCurrent.Length + filePathNew.Length + 2);
-            renameRequest.AddStringUTF8(filePathCurrent);
-            renameRequest.AddStringUTF8(filePathNew);
+            WriteRequestHelper renameRequest = new WriteRequestHelper()
+                .AddStringUTF8(filePathCurrent)
+                .AddStringUTF8(filePathNew);
 
             adsClient.Connect(_netId, (int)Constants.AdsPortSystemService);
             adsClient.ReadWrite(Constants.SystemServiceFRename, 1 << 16, Array.Empty<byte>(), renameRequest.GetBytes());
@@ -203,53 +165,42 @@ namespace AdsUtilities
             adsClient.Disconnect();
         }
 
-        public List<Structs.FileInfoDetails> GetFolderContent(string path)
+        public List<Structs.FileInfoDetails> GetFolderContentList(string path)
         {
             if (path.EndsWith("/") || path.EndsWith("\\"))
-            {
                 path += "*";    // Add wild-card character 
-            }
             else if (!path.EndsWith("*"))
-            {
                 path += "/*";    // Add wild-card character
-            }
-
-            const int EndOfEnumerationError = 0x70C;   // Exiting the content enumeration loop is error driven. This is by design of the system service and no bad practice on my part
 
             List<Structs.FileInfoDetails> folderContent = new();
 
             uint idxOffs = Constants.PathGeneric;   // for first file
 
-            IWriteRequest fileInfoRequest = RequestFactory.CreateWriteRequest(path.Length + 1);
-            fileInfoRequest.AddStringUTF8(path);    // for first file
+            WriteRequestHelper fileInfoRequest = new WriteRequestHelper()
+                .AddStringUTF8(path);               // for first file
             byte[] wrBfr = fileInfoRequest.GetBytes();
 
             byte[] rdBfr = new byte[Marshal.SizeOf(typeof(Structs.FileInfoByteMapped))];      // Allocate memory buffer the size of the byte stream returned by a file info request
 
             adsClient.Connect(_netId, (int)Constants.AdsPortSystemService);
 
-            bool reachedEndOfContent = false;
-            while (!reachedEndOfContent)
+            while (true)
             {
                 Array.Clear(rdBfr, 0, rdBfr.Length);    // Clear buffer for next file
                 AdsErrorCode rwError = adsClient.TryReadWrite(Constants.SystemServiceFFind, idxOffs, rdBfr, wrBfr, out _);
-                if (rwError == AdsErrorCode.NoError)
-                {
-                    Structs.FileInfoByteMapped latestFile = Structs.Converter.MarshalToStructure<Structs.FileInfoByteMapped>(rdBfr);
-                    
-                    idxOffs = latestFile.hFile;
-                    wrBfr = Array.Empty<byte>();
-                    folderContent.Add((Structs.FileInfoDetails)latestFile);
-                }
-                else if (((int)rwError) == EndOfEnumerationError)
-                {
-                    reachedEndOfContent = true;
-                }
-                else
+                if (rwError is AdsErrorCode.DeviceNotFound)
+                    break;
+                else if (rwError is not AdsErrorCode.NoError)
                 {
                     _logger?.LogError("Unexpected exception '{eMessage}' while getting folder content of '{path}' from '{netId}'. Returning empty file list.", rwError.ToString(), path, _netId);
                     break;
                 }
+
+                Structs.FileInfoByteMapped latestFile = Structs.Converter.MarshalToStructure<Structs.FileInfoByteMapped>(rdBfr);
+                    
+                idxOffs = latestFile.hFile;
+                wrBfr = Array.Empty<byte>();
+                folderContent.Add((Structs.FileInfoDetails)latestFile);
             }
 
             adsClient.Disconnect();
@@ -257,39 +208,63 @@ namespace AdsUtilities
             return folderContent;
         }
 
-        // ToDo: Add a getNextFileInFolder method to make this easier to understand
-
-        public void StartProcess(string applicationPath, string workingDirectory, string commandLineParameters)
+        public IEnumerable<Structs.FileInfoDetails> GetFolderContent(string path)
         {
-            IWriteRequest startProcessRequest = RequestFactory.CreateWriteRequest(15 + applicationPath.Length + workingDirectory.Length + commandLineParameters.Length); // 15 = 3* sizeof(uint) + 3
-            startProcessRequest.AddInt(applicationPath.Length);
-            startProcessRequest.AddInt(workingDirectory.Length);
-            startProcessRequest.AddInt(commandLineParameters.Length);
-            startProcessRequest.AddStringAscii(applicationPath);
-            startProcessRequest.AddStringAscii(workingDirectory);
-            startProcessRequest.AddStringAscii(commandLineParameters);
+            if (path.EndsWith("/") || path.EndsWith("\\"))
+                path += "*";    // Add wild-card character 
+            else if (!path.EndsWith("*"))
+                path += "/*";    // Add wild-card character
 
-            adsClient.Connect((int)Constants.AdsPortSystemService);
-            adsClient.Write(Constants.SystemServiceStartProcess, 0, startProcessRequest);
-            adsClient.Disconnect();
+            uint idxOffs = Constants.PathGeneric;   // for first file
+
+            byte[] nextFileBuffer = new WriteRequestHelper()
+                .AddStringUTF8(path).GetBytes();               // for first file
+
+            byte[] fileInfoBuffer = new byte[Marshal.SizeOf(typeof(Structs.FileInfoByteMapped))];      // Allocate memory buffer the size of the byte stream returned by a file info request
+
+            adsClient.Connect(_netId, (int)Constants.AdsPortSystemService);
+
+            while (true)
+            {
+                Array.Clear(fileInfoBuffer, 0, fileInfoBuffer.Length);    // Clear buffer for next file
+                AdsErrorCode rwError = adsClient.TryReadWrite(Constants.SystemServiceFFind, idxOffs, fileInfoBuffer, nextFileBuffer, out _);
+
+                if (rwError is AdsErrorCode.DeviceNotFound)
+                    break;
+                else if(rwError is not AdsErrorCode.NoError)
+                {
+                    _logger?.LogError("Unexpected exception '{eMessage}' while getting folder content of '{path}' from '{netId}'. Returning empty file list.", rwError.ToString(), path, _netId);
+                    break;
+                }
+
+                Structs.FileInfoByteMapped latestFile = Structs.Converter.MarshalToStructure<Structs.FileInfoByteMapped>(fileInfoBuffer);
+                idxOffs = latestFile.hFile;
+                nextFileBuffer = Array.Empty<byte>();
+                yield return (Structs.FileInfoDetails)latestFile;
+            }
         }
 
-        public async Task StartProcessAsync(string applicationPath, string workingDirectory, string commandLineParameters, CancellationToken cancel)
+        public async Task StartProcessAsync(string applicationPath, string workingDirectory, string commandLineParameters, CancellationToken cancel = default)
         {
-            IWriteRequest startProcessRequest = RequestFactory.CreateWriteRequest(15 + applicationPath.Length + workingDirectory.Length + commandLineParameters.Length); // 15 = 3* sizeof(uint) + 3
-            startProcessRequest.AddInt(applicationPath.Length);
-            startProcessRequest.AddInt(workingDirectory.Length);
-            startProcessRequest.AddInt(commandLineParameters.Length);
-            startProcessRequest.AddStringAscii(applicationPath);
-            startProcessRequest.AddStringAscii(workingDirectory);
-            startProcessRequest.AddStringAscii(commandLineParameters);
+            WriteRequestHelper startProcessRequest = new WriteRequestHelper()
+                .AddInt(applicationPath.Length)
+                .AddInt(workingDirectory.Length)
+                .AddInt(commandLineParameters.Length)
+                .AddStringAscii(applicationPath)
+                .AddStringAscii(workingDirectory)
+                .AddStringAscii(commandLineParameters);
 
             adsClient.Connect(new AmsAddress(_netId, AmsPort.SystemService));
             var res = await adsClient.WriteAsync(Constants.SystemServiceStartProcess, 0, startProcessRequest.GetBytes(), cancel);
             adsClient.Disconnect();
-            res.ThrowOnError();
-            
+            res.ThrowOnError();   
         }
+
+        public void StartProcess(string applicationPath, string workingDirectory, string commandLineParameters)
+        {
+            StartProcessAsync(applicationPath, workingDirectory, commandLineParameters).GetAwaiter().GetResult();
+        }
+
         public void Dispose()
         {
             if (adsClient.IsConnected)

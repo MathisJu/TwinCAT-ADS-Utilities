@@ -40,7 +40,7 @@ namespace AdsUtilities
             adsClient.Connect(_netId, (int)Constants.AdsPortR0Io);
             uint readLen = adsClient.ReadAny<uint>(Constants.AdsIGrpIoDeviceStateBase + deviceId, Constants.AdsIOffsReadDeviceFullInfo);
 
-            IReadRequest readRequest = RequestFactory.CreateReadRequest((int)readLen);
+            ReadRequestHelper readRequest = new((int)readLen);
 
             adsClient.Read(Constants.AdsIGrpIoDeviceStateBase + deviceId, Constants.AdsIOffsReadDeviceFullInfo, readRequest);
 
@@ -77,7 +77,7 @@ namespace AdsUtilities
 
         public List<Structs.IoDevice> GetIoDevices()
         {
-            IReadRequest readRequest = RequestFactory.CreateReadRequest(402);
+            ReadRequestHelper readRequest = new(402);
 
             adsClient.Connect(_netId, (int)Constants.AdsPortR0Io);
             adsClient.Read(Constants.AdsIGrpIoDeviceStateBase, Constants.AdsIOffsReadDeviceId, readRequest);
@@ -107,7 +107,7 @@ namespace AdsUtilities
         public T ReadCoeData<T>(string netId, int ecSlaveAddress, ushort index, ushort subIndex)
         {
             adsClient.Connect(netId, ecSlaveAddress);
-            T value = (T)adsClient.ReadAny(0xF302, ((uint)index << 16) | subIndex, typeof(T));
+            T value = (T)adsClient.ReadAny(Constants.AdsIGrpCoe, ((uint)index << 16) | subIndex, typeof(T));
             adsClient.Disconnect();
             return value;
         }
@@ -123,7 +123,7 @@ namespace AdsUtilities
         public void WriteCoeData(string netId, int ecSlaveAddress, ushort index, ushort subIndex, object value)
         {
             adsClient.Connect(netId, ecSlaveAddress);
-            adsClient.WriteAny(0xF302, ((uint)index << 16) | subIndex, value);
+            adsClient.WriteAny(Constants.AdsIGrpCoe, ((uint)index << 16) | subIndex, value);
             adsClient.Disconnect();
         }
 
