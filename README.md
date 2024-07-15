@@ -42,29 +42,29 @@ The Automation Device Specification (ADS) protocol is a crucial component for an
 
 #### Copy a file to a remote system
 ```csharp
-AdsFileClient localFileClient = new(AmsNetId.Local);
+using AdsFileClient localFileClient = new(AmsNetId.Local);
 byte[] fileContent = localFileClient.FileRead("C:/temp/someFile.txt");
-AdsFileClient remoteFileClient = new("192.168.8.188.1.1");
+using AdsFileClient remoteFileClient = new("192.168.8.188.1.1");
 remoteFileClient.FileWrite("C:/temp/someNewFile.txt", fileContent);
 ```
 
 #### Perform a broadcast search
 ```csharp
 // Option 1:
-AdsRoutingClient localRouting = new(AmsNetId.Local);
+using AdsRoutingClient localRouting = new(AmsNetId.Local);
 List<TargetInfo> devicesFound = await localRouting.AdsBroadcastSearchAsync(secondsTimeout: 5);
 foreach (TargetInfo device in devicesFound)
     Console.WriteLine(device.Name);
 
 // Option 2:
-AdsRoutingClient localRouting = new(AmsNetId.Local);
+using AdsRoutingClient localRouting = new(AmsNetId.Local);
 await foreach (TargetInfo device in localRouting.AdsBroadcastSearchAsyncStream(secondsTimeout: 5))
     Console.WriteLine(device.Name);
  ```
 
 #### Add an ADS route to a remote system
 ```csharp
-AdsRoutingClient localRouting = new(AmsNetId.Local);
+using AdsRoutingClient localRouting = new(AmsNetId.Local);
 localRouting.AddRoute("192.168.1.100.1.1", "192.168.1.100", "CX5130-Office", "Administrator", "1");
 ```
 

@@ -53,7 +53,7 @@ namespace AdsUtilities
             readRequest.Skip();
             string masterNetId = readRequest.ExtractNetId();
             byte[] unknown3 = readRequest.ExtractBytes(2);
-            string masterName = readRequest.ExtractString();
+            string masterName = readRequest.ExtractStringWithLength();
 
             // Get slaves info
             List<Structs.IoBox> boxes = new();
@@ -66,7 +66,7 @@ namespace AdsUtilities
                 uint port = readRequest.ExtractUint16();
                 string netIdMaster = readRequest.ExtractNetId();
                 uint unknown6 = readRequest.ExtractUint16();   // In some cases this is the same as port, in some it is null
-                string slaveName = readRequest.ExtractString();
+                string slaveName = readRequest.ExtractStringWithLength();
                 Structs.IoBox box = new() { name = slaveName, port = port, boxId = id };
                 boxes.Add(box);
             }

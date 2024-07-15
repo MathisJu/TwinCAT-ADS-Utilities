@@ -224,7 +224,7 @@ namespace AdsUtilities
                 return;
             }
             string staticRoutesPath = GetTwinCatDirectory() + "/3.1/Target/StaticRoutes.xml";
-            AdsFileClient routesEditor = new(_netId);
+            using AdsFileClient routesEditor = new(_netId);
             byte[] staticRoutesContent = routesEditor.FileRead(staticRoutesPath, false);
             string staticRoutesString = Encoding.UTF8.GetString(staticRoutesContent.Where(c => c is not 0).ToArray());
             XDocument routesXml = XDocument.Parse(staticRoutesString);
@@ -252,12 +252,15 @@ namespace AdsUtilities
         public void AddAdsMqttRoute(string brokerAddress, uint brokerPort, string topic, bool unidirectional = false, uint qualityOfService = default, string user = default, string password = default)
         {
             string staticRoutesPath = GetTwinCatDirectory() + "/3.1/Target/StaticRoutes.xml";
-            AdsFileClient routesEditor = new(_netId);
+            using AdsFileClient routesEditor = new(_netId);
             byte[] staticRoutesContent = routesEditor.FileRead(staticRoutesPath, false);
             string staticRoutesString = Encoding.UTF8.GetString(staticRoutesContent.Where(c => c is not 0).ToArray());
             XDocument routesXml = XDocument.Parse(staticRoutesString);
 
             var connectionsEntry = routesXml.Element("RemoteConnections");
+
+            if (connectionsEntry is null)
+                return;
 
             XElement mqttRoute = new XElement("Mqtt",
             new XElement("Address", brokerAddress, new XAttribute("Port", $"{brokerPort}")));
@@ -340,7 +343,7 @@ namespace AdsUtilities
                 }
                 catch (XmlException)
                 {
-                    _logger?.LogWarning("Encountered an error trying to access the property {xpath} from the system with netId {netId}", xpath, _netId);
+                    _logger?.LogWarning("Could not read property {xpath} from netId {netId}", xpath, _netId);
                     return string.Empty;
                 }
             }
@@ -372,30 +375,16 @@ namespace AdsUtilities
             List<Structs.StaticRoutesInfo> routesList = new();
             for (uint i = 0; i < 100; i++)
             {
-                byte[] rdBfr = new byte[235];
-
-                AdsErrorCode readError = adsClient.TryRead((int)Constants.SystemServiceEnumRemote, i, rdBfr, out _);
+                ReadRequestHelper routeInfo = new(235);
+                AdsErrorCode readError = adsClient.TryRead((int)Constants.SystemServiceEnumRemote, i, routeInfo, out _);
 
                 if (readError != AdsErrorCode.NoError)
                     break;
 
-                string netIdRd = String.Join(".", rdBfr.Take(6).Where(b => b != 0).Select(b => b.ToString()));
-
-                int flags = rdBfr[8];       // ToDo: Add interpretation for remaining infos from data stream
-                int unknown1 = rdBfr[12];
-                int unknown2 = rdBfr[13];
-                int unknown3 = rdBfr[32];
-                int unknown4 = rdBfr[36];
-
-                int startPosName = Array.IndexOf(rdBfr, (byte)0, 44) + 1;
-                startPosName = startPosName == 0 ? 44 : startPosName; // Adjust if no null byte was found
-
-                string ip = Encoding.ASCII.GetString(rdBfr, 44, startPosName - 44 - 1).TrimEnd('\0');
-
-                int nameLength = Array.IndexOf(rdBfr, (byte)0, startPosName) - startPosName;
-                nameLength = nameLength < 0 ? 0 : nameLength; // Adjust if no null byte was found
-
-                string name = Encoding.ASCII.GetString(rdBfr, startPosName, nameLength).TrimEnd('\0');
+                string netIdRd = routeInfo.ExtractNetId();
+                byte[] unknown = routeInfo.ExtractBytes(38);    // ToDo: Test what these parameters do
+                string ip = routeInfo.ExtractString();
+                string name = routeInfo.ExtractString();
 
                 Structs.StaticRoutesInfo entry = new()
                 {
@@ -414,7 +403,7 @@ namespace AdsUtilities
         /// Reads the fingerprint of a system to which a route already exists
         /// </summary>
         /// <returns>Fingerprint in a string format</returns>
-        public  string GetFingerprint()
+        public string GetFingerprint()
         {
             byte[] rdBfr = new byte[129];
 
@@ -714,7 +703,9 @@ namespace AdsUtilities
                     return;
                 }
             }
-            new AdsSystemClient(_netId).SetRegEntry(@"Software\Beckhoff\TwinCAT3\System", "RequestedAmsNetId", Enums.RegEditTypeCode.REG_BINARY, bytesNetId);
+            using AdsSystemClient systemClient = new(_netId);
+            systemClient.SetRegEntry(@"Software\Beckhoff\TwinCAT3\System", "RequestedAmsNetId", Enums.RegEditTypeCode.REG_BINARY, bytesNetId);
+            
         }
 
 

@@ -67,11 +67,11 @@ namespace AdsUtilities.Structs
         [MarshalAs(UnmanagedType.ByValArray, SizeConst = 16)]
         public byte[] sAlternativeFileName;
 
-        public static explicit operator Structs.FileInfoDetails(FileInfoByteMapped fileEntry)
+        public static explicit operator FileInfoDetails(FileInfoByteMapped fileEntry)
         {
             int fileNameLength = Array.IndexOf(fileEntry.sFileName, (byte)0);
             int altFileNameLength = Array.IndexOf(fileEntry.sAlternativeFileName, (byte)0);
-            Structs.FileInfoDetails info = new()
+            FileInfoDetails info = new()
             {
                 creationTime = DateTime.FromFileTime((long)fileEntry.creationTimeHigh << 32 | fileEntry.creationTimeLow),
                 lastAccessTime = DateTime.FromFileTime((long)fileEntry.lastAccessTimeHigh << 32 | fileEntry.lastAccessTimeLow),

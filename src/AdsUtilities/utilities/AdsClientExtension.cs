@@ -14,15 +14,19 @@ namespace AdsUtilities
             return adsClient.Read(indexGroup, indexOffset, readRequest.data);
         }
 
-
-        internal static void Write(this AdsClient adsClient, uint indexGroup, uint indexOffset, WriteRequestHelper readRequest)
+        internal static async Task<ResultRead> ReadAsync(this AdsClient adsClient, uint indexGroup, uint indexOffset, ReadRequestHelper readRequest, CancellationToken cancel)
         {
-            adsClient.Write(indexGroup, indexOffset, readRequest.GetBytes());
+            return await adsClient.ReadAsync(indexGroup, indexOffset, readRequest.data, cancel);
         }
 
         internal static AdsErrorCode TryRead(this AdsClient adsClient, uint indexGroup, uint indexOffset, ReadRequestHelper readRequest, out int readBytes)
         {
             return adsClient.TryRead(indexGroup, indexOffset, readRequest.data, out readBytes);
-        } 
+        }
+
+        internal static void Write(this AdsClient adsClient, uint indexGroup, uint indexOffset, WriteRequestHelper readRequest)
+        {
+            adsClient.Write(indexGroup, indexOffset, readRequest.GetBytes());
+        }
     }
 }

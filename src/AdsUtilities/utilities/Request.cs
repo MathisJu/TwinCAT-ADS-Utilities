@@ -33,6 +33,19 @@ namespace AdsUtilities
             _currentIndex += length;
         }
 
+        public int SkipNullBytes()
+        {
+            if (data[_currentIndex] != 0)
+                return 0;
+            int bytesSkipped = 0;
+            while (data.Length > _currentIndex && data[_currentIndex] == 0)
+            {
+                _currentIndex++;
+                bytesSkipped++;
+            }
+            return bytesSkipped;
+        }
+
         public int GetIndex()
         {
             return _currentIndex;
@@ -105,13 +118,24 @@ namespace AdsUtilities
             return $"{netIdBytes[0]}.{netIdBytes[1]}.{netIdBytes[2]}.{netIdBytes[3]}.{netIdBytes[4]}.{netIdBytes[5]}";
         }
 
-        public string ExtractString()
+        public string ExtractStringWithLength()
         {
             int length = data[_currentIndex++];
             _currentIndex += 3; // Skip Null-Bytes
             string result = Encoding.UTF8.GetString(data, _currentIndex, length);
             _currentIndex += length + 2; // Skip double string termination
             return result;
+        }
+
+        public string ExtractString()
+        {
+            if (data[_currentIndex]==0)
+                return string.Empty;
+            int terminationPosition = Array.IndexOf(data, (byte)0, _currentIndex);
+            byte[] stringBytes = new byte[terminationPosition - _currentIndex];
+            Array.Copy(data, _currentIndex, stringBytes, 0, terminationPosition - _currentIndex);
+            _currentIndex = terminationPosition + 1;
+            return Encoding.UTF8.GetString(stringBytes);
         }
 
         public ushort ExtractUint16()
@@ -149,7 +173,7 @@ namespace AdsUtilities
             _requestBytes.Add(0);   // add string termination
             return this;
         }
-        public WriteRequestHelper AddStringAscii(string str)
+        public WriteRequestHelper AddStringAscii(string str)    // ToDo: Don't remember why I didn't use UTF8 for some parameters. It should work just the same
         {
             _requestBytes.AddRange(Encoding.ASCII.GetBytes(str));
             _requestBytes.Add(0);   // add string termination
