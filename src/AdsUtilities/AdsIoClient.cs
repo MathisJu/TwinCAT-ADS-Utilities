@@ -35,14 +35,15 @@ namespace AdsUtilities
             _netId = netId;
         }
 
-        public Structs.IoDevice GetIoDeviceInfo(uint deviceId)
+        public async Task<Structs.IoDevice> GetIoDeviceInfoAsync(uint deviceId, CancellationToken cancel = default)
         {
             adsClient.Connect(_netId, (int)Constants.AdsPortR0Io);
-            uint readLen = adsClient.ReadAny<uint>(Constants.AdsIGrpIoDeviceStateBase + deviceId, Constants.AdsIOffsReadDeviceFullInfo);
+            uint readLen = (await adsClient.ReadAnyAsync<uint>(Constants.AdsIGrpIoDeviceStateBase + deviceId, Constants.AdsIOffsReadDeviceFullInfo, cancel)).Value;
 
             ReadRequestHelper readRequest = new((int)readLen);
 
-            adsClient.Read(Constants.AdsIGrpIoDeviceStateBase + deviceId, Constants.AdsIOffsReadDeviceFullInfo, readRequest);
+            await adsClient.ReadAsync(Constants.AdsIGrpIoDeviceStateBase + deviceId, Constants.AdsIOffsReadDeviceFullInfo, readRequest, cancel);
+            adsClient.Disconnect();
 
             // Get Master info
             uint dataLen = readRequest.ExtractUint32();
@@ -75,12 +76,12 @@ namespace AdsUtilities
             return ecMaster;
         }
 
-        public List<Structs.IoDevice> GetIoDevices()
+        public async Task<List<Structs.IoDevice>> GetIoDevicesAsync(CancellationToken cancel = default)
         {
             ReadRequestHelper readRequest = new(402);
 
             adsClient.Connect(_netId, (int)Constants.AdsPortR0Io);
-            adsClient.Read(Constants.AdsIGrpIoDeviceStateBase, Constants.AdsIOffsReadDeviceId, readRequest);
+            await adsClient.ReadAsync(Constants.AdsIGrpIoDeviceStateBase, Constants.AdsIOffsReadDeviceId, readRequest, cancel);
             adsClient.Disconnect();
 
             uint numberOfIoDevices = readRequest.ExtractUint16();
@@ -89,21 +90,12 @@ namespace AdsUtilities
             for (int i = 0; i < numberOfIoDevices; i++)
             {
                 uint id = readRequest.ExtractUint16();
-                ioDevices.Add(GetIoDeviceInfo(id));
+                ioDevices.Add(await GetIoDeviceInfoAsync(id, cancel));
             }               
 
             return ioDevices;
         }
 
-        /// <summary>
-        /// 
-        /// </summary>
-        /// <typeparam name="T"></typeparam>
-        /// <param name="netId">The EtherCAT Master's AMS Net ID</param>
-        /// <param name="ecSlaveAddress"></param>
-        /// <param name="index"></param>
-        /// <param name="subIndex"></param>
-        /// <returns></returns>
         public T ReadCoeData<T>(string netId, int ecSlaveAddress, ushort index, ushort subIndex)
         {
             adsClient.Connect(netId, ecSlaveAddress);
@@ -112,14 +104,6 @@ namespace AdsUtilities
             return value;
         }
 
-        /// <summary>
-        /// 
-        /// </summary>
-        /// <param name="netId">The EtherCAT Master's AMS Net ID</param>
-        /// <param name="ecSlaveAddress"></param>
-        /// <param name="index"></param>
-        /// <param name="subIndex"></param>
-        /// <param name="value"></param>
         public void WriteCoeData(string netId, int ecSlaveAddress, ushort index, ushort subIndex, object value)
         {
             adsClient.Connect(netId, ecSlaveAddress);

@@ -13,48 +13,48 @@
         public const uint AdsPortSystemService = 10000;
 
         // Index groups and offsets for file operations
-        public const uint SystemServiceOpenCreate = 100;
-        public const uint SystemServiceOpenRead = 101;
-        public const uint SystemServiceOpenWrite = 102;
-        public const uint SystemServiceCreateFile = 110;
-        public const uint SystemServiceCloseHandle = 111;
-        public const uint SystemServiceFOpen = 120;
-        public const uint SystemServiceFClose = 121;
-        public const uint SystemServiceFRead = 122;
-        public const uint SystemServiceFWrite = 123;
-        public const uint SystemServiceFSeek = 124;
-        public const uint SystemServiceFTell = 125;
-        public const uint SystemServiceFGets = 126;
-        public const uint SystemServiceFPuts = 127;
-        public const uint SystemServiceFScanF = 128;
-        public const uint SystemServiceFPrintF = 129;
-        public const uint SystemServiceFEof = 130;
-        public const uint SystemServiceFDelete = 131;
-        public const uint SystemServiceFRename = 132;
-        public const uint SystemServiceFFind = 133;
-        public const uint SystemServiceMkDir = 138;
-        public const uint SystemServiceRmDir = 139;
+        public const uint AdsIGrpSysServOpenCreate = 100;
+        public const uint AdsIGrpSysServOpenRead = 101;
+        public const uint AdsIGrpSysServOpenWrite = 102;
+        public const uint AdsIGrpSysServCreateFile = 110;
+        public const uint AdsIGrpSysServCloseHandle = 111;
+        public const uint AdsIGrpSysServFOpen = 120;
+        public const uint AdsIGrpSysServFClose = 121;
+        public const uint AdsIGrpSysServFRead = 122;
+        public const uint AdsIGrpSysServFWrite = 123;
+        public const uint AdsIGrpSysServFSeek = 124;
+        public const uint AdsIGrpSysServFTell = 125;
+        public const uint AdsIGrpSysServFGets = 126;
+        public const uint AdsIGrpSysServFPuts = 127;
+        public const uint AdsIGrpSysServFScanF = 128;
+        public const uint AdsIGrpSysServFPrintF = 129;
+        public const uint AdsIGrpSysServFEof = 130;
+        public const uint AdsIGrpSysServFDelete = 131;
+        public const uint AdsIGrpSysServFRename = 132;
+        public const uint AdsIGrpSysServFFind = 133;
+        public const uint AdsIGrpSysServMkDir = 138;
+        public const uint AdsIGrpSysServRmDir = 139;
 
-        // Index groups and offsets for routing related functions
-        public const uint SystemServiceBroadcast = 141;
-        public const uint SystemServiceTcSystemInfo = 700;
-        public const uint SystemServiceAddRemote = 801;
-        public const uint SystemServiceDelRemote = 802;
-        public const uint SystemServiceEnumRemote = 803;
-        public const uint SystemServiceIpHelperApi = 701;
-        public const uint SystemServiceIpHostName = 702;
-        public const uint IpHelperApiAdaptersInfo = 1;
-        public const uint IpHelperApiIpAddrByHostName = 4;
+        // Routing related functions
+        public const uint AdsIGrpSysServBroadcast = 141;
+        public const uint AdsIGrpSysServTcSystemInfo = 700;
+        public const uint AdsIGrpSysServAddRemote = 801;
+        public const uint AdsIGrpSysServDelRemote = 802;
+        public const uint AdsIGrpSysServEnumRemote = 803;
+        public const uint AdsIGrpSysServIpHelperApi = 701;
+        public const uint AdsIGrpSysServIpHostName = 702;
+        public const uint AdsIOffsIpHelperApiAdaptersInfo = 1;
+        public const uint AdsIOffsIpHelperApiIpAddrByHostName = 4;
 
         // NT functions
-        public const uint SystemServiceRegHkeyLocalMachine = 200;
-        public const uint SystemServiceSendEmail = 300;
-        public const uint SystemServiceTimeServices = 400;
-        public const uint SystemServiceStartProcess = 500;
-        public const uint SystemServiceChangeNetId = 600;
+        public const uint AdsIGrpSysServRegHklm = 200;
+        public const uint AdsIGrpSysServSendEmail = 300;
+        public const uint AdsIGrpSysServTimeServices = 400;
+        public const uint AdsIGrpSysServStartProcess = 500;
+        public const uint AdsIGrpSysServChangeNetId = 600;
 
         // Device info
-        public const uint AdsIGrpDeviceData = 61696;
+        public const uint AdsIGrpDeviceData = 0xF100;
         public const uint AdsIOffsDevDataAdsState = 0;
         public const uint AdsIOffsDevDataDevState = 2;
 
@@ -85,6 +85,9 @@
 
         // Device Manager Access
         public const uint AdsIGrpCoe = 0xF302;
+
+        // License info
+        public const uint AdsIGrpLicenseInfo = 0x01010004;
 
 
         // File operation constants for file open mode flags 

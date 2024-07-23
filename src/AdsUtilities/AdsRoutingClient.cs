@@ -1,10 +1,12 @@
 ﻿// Ignore Spelling: ip
 
 using Microsoft.Extensions.Logging;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Net;
 using System.Runtime.CompilerServices;
 using System.Text;
+using System.Threading;
 using System.Web;
 using System.Xml;
 using System.Xml.Linq;
@@ -37,34 +39,23 @@ namespace AdsUtilities
             _netId = netId;
         }
 
-        public void AddRoute(string netIdTarget, string ipAddressTarget, string routeName, string usernameTarget, string passwordTarget, string remoteRouteName)
+        public async Task AddRouteAsync(string netIdTarget, string ipAddressTarget, string routeName, string usernameTarget, string passwordTarget, string remoteRouteName, CancellationToken cancel = default)
         {
-            AddLocalRouteEntry(netIdTarget, ipAddressTarget, routeName);
-            AddRemoteRouteEntry(ipAddressTarget, usernameTarget, passwordTarget, remoteRouteName);
+            await AddLocalRouteEntryAsync(netIdTarget, ipAddressTarget, routeName, cancel);
+            await AddRemoteRouteEntryAsync(ipAddressTarget, usernameTarget, passwordTarget, remoteRouteName, cancel);
         }
 
-        /// <summary>
-        /// This method removes an entry from the local (=on selected target) routes list.
-        /// </summary>
-        /// <param name="routeName">The route's "Name" parameter</param>
-        public void RemoveLocalRouteEntry(string routeName)
+        public async Task RemoveLocalRouteEntryAsync(string routeName)
         {
             adsClient.Connect(_netId, (int)Constants.AdsPortSystemService);
             WriteRequestHelper deleteRouteReq = new WriteRequestHelper()
                 .AddStringUTF8(routeName);
 
-            adsClient.Write(Constants.SystemServiceDelRemote, 0, deleteRouteReq);
+            await adsClient.WriteAsync(Constants.AdsIGrpSysServDelRemote, 0, deleteRouteReq);
             adsClient.Disconnect();
         }
 
-        /// <summary>
-        /// This method adds an entry to the local (=on selected target) routes list with the specified parameters. For a communication to be established, a corresponding route entry must also be added to the remote routes list
-        /// </summary>
-        /// <param name="netIdEntry"></param>
-        /// <param name="ipAddressEntry"></param>
-        /// <param name="routeNameEntry"></param>
-        /// <returns>Returns true if ADS call succeeded</returns>
-        public void AddLocalRouteEntry(string netIdEntry, string ipAddressEntry, string routeNameEntry) 
+        public async Task AddLocalRouteEntryAsync(string netIdEntry, string ipAddressEntry, string routeNameEntry, CancellationToken cancel = default) 
         {
             WriteRequestHelper addRouteRequest = new WriteRequestHelper()
                 .Add(netIdEntry.Split('.').Select(byte.Parse).ToArray())
@@ -78,19 +69,11 @@ namespace AdsUtilities
                 .AddStringUTF8(routeNameEntry);
 
             adsClient.Connect(_netId, (int)Constants.AdsPortSystemService);
-            adsClient.Write(Constants.SystemServiceAddRemote, 0, addRouteRequest);
+            await adsClient.WriteAsync(Constants.AdsIGrpSysServAddRemote, 0, addRouteRequest, cancel);
             adsClient.Disconnect();
         }
 
-        /// <summary>
-        /// This method adds an entry with parameters of the local system to the routes list of a remote system
-        /// </summary>
-        /// <param name="ipAddressRemote">IP address of the remote system. The address needs to be in the same address range as a network adapter of the local system</param>
-        /// <param name="usernameRemote">Credentials of the remote system</param>
-        /// <param name="passwordRemote">Credentials of the remote system</param>
-        /// <param name="remoteRouteName">Name of the route on the remote system (usually the device name this method is called on)</param>
-        /// <returns>Returns true if ADS call succeeded</returns>
-        public void AddRemoteRouteEntry(string ipAddressRemote, string usernameRemote, string passwordRemote, string remoteRouteName) 
+        public async Task AddRemoteRouteEntryAsync(string ipAddressRemote, string usernameRemote, string passwordRemote, string remoteRouteName, CancellationToken cancel = default) 
         {
             if (!IPAddress.TryParse(ipAddressRemote, out IPAddress? ipBytes))
             {
@@ -124,7 +107,7 @@ namespace AdsUtilities
                 .Add(Segment_PASSWORD_LENGTH)
                 .AddStringUTF8(passwordRemote);
 
-            List<Structs.NetworkInterfaceInfo> nicsInfo = GetNetworkInterfaces();
+            List<Structs.NetworkInterfaceInfo> nicsInfo = await GetNetworkInterfacesAsync(cancel);
             bool foundNwAdapterInRange = false;
             bool rwSuccessAny = false;
             foreach (var nic in nicsInfo)
@@ -140,7 +123,7 @@ namespace AdsUtilities
                 byte[] rdBfr = new byte[2048];
 
                 adsClient.Connect(_netId, (int)Constants.AdsPortSystemService);
-                AdsErrorCode rwError = adsClient.TryReadWrite(Constants.SystemServiceBroadcast, 0, rdBfr, addRouteRequest.GetBytes(), out _);    
+                AdsErrorCode rwError = await adsClient.TryReadWriteAsync(Constants.AdsIGrpSysServBroadcast, 0, rdBfr, addRouteRequest.GetBytes(), cancel);    
                 adsClient.Disconnect();
 
                 if (rwError == AdsErrorCode.NoError)
@@ -209,15 +192,10 @@ namespace AdsUtilities
             return BitConverter.ToUInt32(bytes, 0);
         }
 
-        /// <summary>
-        /// Adds an ADS route to a remote system using a third system as a gateway. An existing route between gateway-system and sub-route-system is required.
-        /// </summary>
-        /// <param name="netIdGateway"></param>
-        /// <param name="netIdSubRoute"></param>
-        /// <param name="nameSubRoute"></param>
-        public void AddSubRoute(string netIdGateway, string netIdSubRoute, string nameSubRoute)
+        public async Task AddSubRouteAsync(string netIdGateway, string netIdSubRoute, string nameSubRoute, CancellationToken cancel= default)
         {
-            var routesGateway = new AdsRoutingClient(netIdGateway).GetRoutesList();     // Check if there is a route between gateway and sub-route-system - mandatory for sub-route to work
+            using AdsRoutingClient routesReader = new(netIdGateway);
+            var routesGateway = await routesReader.GetRoutesListAsync();     // Check if there is a route between gateway and sub-route-system - mandatory for sub-route to work
             if (!routesGateway.Where(r => r.NetId == netIdSubRoute).Any())
             {
                 _logger?.LogCritical("Sub-Route to {netIdSub} with gateway {netIdGate} could not be added because there is no existing route entry to the sub-route on the gateway. Make sure to add the remote route first.", netIdSubRoute, netIdGateway);
@@ -225,7 +203,7 @@ namespace AdsUtilities
             }
             string staticRoutesPath = GetTwinCatDirectory() + "/3.1/Target/StaticRoutes.xml";
             using AdsFileClient routesEditor = new(_netId);
-            byte[] staticRoutesContent = routesEditor.FileRead(staticRoutesPath, false);
+            byte[] staticRoutesContent = await routesEditor.FileReadAsync(staticRoutesPath, false, cancel);
             string staticRoutesString = Encoding.UTF8.GetString(staticRoutesContent.Where(c => c is not 0).ToArray());
             XDocument routesXml = XDocument.Parse(staticRoutesString);
 
@@ -240,7 +218,7 @@ namespace AdsUtilities
 
                 gatewayEntry.Add(subRoute);
                 
-                routesEditor.FileWrite(staticRoutesPath, Encoding.UTF8.GetBytes(routesXml.ToString()), false);
+                await routesEditor.FileWriteAsync(staticRoutesPath, Encoding.UTF8.GetBytes(routesXml.ToString()), false, cancel);
                 _logger?.LogInformation("Sub-Route to {netIdSub} with gateway {netIdGate} was successfully added.", netIdSubRoute, netIdGateway);
             }
             else
@@ -249,11 +227,11 @@ namespace AdsUtilities
             }
         }
 
-        public void AddAdsMqttRoute(string brokerAddress, uint brokerPort, string topic, bool unidirectional = false, uint qualityOfService = default, string user = default, string password = default)
+        public async Task AddAdsMqttRouteAsync(string brokerAddress, uint brokerPort, string topic, bool unidirectional = false, uint qualityOfService = default, string user = default, string password = default, CancellationToken cancel = default)
         {
             string staticRoutesPath = GetTwinCatDirectory() + "/3.1/Target/StaticRoutes.xml";
             using AdsFileClient routesEditor = new(_netId);
-            byte[] staticRoutesContent = routesEditor.FileRead(staticRoutesPath, false);
+            byte[] staticRoutesContent = await routesEditor.FileReadAsync(staticRoutesPath, false);
             string staticRoutesString = Encoding.UTF8.GetString(staticRoutesContent.Where(c => c is not 0).ToArray());
             XDocument routesXml = XDocument.Parse(staticRoutesString);
 
@@ -278,7 +256,7 @@ namespace AdsUtilities
 
             connectionsEntry.Add(mqttRoute);
 
-            routesEditor.FileWrite(staticRoutesPath, Encoding.UTF8.GetBytes(routesXml.ToString()), false);
+            await routesEditor.FileWriteAsync(staticRoutesPath, Encoding.UTF8.GetBytes(routesXml.ToString()), false, cancel);
         }
 
         /*public void AddAdsMqttRoute(string brokerAddress, uint brokerPort, AdsMqttTlsParameters tlsParameters, bool unidirectional = false, string topic = default, uint qualityOfService = default, string user = default, string password = default)
@@ -299,15 +277,15 @@ namespace AdsUtilities
 
         private string GetTwinCatDirectory()
         {
-            return "C:/TwinCAT";    // ToDo: Return installation path dynamically. There may be an ADS command to read this. Otherwise use AdsSystemAccess to read OS and implement logic for each OS (e.g. registry / env variables for windows)
+            return "C:/TwinCAT";    // ToDo: Move to File Access Client. Return installation path dynamically. There may be an ADS command to read this. Otherwise use AdsSystemAccess to read OS and implement logic for each OS (e.g. registry / env variables for windows)
         }
 
-        public Structs.SystemInfo GetSystemInfo()
+        public async Task<Structs.SystemInfo> GetSystemInfoAsync(CancellationToken cancel = default)
         {
             byte[] rdBfr = new byte[2048];
 
             adsClient.Connect(_netId, (int)Constants.AdsPortSystemService);
-            adsClient.Read(Constants.SystemServiceTcSystemInfo, 1, rdBfr);
+            await adsClient.ReadAsync(Constants.AdsIGrpSysServTcSystemInfo, 1, rdBfr, cancel);
             adsClient.Disconnect();
 
             string sysInfo = Encoding.UTF8.GetString(rdBfr);
@@ -349,16 +327,16 @@ namespace AdsUtilities
             }
         }
 
-        public List<Structs.CpuUsage> GetTcCpuUsage()
+        public async Task<List<Structs.CpuUsage>> GetTcCpuUsageAsync(CancellationToken cancel = default)
         {
             byte[] rdBfr = new byte[2400]; //Read buffer is sufficient for up to 100 CPU Cores (Increase size if needed)
 
             adsClient.Connect(_netId, (int)Constants.AdsPortR0RTime);
-            var NumberofBytes = adsClient.Read(1, 15, rdBfr); //Retrieve new Data       ToDo: add idxGrp and idxOffs to constants
+            var readResult = await adsClient.ReadAsync(1, 15, rdBfr, cancel); //Retrieve new Data       ToDo: add idxGrp and idxOffs to constants
             adsClient.Disconnect();
 
             List<Structs.CpuUsage> cpuInfo = new();
-            for (int i = 0; i < NumberofBytes / 24; i++)
+            for (int i = 0; i < readResult.ReadBytes / 24; i++)
             {
                 int baseIdx = i * 24;
                 int latencyWarning = (rdBfr[13 + baseIdx] << 8) + rdBfr[baseIdx + 12];
@@ -368,7 +346,7 @@ namespace AdsUtilities
             return cpuInfo;
         }
 
-        public List<Structs.StaticRoutesInfo> GetRoutesList()
+        public async Task<List<Structs.StaticRoutesInfo>> GetRoutesListAsync(CancellationToken cancel = default)
         {
             // Read ADS routes from target system 
             adsClient.Connect(_netId, (int)Constants.AdsPortSystemService);
@@ -376,7 +354,7 @@ namespace AdsUtilities
             for (uint i = 0; i < 100; i++)
             {
                 ReadRequestHelper routeInfo = new(235);
-                AdsErrorCode readError = adsClient.TryRead((int)Constants.SystemServiceEnumRemote, i, routeInfo, out _);
+                AdsErrorCode readError = await adsClient.TryReadAsync(Constants.AdsIGrpSysServEnumRemote, i, routeInfo,cancel);
 
                 if (readError != AdsErrorCode.NoError)
                     break;
@@ -399,72 +377,64 @@ namespace AdsUtilities
             return routesList;
         }
 
-        /// <summary>
-        /// Reads the fingerprint of a system to which a route already exists
-        /// </summary>
-        /// <returns>Fingerprint in a string format</returns>
         public string GetFingerprint()
         {
             byte[] rdBfr = new byte[129];
 
             adsClient.Connect(_netId, (int)Constants.AdsPortSystemService);
-            adsClient.Read(Constants.SystemServiceTcSystemInfo, 9, rdBfr);
+            adsClient.Read(Constants.AdsIGrpSysServTcSystemInfo, 9, rdBfr);
             adsClient.Disconnect();
 
             return Encoding.UTF8.GetString(rdBfr);
         }
 
-        public List<Structs.NetworkInterfaceInfo> GetNetworkInterfaces()
+        async Task<List<Structs.NetworkInterfaceInfo>> GetNetworkInterfacesAsync(CancellationToken cancel = default)
         {
             byte[] readBfr = new byte[4];
             adsClient.Connect(_netId, (int)Constants.AdsPortSystemService);
-            adsClient.Read(Constants.SystemServiceIpHelperApi, Constants.IpHelperApiAdaptersInfo, readBfr);
+            await adsClient.ReadAsync(Constants.AdsIGrpSysServIpHelperApi, Constants.AdsIOffsIpHelperApiAdaptersInfo, readBfr, cancel);
 
             uint nicBfrSize = BitConverter.ToUInt32(readBfr, 0);  
             byte[] nicBfr = new byte[nicBfrSize];
 
-            adsClient.Read(Constants.SystemServiceIpHelperApi, Constants.IpHelperApiAdaptersInfo, nicBfr);
+            await adsClient.ReadAsync(Constants.AdsIGrpSysServIpHelperApi, Constants.AdsIOffsIpHelperApiAdaptersInfo, nicBfr, cancel);
             adsClient.Disconnect();
-
+            
             const uint bytesPerNic = 640;             // Info on every NIC takes 640 bytes. There might be a data field in the byte array that contains that size. For now it's statically defined
             uint numOfNics = nicBfrSize / bytesPerNic;  
             List<Structs.NetworkInterfaceInfo> nicList = new();
-            for (int i = 0; i < numOfNics; i++)
+            await Task.Run(() =>
             {
-                Structs.NetworkInterfaceInfo newNic = new()
+                Parallel.ForEach(Partitioner.Create(0, (int)numOfNics), range =>
                 {
-                    guid = Encoding.UTF8.GetString(nicBfr[(Index)(i * bytesPerNic + 8)..(Index)(i * bytesPerNic + 267)]).Replace("\0", string.Empty),
-                    name = Encoding.UTF8.GetString(nicBfr[(Index)(i * bytesPerNic + 268)..(Index)(i * bytesPerNic + 380)]).Replace("\0", string.Empty),
-                    ipAddress = Encoding.UTF8.GetString(nicBfr[(Index)(i * bytesPerNic + 432)..(Index)(i * bytesPerNic + 447)]).Replace("\0", string.Empty),
-                    subnetMask = Encoding.UTF8.GetString(nicBfr[(Index)(i * bytesPerNic + 448)..(Index)(i * bytesPerNic + 463)]).Replace("\0", string.Empty),
-                    defaultGateway = Encoding.UTF8.GetString(nicBfr[(Index)(i * bytesPerNic + 472)..(Index)(i * bytesPerNic + 487)]).Replace("\0", string.Empty),
-                    dhcpServer = Encoding.UTF8.GetString(nicBfr[(Index)(i * bytesPerNic + 512)..(Index)(i * bytesPerNic + 527)]).Replace("\0", string.Empty)
-                };
-                nicList.Add(newNic);
-            }
+                    for (int i = range.Item1; i < range.Item2; i++)
+                    {
+                        Structs.NetworkInterfaceInfo newNic = new()
+                        {
+                            guid = Encoding.UTF8.GetString(nicBfr[(Index)(i * bytesPerNic + 8)..(Index)(i * bytesPerNic + 267)]).Replace("\0", string.Empty),
+                            name = Encoding.UTF8.GetString(nicBfr[(Index)(i * bytesPerNic + 268)..(Index)(i * bytesPerNic + 380)]).Replace("\0", string.Empty),
+                            ipAddress = Encoding.UTF8.GetString(nicBfr[(Index)(i * bytesPerNic + 432)..(Index)(i * bytesPerNic + 447)]).Replace("\0", string.Empty),
+                            subnetMask = Encoding.UTF8.GetString(nicBfr[(Index)(i * bytesPerNic + 448)..(Index)(i * bytesPerNic + 463)]).Replace("\0", string.Empty),
+                            defaultGateway = Encoding.UTF8.GetString(nicBfr[(Index)(i * bytesPerNic + 472)..(Index)(i * bytesPerNic + 487)]).Replace("\0", string.Empty),
+                            dhcpServer = Encoding.UTF8.GetString(nicBfr[(Index)(i * bytesPerNic + 512)..(Index)(i * bytesPerNic + 527)]).Replace("\0", string.Empty)
+                        };
+                        lock (nicList)
+                        {
+                            nicList.Add(newNic);
+                        }
+                    }
+                });
+            }, cancel);
             return nicList;            
         }
 
-        /// <summary>
-        /// Performs a broadcast search on all available network adapters
-        /// </summary>
-        /// <param name="secondsTimeout">Broadcast timeout</param>
-        /// <param name="cancellationToken">Broadcast cancellation</param>
-        /// <returns></returns>
         public async Task<List<Structs.TargetInfo>> AdsBroadcastSearchAsync(ushort secondsTimeout = 5, CancellationToken cancellationToken = default)
         {
-            List<Structs.NetworkInterfaceInfo> nicsInfo = GetNetworkInterfaces();
+            List<Structs.NetworkInterfaceInfo> nicsInfo = await GetNetworkInterfacesAsync(cancellationToken);
             Task<List<Structs.TargetInfo>> taskPerformBroadcast = AdsBroadcastSearchAsync(nicsInfo, secondsTimeout, cancellationToken);
             return await taskPerformBroadcast;
         }
 
-        /// <summary>
-        /// Performs a broadcast search on a selected group of network adapters
-        /// </summary>
-        /// <param name="interfacesToBroadcastOn">List of network adapters to broadcast on</param>
-        /// <param name="secondsTimeout">Broadcast timeout</param>
-        /// <param name="cancellationToken">Broadcast cancellation</param>
-        /// <returns></returns>
         public async Task<List<Structs.TargetInfo>> AdsBroadcastSearchAsync(List<Structs.NetworkInterfaceInfo> interfacesToBroadcastOn, ushort secondsTimeout = 5, CancellationToken cancellationToken = default)
         {
             List<Structs.TargetInfo> broadcastResults = new();
@@ -480,7 +450,7 @@ namespace AdsUtilities
 
             adsClient.Connect(_netId, (int)Constants.AdsPortSystemService);
             
-            uint notiHdl  = adsClient.AddDeviceNotification(Constants.SystemServiceBroadcast, 0, 2048, sttngs, null);   
+            uint notiHdl  = adsClient.AddDeviceNotification(Constants.AdsIGrpSysServBroadcast, 0, 2048, sttngs, null);   
 
             foreach (Structs.NetworkInterfaceInfo nic in interfacesToBroadcastOn)
             {
@@ -495,7 +465,7 @@ namespace AdsUtilities
                 Structs.TriggerBroadcastPacket broadcastPacket = new(broadcastAddress.GetAddressBytes(), AmsNetId.Local.ToBytes());
                 try
                 {
-                    await adsClient.WriteAsync(Constants.SystemServiceBroadcast, 1, Structs.Converter.StructureToByteArray(broadcastPacket), cancellationToken);     
+                    await adsClient.WriteAsync(Constants.AdsIGrpSysServBroadcast, 1, Structs.Converter.StructureToByteArray(broadcastPacket), cancellationToken);     
                 }
                 catch (AdsErrorException ex)
                 {
@@ -520,7 +490,7 @@ namespace AdsUtilities
             return broadcastResults;
         }
 
-        public async IAsyncEnumerable<Structs.TargetInfo> AdsBroadcastSearchAsyncStream(
+        public async IAsyncEnumerable<Structs.TargetInfo> AdsBroadcastSearchStreamAsync(
             List<Structs.NetworkInterfaceInfo> interfacesToBroadcastOn,
             ushort secondsTimeout = 5,
             [EnumeratorCancellation] CancellationToken cancellationToken = default)
@@ -539,7 +509,7 @@ namespace AdsUtilities
             adsClient.AdsNotification += RecievedBroadcastResponse;
             NotificationSettings sttngs = new(AdsTransMode.OnChange, 100, 0);
             adsClient.Connect(_netId, (int)Constants.AdsPortSystemService);
-            uint notiHdl = adsClient.AddDeviceNotification(Constants.SystemServiceBroadcast, 0, 2048, sttngs, null); 
+            var deviceNotiResult = await adsClient.AddDeviceNotificationAsync(Constants.AdsIGrpSysServBroadcast, 0, 2048, sttngs, null, cancellationToken);
 
             foreach (var nic in interfacesToBroadcastOn)
             {
@@ -554,7 +524,7 @@ namespace AdsUtilities
                 Structs.TriggerBroadcastPacket broadcastPacket = new(broadcastAddress.GetAddressBytes(), AmsNetId.Local.ToBytes());
                 try
                 {
-                    await adsClient.WriteAsync(Constants.SystemServiceBroadcast, 1, Structs.Converter.StructureToByteArray(broadcastPacket), cancellationToken);  // This tells the system service to send a broadcast telegram on the selected NIC
+                    await adsClient.WriteAsync(Constants.AdsIGrpSysServBroadcast, 1, Structs.Converter.StructureToByteArray(broadcastPacket), cancellationToken);  // This tells the system service to send a broadcast telegram on the selected NIC
                 }
                 catch (AdsErrorException ex)
                 {
@@ -567,12 +537,12 @@ namespace AdsUtilities
 
             try
             {
-                while (DateTime.UtcNow - startTime < timeout)   // Wait for broadcast responses to arrive. After the specified timeout
+                while (DateTime.UtcNow - startTime < timeout)   // Wait for broadcast responses to arrive
                 {
                     if (cancellationToken.IsCancellationRequested)
                     {
                         _logger?.LogInformation("ADS broadcast search was canceled by caller. The list of available TwinCAT systems may be incomplete.");
-                        yield break;
+                        break;
                     }
 
                     if (broadcastResults.Any())     // Check for new broadcast responses
@@ -592,18 +562,18 @@ namespace AdsUtilities
             finally
             {
                 // Unregister the Event / Handle after timeout has elapsed or the action was canceled 
-                adsClient.DeleteDeviceNotification(notiHdl);
+                await adsClient.DeleteDeviceNotificationAsync(deviceNotiResult.Handle, cancellationToken);
                 adsClient.AdsNotification -= RecievedBroadcastResponse;
                 adsClient.Disconnect();
             }
         }
 
-        public async IAsyncEnumerable<Structs.TargetInfo> AdsBroadcastSearchAsyncStream(
+        public async IAsyncEnumerable<Structs.TargetInfo> AdsBroadcastSearchStreamAsync(
         ushort secondsTimeout = 5,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
-            var nicsInfo = GetNetworkInterfaces();
-            await foreach (var targetInfo in AdsBroadcastSearchAsyncStream(nicsInfo, secondsTimeout, cancellationToken))
+            var nicsInfo = await GetNetworkInterfacesAsync(cancellationToken);
+            await foreach (var targetInfo in AdsBroadcastSearchStreamAsync(nicsInfo, secondsTimeout, cancellationToken))
             {
                 yield return targetInfo;
             }
@@ -625,7 +595,7 @@ namespace AdsUtilities
             return new IPAddress(broadcastBytes);
         }
 
-        private Structs.TargetInfo ParseBroadcastReturn(byte[] broadcastReturn)
+        private static Structs.TargetInfo ParseBroadcastReturn(byte[] broadcastReturn)
         {
             const int startingOffset = 4;
 
@@ -668,7 +638,7 @@ namespace AdsUtilities
 
             // TC version
 
-            // ???? currently unknown parameters
+            // ???? currently not interpreted parameters
 
             // ToDo: There should be indicators as to where in the byte array the fingerprint starts. for now we look for the sequence 0-65-0 that indicates the start of the 65 bytes field of the fingerprint
             int startFingerprint = startOsVer + lenOsVer; // + something else
@@ -680,18 +650,14 @@ namespace AdsUtilities
                     break;
                 }
             }
-            int lenFingerprint = 64;
+            const int lenFingerprint = 64;
             byte[] fingerprint = broadcastReturn.Skip(startFingerprint).Take(lenFingerprint).ToArray();
             string fingerprintStr = Encoding.UTF8.GetString(fingerprint);
 
             return new Structs.TargetInfo { IpAddress = ipAddr, Name = deviceName, NetId = netIdStr, OsVersion = osVersionString, Fingerprint = fingerprintStr };
         }
 
-        /// <summary>
-        /// Requests a change of the NetId at next system start. Only works with full Windows OS
-        /// </summary>
-        /// <param name="netIdNew"></param>
-        public void ChangeNetId(string netIdNew)
+        public async Task ChangeNetIdAsync(string netIdNew, bool reboot = false, CancellationToken cancel = default)
         {
             string[] partsNetId = netIdNew.Split('.');
             byte[] bytesNetId = new byte[partsNetId.Length];
@@ -704,16 +670,19 @@ namespace AdsUtilities
                 }
             }
             using AdsSystemClient systemClient = new(_netId);
-            systemClient.SetRegEntry(@"Software\Beckhoff\TwinCAT3\System", "RequestedAmsNetId", Enums.RegEditTypeCode.REG_BINARY, bytesNetId);
-            
+            await systemClient.SetRegEntryAsync(@"Software\Beckhoff\TwinCAT3\System", "RequestedAmsNetId", Enums.RegEditTypeCode.REG_BINARY, bytesNetId, cancel);            
+            if (reboot)
+            {
+                using AdsSystemClient adsSystemClient = new(_netId);
+                await adsSystemClient.RebootAsync(0, cancel);
+            }
         }
 
-
-        public Structs.RouterStatusInfo GetRouterStatusInfo()
+        public async Task<Structs.RouterStatusInfo> GetRouterStatusInfoAsync(CancellationToken cancel = default)
         {
             ReadRequestHelper readRequest = new(32);
             adsClient.Connect(_netId, (int)Constants.AdsPortRouter);
-            adsClient.Read(1, 1, readRequest);  // ToDo: Add idx to constants
+            await adsClient.ReadAsync(1, 1, readRequest, cancel);  
 
             Structs.RouterStatusInfo routerInfo = new()
             {
@@ -725,35 +694,35 @@ namespace AdsUtilities
             return routerInfo;
         }
 
-        public short GetPlatformLevel()
+        public async Task<short> GetPlatformLevelAsync(CancellationToken cancel = default)
         {
             adsClient.Connect(_netId, (int)Constants.AdsPortLicenseServer);
-            short platformLevel = adsClient.ReadAny<short>(0x01010004, 0x2);  // ToDo: Add idx to constants
+            short platformLevel = (await adsClient.ReadAnyAsync<short>(Constants.AdsIGrpLicenseInfo, 0x2, cancel)).Value;  
             adsClient.Disconnect();
 
             return platformLevel;
         }
 
-        private byte[] GetSystemIdBytes()
+        private async Task<byte[]> GetSystemIdBytesAsync(CancellationToken cancel = default)
         {
             byte[] rdBfr = new byte[16];
 
             adsClient.Connect(_netId, (int)Constants.AdsPortLicenseServer);           
-            adsClient.Read(0x01010004, 0x1, rdBfr);  // ToDo: Add idx to constants
+            await adsClient.ReadAsync(Constants.AdsIGrpLicenseInfo, 0x1, rdBfr, cancel);
             adsClient.Disconnect();
 
             return rdBfr;
         }
 
-        public Guid GetSystemIdGuid() 
+        public async Task<Guid> GetSystemIdGuidAsync(CancellationToken cancel = default) 
         {
-            byte[] sysId = GetSystemIdBytes();
+            byte[] sysId = await GetSystemIdBytesAsync(cancel);
             return new Guid(sysId);
         }
 
-        public string GetSystemIdString()
+        public async Task<string> GetSystemIdStringAsync(CancellationToken cancel = default)
         {
-            byte[] sysId = GetSystemIdBytes();
+            byte[] sysId = await GetSystemIdBytesAsync(cancel);
             return string.Format("{0:X2}{1:X2}{2:X2}{3:X2}-{4:X2}{5:X2}-{6:X2}{7:X2}-{8:X2}{9:X2}-{10:X2}{11:X2}{12:X2}{13:X2}{14:X2}{15:X2}",
                 sysId[3], sysId[2], sysId[1], sysId[0],
                 sysId[5], sysId[4], sysId[7], sysId[6],
@@ -762,10 +731,10 @@ namespace AdsUtilities
             );
         }
 
-        public uint GetVolumeNumber()
+        public async Task<uint> GetVolumeNumberAsync(CancellationToken cancel = default)
         {
             adsClient.Connect(_netId, (int)Constants.AdsPortLicenseServer);        
-            uint volumeNo = adsClient.ReadAny<uint>(0x01010004, 0x5);  // ToDo: Add idx to constants
+            uint volumeNo = (await adsClient.ReadAnyAsync<uint>(Constants.AdsIGrpLicenseInfo, 0x5, cancel)).Value;
             adsClient.Disconnect();
 
             return volumeNo;
@@ -793,8 +762,8 @@ namespace AdsUtilities
                 {0x0500, "Win CE (5.0)"},
                 {0x0501, "Win XP"},
                 {0x0009, "RTOS"}
-                //{0x0C02, "TwinCAT/BSD (12.2)"}, // 0C = 12, 02 = 2  // Wireshark line 0060 - 9 / 13
-                //{0x0D01, "TwinCAT/BSD (13.1)"}, // 0D = 13, 01 = 1 
+                //{0x0C02, "TwinCAT/BSD (12.2)"},
+                //{0x0D01, "TwinCAT/BSD (13.1)"},
                 //{0x0D02, "TwinCAT/BSD (13.2)"}
             };
 

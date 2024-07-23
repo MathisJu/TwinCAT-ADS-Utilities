@@ -22,10 +22,10 @@ namespace AdsUtilities
             _netId = AmsNetId.Parse(netId);
         }
 
-        public void Reboot(uint delaySec = 0) 
+        public async Task RebootAsync(uint delaySec = 0, CancellationToken cancel = default) 
         {
             adsClient.Connect(_netId, (int)Constants.AdsPortSystemService);
-            adsClient.WriteControl(new StateInfo(AdsState.Shutdown, 1), BitConverter.GetBytes(delaySec));
+            await adsClient.WriteControlAsync(AdsState.Shutdown, 1, BitConverter.GetBytes(delaySec), cancel);
             adsClient.Disconnect();
         }
 
@@ -36,15 +36,7 @@ namespace AdsUtilities
             Reboot(netId, 0);
         }*/
 
-        /// <summary>
-        /// Modifies an existing Reg entry or creates a new one
-        /// </summary>
-        /// <param name="subKey">Sub-Key under HKLM</param>
-        /// <param name="valueName">The entry to edit/ create</param>
-        /// <param name="registryTypeCode">Type of the entry</param>
-        /// <param name="value"></param>
-        /// /// <returns>Returns true if Reg entry was set successfully</returns>
-        public void SetRegEntry(string subKey, string valueName, Enums.RegEditTypeCode registryTypeCode, byte[] value)
+        public async Task SetRegEntryAsync(string subKey, string valueName, Enums.RegEditTypeCode registryTypeCode, byte[] value, CancellationToken cancel)
         {
             WriteRequestHelper setRegRequest = new WriteRequestHelper()
                 .AddStringUTF8(subKey)
@@ -53,27 +45,23 @@ namespace AdsUtilities
                 .Add(value);
 
             adsClient.Connect(_netId, (int)Constants.AdsPortSystemService);
-            adsClient.Write(Constants.SystemServiceRegHkeyLocalMachine, 0, setRegRequest.GetBytes());
+            await adsClient.WriteAsync(Constants.AdsIGrpSysServRegHklm, 0, setRegRequest.GetBytes(), cancel);
             adsClient.Disconnect();
         }
 
-        /// <summary>
-        /// Reads the value of a Reg entry
-        /// </summary>
-        /// <param name="subKey">Sub-Key under HKLM</param>
-        /// <param name="valueName">The entry whose value to read</param>
-        /// <param name="netId"></param>
-        /// <param name="data">Ref to a buffer for the value to read</param>
-        /// <returns>Returns true if Reg entry was read successfully</returns>
-        public void QueryRegEntry(string subKey, string valueName, ref byte[] data)
+        public async Task<byte[]> QueryRegEntryAsync(string subKey, string valueName, uint byteSize, CancellationToken cancel = default)
         {
             WriteRequestHelper readRegRequest = new WriteRequestHelper()
                 .AddStringUTF8(subKey)
                 .AddStringUTF8(valueName);
 
+            byte[] readBuffer = new byte[byteSize];
+
             adsClient.Connect(_netId, (int)Constants.AdsPortSystemService);
-            adsClient.ReadWrite(Constants.SystemServiceRegHkeyLocalMachine, 0, data, readRegRequest.GetBytes());
+            await adsClient.ReadWriteAsync(Constants.AdsIGrpSysServRegHklm, 0, readBuffer, readRegRequest.GetBytes(), cancel);
             adsClient.Disconnect();
+
+            return readBuffer;
         }
 
         public void Dispose()
