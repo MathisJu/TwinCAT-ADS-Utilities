@@ -11,6 +11,9 @@ using System.Web;
 using System.Xml;
 using System.Xml.Linq;
 using TwinCAT.Ads;
+using System.Security;
+using System.Runtime.InteropServices;
+
 
 namespace AdsUtilities
 {
@@ -73,7 +76,30 @@ namespace AdsUtilities
             adsClient.Disconnect();
         }
 
-        public async Task AddRemoteRouteEntryAsync(string ipAddressRemote, string usernameRemote, string passwordRemote, string remoteRouteName, CancellationToken cancel = default) 
+        public async Task AddRemoteRouteEntryAsync(string ipAddressRemote, string usernameRemote, string passwordRemote, string remoteRouteName, CancellationToken cancel = default)
+        {
+            await AddRemoteRouteEntryInternalAsync(ipAddressRemote, usernameRemote, passwordRemote, remoteRouteName, cancel);
+        }
+
+        public async Task AddRemoteRouteEntryAsync(string ipAddressRemote, string usernameRemote, SecureString passwordRemote, string remoteRouteName, CancellationToken cancel = default)
+        {
+            IntPtr passwordBinStrPtr = IntPtr.Zero;
+            try
+            {
+                passwordBinStrPtr = Marshal.SecureStringToBSTR(passwordRemote);
+                string plainPassword = Marshal.PtrToStringBSTR(passwordBinStrPtr);
+                await AddRemoteRouteEntryInternalAsync(ipAddressRemote, usernameRemote, plainPassword, remoteRouteName, cancel);
+            }
+            finally
+            {
+                if (passwordBinStrPtr != IntPtr.Zero)
+                {
+                    Marshal.ZeroFreeBSTR(passwordBinStrPtr);
+                }
+            }
+        }
+
+        private async Task AddRemoteRouteEntryInternalAsync(string ipAddressRemote, string usernameRemote, string passwordRemote, string remoteRouteName, CancellationToken cancel)
         {
             if (!IPAddress.TryParse(ipAddressRemote, out IPAddress? ipBytes))
             {
@@ -112,7 +138,7 @@ namespace AdsUtilities
             bool rwSuccessAny = false;
             foreach (var nic in nicsInfo)
             {
-                if (!IsIpAddressInRange(nic.ipAddress, nic.subnetMask, nic.defaultGateway))   // look for a NIC with an IP that's in the same address range as the remote system and use this IP for the remote route entry
+                if (!IsIpAddressInRange(nic.ipAddress, nic.subnetMask))   // look for a NIC with an IP that's in the same address range as the remote system and use this IP for the remote route entry
                     continue;
 
                 byte[] Segment_IPADDRESS_LENGTH = Segments.LOCALHOST_L;
@@ -123,7 +149,7 @@ namespace AdsUtilities
                 byte[] rdBfr = new byte[2048];
 
                 adsClient.Connect(_netId, (int)Constants.AdsPortSystemService);
-                AdsErrorCode rwError = await adsClient.TryReadWriteAsync(Constants.AdsIGrpSysServBroadcast, 0, rdBfr, addRouteRequest.GetBytes(), cancel);    
+                AdsErrorCode rwError = await adsClient.TryReadWriteAsync(Constants.AdsIGrpSysServBroadcast, 0, rdBfr, addRouteRequest.GetBytes(), cancel);
                 adsClient.Disconnect();
 
                 if (rwError == AdsErrorCode.NoError)
@@ -132,17 +158,17 @@ namespace AdsUtilities
                 foundNwAdapterInRange = true;
                 break;
             }
+            addRouteRequest.Clear();
             if (!foundNwAdapterInRange)
                 _logger?.LogError("Error occurred when trying to add a remote route entry. No network adapter on the local system matched address range of the provided IP address. Please check the provided IP or the DHCP settings / the static IP on the remote system");
             if (!rwSuccessAny)
                 _logger?.LogError("ADS call to add remote route entry failed on all network adapters");
         }
 
-        private static bool IsIpAddressInRange(string ipAddressStr, string subnetMaskStr, string defaultGatewayStr)
+        private static bool IsIpAddressInRange(string ipAddressStr, string subnetMaskStr)
         {
             IPAddress ipAddress = IPAddress.Parse(ipAddressStr);
-            IPAddress subnetMask = IPAddress.Parse(subnetMaskStr);
-            IPAddress defaultGateway = IPAddress.Parse(defaultGatewayStr);
+            IPAddress subnetMask = IPAddress.Parse(subnetMaskStr);           
 
             IPAddress networkAddress = GetNetworkAddress(ipAddress, subnetMask);
             IPAddress broadcastAddress = GetBroadcastAddress(networkAddress, subnetMask);
@@ -203,7 +229,7 @@ namespace AdsUtilities
             }
             string staticRoutesPath = GetTwinCatDirectory() + "/3.1/Target/StaticRoutes.xml";
             using AdsFileClient routesEditor = new(_netId);
-            byte[] staticRoutesContent = await routesEditor.FileReadAsync(staticRoutesPath, false, cancel);
+            byte[] staticRoutesContent = await routesEditor.FileReadFullAsync(staticRoutesPath, false, cancel);
             string staticRoutesString = Encoding.UTF8.GetString(staticRoutesContent.Where(c => c is not 0).ToArray());
             XDocument routesXml = XDocument.Parse(staticRoutesString);
 
@@ -218,7 +244,7 @@ namespace AdsUtilities
 
                 gatewayEntry.Add(subRoute);
                 
-                await routesEditor.FileWriteAsync(staticRoutesPath, Encoding.UTF8.GetBytes(routesXml.ToString()), false, cancel);
+                await routesEditor.FileWriteFullAsync(staticRoutesPath, Encoding.UTF8.GetBytes(routesXml.ToString()), false, cancel);
                 _logger?.LogInformation("Sub-Route to {netIdSub} with gateway {netIdGate} was successfully added.", netIdSubRoute, netIdGateway);
             }
             else
@@ -231,7 +257,7 @@ namespace AdsUtilities
         {
             string staticRoutesPath = GetTwinCatDirectory() + "/3.1/Target/StaticRoutes.xml";
             using AdsFileClient routesEditor = new(_netId);
-            byte[] staticRoutesContent = await routesEditor.FileReadAsync(staticRoutesPath, false);
+            byte[] staticRoutesContent = await routesEditor.FileReadFullAsync(staticRoutesPath, false);
             string staticRoutesString = Encoding.UTF8.GetString(staticRoutesContent.Where(c => c is not 0).ToArray());
             XDocument routesXml = XDocument.Parse(staticRoutesString);
 
@@ -256,7 +282,7 @@ namespace AdsUtilities
 
             connectionsEntry.Add(mqttRoute);
 
-            await routesEditor.FileWriteAsync(staticRoutesPath, Encoding.UTF8.GetBytes(routesXml.ToString()), false, cancel);
+            await routesEditor.FileWriteFullAsync(staticRoutesPath, Encoding.UTF8.GetBytes(routesXml.ToString()), false, cancel);
         }
 
         /*public void AddAdsMqttRoute(string brokerAddress, uint brokerPort, AdsMqttTlsParameters tlsParameters, bool unidirectional = false, string topic = default, uint qualityOfService = default, string user = default, string password = default)
@@ -275,9 +301,15 @@ namespace AdsUtilities
             public string? RevocationList = default;
         }*/
 
-        private string GetTwinCatDirectory()
+        private async Task<string> GetTwinCatDirectory()    // ToDo
         {
-            return "C:/TwinCAT";    // ToDo: Move to File Access Client. Return installation path dynamically. There may be an ADS command to read this. Otherwise use AdsSystemAccess to read OS and implement logic for each OS (e.g. registry / env variables for windows)
+            Structs.SystemInfo systemInfo = await GetSystemInfoAsync();
+            if (systemInfo.OsName.Contains("Windows"))
+                return "C:/TwinCAT";    // There may be an ADS command to read this. 
+            if (systemInfo.OsName.Contains("BSD"))
+                return "C:/usr/TwinCAT";
+            else 
+                return string.Empty;
         }
 
         public async Task<Structs.SystemInfo> GetSystemInfoAsync(CancellationToken cancel = default)
@@ -495,8 +527,8 @@ namespace AdsUtilities
             ushort secondsTimeout = 5,
             [EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
-            var broadcastResults = new List<Structs.TargetInfo>();
-            var completionSource = new TaskCompletionSource();
+            List<Structs.TargetInfo> broadcastResults = new ();
+            TaskCompletionSource completionSource = new ();
 
             void RecievedBroadcastResponse(object sender, AdsNotificationEventArgs e)
             {
@@ -657,7 +689,7 @@ namespace AdsUtilities
             return new Structs.TargetInfo { IpAddress = ipAddr, Name = deviceName, NetId = netIdStr, OsVersion = osVersionString, Fingerprint = fingerprintStr };
         }
 
-        public async Task ChangeNetIdAsync(string netIdNew, bool reboot = false, CancellationToken cancel = default)
+        public async Task ChangeNetIdAsync(string netIdNew, bool rebootNow = false, CancellationToken cancel = default)
         {
             string[] partsNetId = netIdNew.Split('.');
             byte[] bytesNetId = new byte[partsNetId.Length];
@@ -670,8 +702,8 @@ namespace AdsUtilities
                 }
             }
             using AdsSystemClient systemClient = new(_netId);
-            await systemClient.SetRegEntryAsync(@"Software\Beckhoff\TwinCAT3\System", "RequestedAmsNetId", Enums.RegEditTypeCode.REG_BINARY, bytesNetId, cancel);            
-            if (reboot)
+            await systemClient.SetRegEntryAsync(@"Software\Beckhoff\TwinCAT3\System", "RequestedAmsNetId", RegEditTypeCode.REG_BINARY, bytesNetId, cancel);            
+            if (rebootNow)
             {
                 using AdsSystemClient adsSystemClient = new(_netId);
                 await adsSystemClient.RebootAsync(0, cancel);
@@ -787,6 +819,6 @@ namespace AdsUtilities
                 {0x3938, "10 (14393) 1607"},
                 {0x5A29, "10 (10586) 1511"},// only up to .NET Framework 4.6.2
                 {0x0028, "10 (10240) 1507"} // only up to .NET Framework 4.6.2
-            };
+            };       
     }
 }

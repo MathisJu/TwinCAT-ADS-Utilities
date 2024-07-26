@@ -28,6 +28,11 @@ namespace AdsUtilities
             _currentIndex = 0;
         }
 
+        public void Clear()
+        {
+            Array.Clear(data, 0, data.Length);
+        }
+
         public void Skip(int length=1)
         {
             _currentIndex += length;
@@ -159,6 +164,12 @@ namespace AdsUtilities
         {
             _requestBytes.Add(data);
             return this;
+        }
+
+        public void Clear()
+        {
+            _requestBytes.Clear();
+            _requestBytes = new();
         }
 
         public WriteRequestHelper Add(byte[] data)

@@ -84,7 +84,7 @@ namespace AdsUtilities
             return Structs.Converter.MarshalToStructure<Structs.FileInfoByteMapped>(rdBfr);
         }
 
-        public async Task<byte[]> FileReadAsync(string path, bool binaryOpen = true, CancellationToken cancel = default)
+        internal async Task<byte[]> FileReadFullAsync(string path, bool binaryOpen = true, CancellationToken cancel = default)
         {
             long fileSize = (await GetFileInfoAsync(path, cancel)).fileSize;
             byte[] rdBfr = new byte[fileSize];   // Read file size and allocate memory
@@ -100,7 +100,46 @@ namespace AdsUtilities
             return rdBfr.ToArray();
         }
 
-        public async Task FileWriteAsync(string path, byte[] data, bool binaryOpen = true, CancellationToken cancel = default)
+        public async Task FileCopyAsync(string pathLocal, AdsFileClient destinationFileClient, string pathTarget, bool binaryOpen = true, uint chunkSize = 10000, CancellationToken cancel = default)
+        {
+            uint hFileRead = await FileOpenReadingAsync(pathLocal, binaryOpen, cancel);
+
+            uint hFileWrite = await destinationFileClient.FileOpenWritingAsync(pathTarget, binaryOpen, cancel);
+            
+            while (true)
+            {
+                byte[] fileContentBuffer = await FileReadChunkAsync(hFileRead, chunkSize, binaryOpen, cancel);
+                await destinationFileClient.FileWriteChunkAsync(hFileWrite, fileContentBuffer, binaryOpen, cancel);
+
+                if (fileContentBuffer.Length == chunkSize)  // not finished reading content from file
+                    continue;
+                break;
+            }
+            await FileCloseAsync(hFileRead, cancel);
+            await destinationFileClient.FileCloseAsync(hFileWrite, cancel);
+        }
+
+        private async Task FileWriteChunkAsync(uint hFile, byte[] chunk, bool binaryOpen = true, CancellationToken cancel = default)
+        {
+            adsClient.Connect(_netId, (int)Constants.AdsPortSystemService);
+            await adsClient.ReadWriteAsync(Constants.AdsIGrpSysServFWrite, hFile, new byte[4], chunk, cancel);
+            adsClient.Disconnect();
+        }
+
+        internal async Task<byte[]> FileReadChunkAsync(uint hFile, uint chunkSize, bool binaryOpen = true, CancellationToken cancel = default)
+        {
+            byte[] rdBfr = new byte[chunkSize];
+
+            adsClient.Connect((int)Constants.AdsPortSystemService);
+            var readWriteResult = await adsClient.ReadWriteAsync(Constants.AdsIGrpSysServFRead, hFile, rdBfr, new byte[4], cancel);
+            adsClient.Disconnect();
+
+            if(readWriteResult.ReadBytes < chunkSize)
+                return rdBfr.Take(readWriteResult.ReadBytes).ToArray();
+            return rdBfr.ToArray();
+        }
+
+        internal async Task FileWriteFullAsync(string path, byte[] data, bool binaryOpen = true, CancellationToken cancel = default)
         {
             uint hFile = await FileOpenWritingAsync(path, binaryOpen, cancel);
 
@@ -158,8 +197,7 @@ namespace AdsUtilities
 
             uint idxOffs = Constants.PathGeneric;   // for first file
 
-            byte[] nextFileBuffer = new WriteRequestHelper()
-                .AddStringUTF8(path).GetBytes();               // for first file
+            byte[] nextFileBuffer = new WriteRequestHelper().AddStringUTF8(path).GetBytes();               // for first file
 
             byte[] fileInfoBuffer = new byte[Marshal.SizeOf(typeof(Structs.FileInfoByteMapped))];      // Allocate memory buffer the size of the byte stream returned by a file info request
 

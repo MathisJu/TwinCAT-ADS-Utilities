@@ -36,7 +36,7 @@ namespace AdsUtilities
             Reboot(netId, 0);
         }*/
 
-        public async Task SetRegEntryAsync(string subKey, string valueName, Enums.RegEditTypeCode registryTypeCode, byte[] value, CancellationToken cancel)
+        public async Task SetRegEntryAsync(string subKey, string valueName, RegEditTypeCode registryTypeCode, byte[] value, CancellationToken cancel)
         {
             WriteRequestHelper setRegRequest = new WriteRequestHelper()
                 .AddStringUTF8(subKey)
@@ -74,5 +74,21 @@ namespace AdsUtilities
                 GC.SuppressFinalize(this);
             }
         }
+    }
+
+    public enum RegEditTypeCode
+    {
+        REG_NONE,
+        REG_SZ,
+        REG_EXPAND_SZ,
+        REG_BINARY,
+        REG_DWORD,
+        REG_DWORD_BIG_ENDIAN,
+        REG_LINK,
+        REG_MULTI_SZ,
+        REG_RESOURCE_LIST,
+        REG_FULL_RESOURCE_DESCRIPTOR,
+        REG_RESOURCE_REQUIREMENTS_LIST,
+        REG_QWORD
     }
 }

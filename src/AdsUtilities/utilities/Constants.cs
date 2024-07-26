@@ -1,4 +1,6 @@
-﻿namespace AdsUtilities
+﻿using TwinCAT.Ads;
+
+namespace AdsUtilities
 {
     internal static class Constants
     {

@@ -42,10 +42,9 @@ The Automation Device Specification (ADS) protocol is a crucial component for an
 
 #### Copy a file to a remote system
 ```csharp
-using AdsFileClient localFileClient = new(AmsNetId.Local);
-byte[] fileContent = localFileClient.FileRead("C:/temp/someFile.txt");
-using AdsFileClient remoteFileClient = new("192.168.8.188.1.1");
-remoteFileClient.FileWrite("C:/temp/someNewFile.txt", fileContent);
+using AdsFileClient sourceFileClient = new(AmsNetId.Local);
+using AdsFileClient destinationFileClient = new("192.168.1.100.1.1");
+await sourceFileClient.FileCopyAsync(@"C:/temp/existingFile.txt", destinationFileClient, @"C:/temp/copiedFile.txt")
 ```
 
 #### Perform a broadcast search
@@ -58,69 +57,12 @@ foreach (TargetInfo device in devicesFound)
 
 // Option 2:
 using AdsRoutingClient localRouting = new(AmsNetId.Local);
-await foreach (TargetInfo device in localRouting.AdsBroadcastSearchAsyncStream(secondsTimeout: 5))
+await foreach (TargetInfo device in localRouting.AdsBroadcastSearchStreamAsync(secondsTimeout: 5))
     Console.WriteLine(device.Name);
  ```
 
 #### Add an ADS route to a remote system
 ```csharp
 using AdsRoutingClient localRouting = new(AmsNetId.Local);
-localRouting.AddRoute("192.168.1.100.1.1", "192.168.1.100", "CX5130-Office", "Administrator", "1");
+await localRouting.AddRouteAsync("192.168.1.100.1.1", "192.168.1.100", "IPC-Office", "Admin", passwordSecStr);
 ```
-
-
-<!-- CONTRIBUTING -->
-## Contributing
-
-Contributions are very much appreachiated. Please fork the repo and create a pull request or simply open an issue with the tag "enhancement".
-
-If you would like to contribute by implementing a useful ADS function, but don't know how, here is a quick guide:
-
-1. Download the Beckhoff [TF6010 | TwinCAT 3 ADS Monitor](https://www.beckhoff.com/en-us/products/automation/twincat/tfxxxx-twincat-3-functions/tf6xxx-connectivity/tf6010.html) and start an ADS recording.
-
-2. Perform the TwinCAT-action you would like to recreate.
-
-3. Stop recording and search for the ADS frames involved in the action.
-
-4. Implement your method that creates an ADS request according to the recorded pattern.
-
-
-
-<!-- LICENSE -->
-## License
-
-Distributed under the MIT License. See `LICENSE.txt` for more information.
-
-
-
-<!-- MARKDOWN LINKS & IMAGES -->
-<!-- https://www.markdownguide.org/basic-syntax/#reference-style-links -->
-[contributors-shield]: https://img.shields.io/github/contributors/othneildrew/Best-README-Template.svg?style=for-the-badge
-[contributors-url]: https://github.com/othneildrew/Best-README-Template/graphs/contributors
-[forks-shield]: https://img.shields.io/github/forks/othneildrew/Best-README-Template.svg?style=for-the-badge
-[forks-url]: https://github.com/othneildrew/Best-README-Template/network/members
-[stars-shield]: https://img.shields.io/github/stars/othneildrew/Best-README-Template.svg?style=for-the-badge
-[stars-url]: https://github.com/othneildrew/Best-README-Template/stargazers
-[issues-shield]: https://img.shields.io/github/issues/othneildrew/Best-README-Template.svg?style=for-the-badge
-[issues-url]: https://github.com/othneildrew/Best-README-Template/issues
-[license-shield]: https://img.shields.io/github/license/othneildrew/Best-README-Template.svg?style=for-the-badge
-[license-url]: https://github.com/othneildrew/Best-README-Template/blob/master/LICENSE.txt
-[linkedin-shield]: https://img.shields.io/badge/-LinkedIn-black.svg?style=for-the-badge&logo=linkedin&colorB=555
-[linkedin-url]: https://linkedin.com/in/othneildrew
-[product-screenshot]: images/screenshot.png
-[Next.js]: https://img.shields.io/badge/next.js-000000?style=for-the-badge&logo=nextdotjs&logoColor=white
-[Next-url]: https://nextjs.org/
-[React.js]: https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB
-[React-url]: https://reactjs.org/
-[Vue.js]: https://img.shields.io/badge/Vue.js-35495E?style=for-the-badge&logo=vuedotjs&logoColor=4FC08D
-[Vue-url]: https://vuejs.org/
-[Angular.io]: https://img.shields.io/badge/Angular-DD0031?style=for-the-badge&logo=angular&logoColor=white
-[Angular-url]: https://angular.io/
-[Svelte.dev]: https://img.shields.io/badge/Svelte-4A4A55?style=for-the-badge&logo=svelte&logoColor=FF3E00
-[Svelte-url]: https://svelte.dev/
-[Laravel.com]: https://img.shields.io/badge/Laravel-FF2D20?style=for-the-badge&logo=laravel&logoColor=white
-[Laravel-url]: https://laravel.com
-[Bootstrap.com]: https://img.shields.io/badge/Bootstrap-563D7C?style=for-the-badge&logo=bootstrap&logoColor=white
-[Bootstrap-url]: https://getbootstrap.com
-[JQuery.com]: https://img.shields.io/badge/jQuery-0769AD?style=for-the-badge&logo=jquery&logoColor=white
-[JQuery-url]: https://jquery.com 
