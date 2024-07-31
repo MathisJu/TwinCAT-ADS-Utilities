@@ -13,24 +13,24 @@ namespace AdsUtilities
 {
     internal class ReadRequestHelper
     {
-        public byte[] data { set; get; }
+        public byte[] Bytes { set; get; }
         private int _currentIndex;
 
         public ReadRequestHelper(byte[] data)
         {
-            this.data = data;
+            Bytes = data;
             _currentIndex = 0;
         }
 
         public ReadRequestHelper(int length)
         {
-            this.data = new byte[length];
+            Bytes = new byte[length];
             _currentIndex = 0;
         }
 
         public void Clear()
         {
-            Array.Clear(data, 0, data.Length);
+            Array.Clear(Bytes, 0, Bytes.Length);
         }
 
         public void Skip(int length=1)
@@ -40,10 +40,10 @@ namespace AdsUtilities
 
         public int SkipNullBytes()
         {
-            if (data[_currentIndex] != 0)
+            if (Bytes[_currentIndex] != 0)
                 return 0;
             int bytesSkipped = 0;
-            while (data.Length > _currentIndex && data[_currentIndex] == 0)
+            while (Bytes.Length > _currentIndex && Bytes[_currentIndex] == 0)
             {
                 _currentIndex++;
                 bytesSkipped++;
@@ -63,27 +63,27 @@ namespace AdsUtilities
 
         public bool IsFullyProcessed()
         {
-            if (_currentIndex < data.Length)
+            if (_currentIndex < Bytes.Length)
                 return false;
             return true;
         }
 
         public byte ExtractByte()
         {
-            if (_currentIndex + sizeof(byte) > data.Length)
+            if (_currentIndex + sizeof(byte) > Bytes.Length)
             {
                 throw new InvalidOperationException("Tried to extract more bytes from array than it contains.");
             }
-            return data[_currentIndex++];
+            return Bytes[_currentIndex++];
         }
         public T ExtractStruct<T>() where T : struct
         {
             int structSize = Marshal.SizeOf(typeof(Structs.FileInfoByteMapped));
-            if (_currentIndex + structSize > data.Length)
+            if (_currentIndex + structSize > Bytes.Length)
             {
                 throw new InvalidOperationException("Tried to extract more bytes from array than it contains.");
             }
-            byte[] structBuffer = data.Skip(_currentIndex).Take(structSize).ToArray();
+            byte[] structBuffer = Bytes.Skip(_currentIndex).Take(structSize).ToArray();
             var handle = GCHandle.Alloc(structBuffer, GCHandleType.Pinned);
             T result;
             try
@@ -104,7 +104,7 @@ namespace AdsUtilities
         }
         public uint ExtractUint32()
         {
-            uint value = BitConverter.ToUInt32(data, _currentIndex);
+            uint value = BitConverter.ToUInt32(Bytes, _currentIndex);
             _currentIndex += sizeof(uint);
             return value;
         }
@@ -112,7 +112,7 @@ namespace AdsUtilities
         public byte[] ExtractBytes(int length)
         {
             byte[] result = new byte[length];
-            Array.Copy(data, _currentIndex, result, 0, length);
+            Array.Copy(Bytes, _currentIndex, result, 0, length);
             _currentIndex += length;
             return result;
         }
@@ -125,27 +125,27 @@ namespace AdsUtilities
 
         public string ExtractStringWithLength()
         {
-            int length = data[_currentIndex++];
+            int length = Bytes[_currentIndex++];
             _currentIndex += 3; // Skip Null-Bytes
-            string result = Encoding.UTF8.GetString(data, _currentIndex, length);
+            string result = Encoding.UTF8.GetString(Bytes, _currentIndex, length);
             _currentIndex += length + 2; // Skip double string termination
             return result;
         }
 
         public string ExtractString()
         {
-            if (data[_currentIndex]==0)
+            if (Bytes[_currentIndex]==0)
                 return string.Empty;
-            int terminationPosition = Array.IndexOf(data, (byte)0, _currentIndex);
+            int terminationPosition = Array.IndexOf(Bytes, (byte)0, _currentIndex);
             byte[] stringBytes = new byte[terminationPosition - _currentIndex];
-            Array.Copy(data, _currentIndex, stringBytes, 0, terminationPosition - _currentIndex);
+            Array.Copy(Bytes, _currentIndex, stringBytes, 0, terminationPosition - _currentIndex);
             _currentIndex = terminationPosition + 1;
             return Encoding.UTF8.GetString(stringBytes);
         }
 
         public ushort ExtractUint16()
         {
-            ushort value = BitConverter.ToUInt16(data, _currentIndex);
+            ushort value = BitConverter.ToUInt16(Bytes, _currentIndex);
             _currentIndex += sizeof(ushort);
             return value;
         }
@@ -153,47 +153,47 @@ namespace AdsUtilities
 
     internal class WriteRequestHelper 
     {
-        private List<byte> _requestBytes { get; set; }
+        private List<byte> RequestBytes { get; set; }
 
         public WriteRequestHelper()
         {
-            _requestBytes = new List<byte>();
+            RequestBytes = new List<byte>();
         }
 
         public WriteRequestHelper Add(byte data)
         {
-            _requestBytes.Add(data);
+            RequestBytes.Add(data);
             return this;
         }
 
         public void Clear()
         {
-            _requestBytes.Clear();
-            _requestBytes = new();
+            RequestBytes.Clear();
+            RequestBytes = new();
         }
 
         public WriteRequestHelper Add(byte[] data)
         {
-            _requestBytes.AddRange(data);
+            RequestBytes.AddRange(data);
             return this;
         }
 
         public WriteRequestHelper AddStringUTF8(string str)
         {
-            _requestBytes.AddRange(Encoding.UTF8.GetBytes(str));
-            _requestBytes.Add(0);   // add string termination
+            RequestBytes.AddRange(Encoding.UTF8.GetBytes(str));
+            RequestBytes.Add(0);   // add string termination
             return this;
         }
         public WriteRequestHelper AddStringAscii(string str)    // ToDo: Don't remember why I didn't use UTF8 for some parameters. It should work just the same
         {
-            _requestBytes.AddRange(Encoding.ASCII.GetBytes(str));
-            _requestBytes.Add(0);   // add string termination
+            RequestBytes.AddRange(Encoding.ASCII.GetBytes(str));
+            RequestBytes.Add(0);   // add string termination
             return this;
         }
 
         public WriteRequestHelper AddInt(int data)
         {
-            _requestBytes.AddRange(BitConverter.GetBytes(data));
+            RequestBytes.AddRange(BitConverter.GetBytes(data));
             return this;
         }
 
@@ -212,21 +212,21 @@ namespace AdsUtilities
             {
                 Marshal.FreeHGlobal(ptr);
             }
-            _requestBytes.AddRange(structAsBytes);
+            RequestBytes.AddRange(structAsBytes);
             return this;
         }
 
         public WriteRequestHelper TrimEnd(int terminationLength)
         {
-            while (_requestBytes.Count > 0 && _requestBytes[_requestBytes.Count - 1] == 0)
+            while (RequestBytes.Count > 0 && RequestBytes[^1] == 0)
             {
-                _requestBytes.RemoveAt(_requestBytes.Count - 1);
+                RequestBytes.RemoveAt(RequestBytes.Count - 1);
             }
             if (terminationLength > 0)
             {
                 for (int i = 0; i < terminationLength; i++)
                 {
-                    _requestBytes.Add(0);
+                    RequestBytes.Add(0);
                 }
             }
             return this;
@@ -234,7 +234,7 @@ namespace AdsUtilities
 
         public byte[] GetBytes()
         {
-            return _requestBytes.ToArray();
+            return RequestBytes.ToArray();
         }
     }
         

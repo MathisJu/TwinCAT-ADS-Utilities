@@ -57,7 +57,7 @@ foreach (TargetInfo device in devicesFound)
 
 // Option 2:
 using AdsRoutingClient localRouting = new(AmsNetId.Local);
-await foreach (TargetInfo device in localRouting.AdsBroadcastSearchStreamAsync(secondsTimeout: 5))
+await foreach (TargetInfo device in localRouting.AdsBroadcastSearchAsyncStream(secondsTimeout: 5))
     Console.WriteLine(device.Name);
  ```
 

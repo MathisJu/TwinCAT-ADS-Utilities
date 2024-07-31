@@ -14,7 +14,7 @@ namespace AdsUtilities
     {
         public string NetId { get { return _netId.ToString(); } }
 
-        private readonly AdsClient adsClient = new();
+        private readonly AdsClient _adsClient = new();
 
         private readonly AmsNetId _netId;
 
@@ -41,9 +41,13 @@ namespace AdsUtilities
             byte[] wrBfr = Encoding.UTF8.GetBytes(path);
             byte[] rdBfr = new byte[4];
 
-            adsClient.Connect(_netId, (int)Constants.AdsPortSystemService);
-            await adsClient.ReadWriteAsync(Constants.AdsIGrpSysServFOpen, openFlags, rdBfr, wrBfr, cancel);
-            adsClient.Disconnect();
+            _adsClient.Connect(_netId, (int)Constants.AdsPortSystemService);
+            var rwResult = await _adsClient.ReadWriteAsync(Constants.AdsIGrpSysServFOpen, openFlags, rdBfr, wrBfr, cancel);
+            _adsClient.Disconnect();
+
+            if (rwResult.ErrorCode is AdsErrorCode.DeviceNotFound)
+                _logger?.LogError("Could not open file '{filePath}' on {netId} because the file was not found.", path, NetId);
+            rwResult.ThrowOnError();
 
             return BitConverter.ToUInt32(rdBfr);   // Return file handle
         }
@@ -64,9 +68,9 @@ namespace AdsUtilities
 
         private async Task FileCloseAsync(uint hFile, CancellationToken cancel = default)
         {
-            adsClient.Connect(_netId, (int)Constants.AdsPortSystemService);
-            await adsClient.ReadWriteAsync(Constants.AdsIGrpSysServFClose, hFile, Array.Empty<byte>(), Array.Empty<byte>(), cancel);
-            adsClient.Disconnect();
+            _adsClient.Connect(_netId, (int)Constants.AdsPortSystemService);
+            await _adsClient.ReadWriteAsync(Constants.AdsIGrpSysServFClose, hFile, Array.Empty<byte>(), Array.Empty<byte>(), cancel);
+            _adsClient.Disconnect();
         }
 
         private async Task<Structs.FileInfoByteMapped> GetFileInfoBytesAsync(string fileName, CancellationToken cancel = default)
@@ -75,86 +79,103 @@ namespace AdsUtilities
             byte[] wrBfr = Encoding.UTF8.GetBytes(fileName);
             byte[] rdBfr = new byte[Marshal.SizeOf(typeof(Structs.FileInfoByteMapped))];      // Allocate memory buffer the size of the byte stream returned by a file info request  
 
-            adsClient.Connect(_netId, (int)Constants.AdsPortSystemService);
-            await adsClient.ReadWriteAsync(Constants.AdsIGrpSysServFFind, hFile, rdBfr, wrBfr, cancel);
-            adsClient.Disconnect();
+            _adsClient.Connect(_netId, (int)Constants.AdsPortSystemService);
+            await _adsClient.ReadWriteAsync(Constants.AdsIGrpSysServFFind, hFile, rdBfr, wrBfr, cancel);
+            _adsClient.Disconnect();
 
             await FileCloseAsync(hFile, cancel);
 
             return Structs.Converter.MarshalToStructure<Structs.FileInfoByteMapped>(rdBfr);
         }
 
-        internal async Task<byte[]> FileReadFullAsync(string path, bool binaryOpen = true, CancellationToken cancel = default)
+        public async Task<byte[]> FileReadFullAsync(string path, bool binaryOpen = true, CancellationToken cancel = default)
         {
             long fileSize = (await GetFileInfoAsync(path, cancel)).fileSize;
-            byte[] rdBfr = new byte[fileSize];   // Read file size and allocate memory
+            byte[] rdBfr = new byte[fileSize];   // Read file size and allocate memory for the whole file --> use with caution
 
             uint hFile = await FileOpenReadingAsync(path, binaryOpen, cancel);
 
-            adsClient.Connect((int)Constants.AdsPortSystemService);
-            await adsClient.ReadWriteAsync(Constants.AdsIGrpSysServFRead, hFile, rdBfr, new byte[4], cancel);
-            adsClient.Disconnect();
+            _adsClient.Connect((int)Constants.AdsPortSystemService);
+            await _adsClient.ReadWriteAsync(Constants.AdsIGrpSysServFRead, hFile, rdBfr, new byte[4], cancel);
+            _adsClient.Disconnect();
 
             await FileCloseAsync(hFile, cancel);
 
             return rdBfr.ToArray();
         }
 
-        public async Task FileCopyAsync(string pathLocal, AdsFileClient destinationFileClient, string pathTarget, bool binaryOpen = true, uint chunkSize = 10000, CancellationToken cancel = default)
+        public async Task FileCopyAsync(string pathSource, AdsFileClient destinationFileClient, string pathDestination, bool binaryOpen = true, IProgress<double>? progress = null, uint chunkSizeKB = 100, CancellationToken cancel = default)
         {
-            uint hFileRead = await FileOpenReadingAsync(pathLocal, binaryOpen, cancel);
+            var fileInfo = await GetFileInfoAsync(pathSource, cancel);
+            long fileSize = fileInfo.fileSize;
+            uint chunkSizeBytes = chunkSizeKB * 1000;
+            long bytesCopied = 0;
 
-            uint hFileWrite = await destinationFileClient.FileOpenWritingAsync(pathTarget, binaryOpen, cancel);
+            uint hFileRead = await FileOpenReadingAsync(pathSource, binaryOpen, cancel);
+            uint hFileWrite = await destinationFileClient.FileOpenWritingAsync(pathDestination, binaryOpen, cancel);
             
             while (true)
             {
-                byte[] fileContentBuffer = await FileReadChunkAsync(hFileRead, chunkSize, binaryOpen, cancel);
-                await destinationFileClient.FileWriteChunkAsync(hFileWrite, fileContentBuffer, binaryOpen, cancel);
+                cancel.ThrowIfCancellationRequested();
 
-                if (fileContentBuffer.Length == chunkSize)  // not finished reading content from file
+                byte[] fileContentBuffer = await FileReadChunkAsync(hFileRead, chunkSizeBytes, cancel);
+                await destinationFileClient.FileWriteChunkAsync(hFileWrite, fileContentBuffer, cancel);
+
+                if(progress is not null)
+                {
+                    bytesCopied += fileContentBuffer.Length;
+                    double progressPercentage = 100 * (double)bytesCopied / fileSize;
+                    progress.Report(progressPercentage);
+                }
+
+                if (fileContentBuffer.Length == chunkSizeBytes)  // not finished reading content from file
                     continue;
                 break;
             }
+
             await FileCloseAsync(hFileRead, cancel);
             await destinationFileClient.FileCloseAsync(hFileWrite, cancel);
         }
 
-        private async Task FileWriteChunkAsync(uint hFile, byte[] chunk, bool binaryOpen = true, CancellationToken cancel = default)
+        public async Task FileCopyAsync(string pathSource, string pathDestination, bool binaryOpen = true, IProgress<double>? progress = null, uint chunkSizeBytes = 10_000, CancellationToken cancel = default) 
+            => await FileCopyAsync(pathSource, this, pathDestination, binaryOpen, progress, chunkSizeBytes, cancel);
+
+        private async Task FileWriteChunkAsync(uint hFile, byte[] chunk, CancellationToken cancel = default)
         {
-            adsClient.Connect(_netId, (int)Constants.AdsPortSystemService);
-            await adsClient.ReadWriteAsync(Constants.AdsIGrpSysServFWrite, hFile, new byte[4], chunk, cancel);
-            adsClient.Disconnect();
+            _adsClient.Connect(_netId, (int)Constants.AdsPortSystemService);
+            await _adsClient.ReadWriteAsync(Constants.AdsIGrpSysServFWrite, hFile, new byte[4], chunk, cancel);
+            _adsClient.Disconnect();
         }
 
-        internal async Task<byte[]> FileReadChunkAsync(uint hFile, uint chunkSize, bool binaryOpen = true, CancellationToken cancel = default)
+        private async Task<byte[]> FileReadChunkAsync(uint hFile, uint chunkSize, CancellationToken cancel = default)
         {
             byte[] rdBfr = new byte[chunkSize];
 
-            adsClient.Connect((int)Constants.AdsPortSystemService);
-            var readWriteResult = await adsClient.ReadWriteAsync(Constants.AdsIGrpSysServFRead, hFile, rdBfr, new byte[4], cancel);
-            adsClient.Disconnect();
+            _adsClient.Connect((int)Constants.AdsPortSystemService);
+            var readWriteResult = await _adsClient.ReadWriteAsync(Constants.AdsIGrpSysServFRead, hFile, rdBfr, new byte[4], cancel);
+            _adsClient.Disconnect();
 
             if(readWriteResult.ReadBytes < chunkSize)
                 return rdBfr.Take(readWriteResult.ReadBytes).ToArray();
             return rdBfr.ToArray();
         }
 
-        internal async Task FileWriteFullAsync(string path, byte[] data, bool binaryOpen = true, CancellationToken cancel = default)
+        public async Task FileWriteFullAsync(string path, byte[] data, bool binaryOpen = true, CancellationToken cancel = default)
         {
             uint hFile = await FileOpenWritingAsync(path, binaryOpen, cancel);
 
-            adsClient.Connect(_netId, (int)Constants.AdsPortSystemService);
-            await adsClient.ReadWriteAsync(Constants.AdsIGrpSysServFWrite, hFile, new byte[4], data, cancel);
-            adsClient.Disconnect();
+            _adsClient.Connect(_netId, (int)Constants.AdsPortSystemService);
+            await _adsClient.ReadWriteAsync(Constants.AdsIGrpSysServFWrite, hFile, new byte[4], data, cancel);
+            _adsClient.Disconnect();
 
             await FileCloseAsync(hFile, cancel);
         }
 
         public async Task DeleteFileAsync(string path, CancellationToken cancel = default)
         {
-            adsClient.Connect(_netId, (int)Constants.AdsPortSystemService);
-            await adsClient.ReadWriteAsync(Constants.AdsIGrpSysServFDelete, Constants.PathGeneric << 16, Array.Empty<byte>(), Encoding.UTF8.GetBytes(path), cancel);
-            adsClient.Disconnect();
+            _adsClient.Connect(_netId, (int)Constants.AdsPortSystemService);
+            await _adsClient.ReadWriteAsync(Constants.AdsIGrpSysServFDelete, Constants.PathGeneric << 16, Array.Empty<byte>(), Encoding.UTF8.GetBytes(path), cancel);
+            _adsClient.Disconnect();
         }
 
         public async Task RenameFileAsync(string filePathCurrent, string filePathNew, CancellationToken cancel = default)
@@ -163,9 +184,9 @@ namespace AdsUtilities
                 .AddStringUTF8(filePathCurrent)
                 .AddStringUTF8(filePathNew);
 
-            adsClient.Connect(_netId, (int)Constants.AdsPortSystemService);
-            await adsClient.ReadWriteAsync(Constants.AdsIGrpSysServFRename, 1 << 16, Array.Empty<byte>(), renameRequest.GetBytes(), cancel);
-            adsClient.Disconnect();
+            _adsClient.Connect(_netId, (int)Constants.AdsPortSystemService);
+            await _adsClient.ReadWriteAsync(Constants.AdsIGrpSysServFRename, 1 << 16, Array.Empty<byte>(), renameRequest.GetBytes(), cancel);
+            _adsClient.Disconnect();
         }
 
         public async Task<Structs.FileInfoDetails> GetFileInfoAsync(string path, CancellationToken cancel = default)
@@ -176,16 +197,16 @@ namespace AdsUtilities
 
         public async Task CreateDirectoryAsync(string path, CancellationToken cancel = default)
         {
-            adsClient.Connect(_netId, (int)Constants.AdsPortSystemService);
-            await adsClient.ReadWriteAsync(Constants.AdsIGrpSysServMkDir, Constants.PathGeneric, Array.Empty<byte>(), Encoding.UTF8.GetBytes(path), cancel);
-            adsClient.Disconnect();
+            _adsClient.Connect(_netId, (int)Constants.AdsPortSystemService);
+            await _adsClient.ReadWriteAsync(Constants.AdsIGrpSysServMkDir, Constants.PathGeneric, Array.Empty<byte>(), Encoding.UTF8.GetBytes(path), cancel);
+            _adsClient.Disconnect();
         }
 
         public async Task DeleteDirectoryAsync(string path, CancellationToken cancel = default)
         {
-            adsClient.Connect(_netId, (int)Constants.AdsPortSystemService);
-            await adsClient.ReadWriteAsync(Constants.AdsIGrpSysServRmDir, Constants.PathGeneric, Array.Empty<byte>(), Encoding.UTF8.GetBytes(path), cancel);
-            adsClient.Disconnect();
+            _adsClient.Connect(_netId, (int)Constants.AdsPortSystemService);
+            await _adsClient.ReadWriteAsync(Constants.AdsIGrpSysServRmDir, Constants.PathGeneric, Array.Empty<byte>(), Encoding.UTF8.GetBytes(path), cancel);
+            _adsClient.Disconnect();
         }
 
         public async IAsyncEnumerable<Structs.FileInfoDetails> GetFolderContentStreamAsync(string path, [EnumeratorCancellation] CancellationToken cancel = default)
@@ -201,19 +222,15 @@ namespace AdsUtilities
 
             byte[] fileInfoBuffer = new byte[Marshal.SizeOf(typeof(Structs.FileInfoByteMapped))];      // Allocate memory buffer the size of the byte stream returned by a file info request
 
-            adsClient.Connect(_netId, (int)Constants.AdsPortSystemService);
+            _adsClient.Connect(_netId, (int)Constants.AdsPortSystemService);
 
             while (true)
             {
-                if (cancel.IsCancellationRequested)
-                {
-                    _logger?.LogWarning("Getting folder content of of '{path}' from '{netId}' was cancelled. Results may be incomplete.", path, _netId);
-                    yield break;
-                }
+                cancel.ThrowIfCancellationRequested();
 
                 Array.Clear(fileInfoBuffer, 0, fileInfoBuffer.Length);    // Clear buffer for next file
 
-                AdsErrorCode rwError = await adsClient.TryReadWriteAsync(
+                var rwResult = await _adsClient.ReadWriteAsync(
                     Constants.AdsIGrpSysServFFind,
                     idxOffs,
                     fileInfoBuffer,
@@ -221,18 +238,23 @@ namespace AdsUtilities
                     cancel
                 );
 
-                if (rwError == AdsErrorCode.DeviceNotFound)
+                if (rwResult.ErrorCode == AdsErrorCode.DeviceNotFound)
                     yield break;    // Reached end of folder content
-                else if (rwError != AdsErrorCode.NoError)
+                else if (rwResult.ErrorCode != AdsErrorCode.NoError)
                 {
-                    _logger?.LogError("Unexpected exception '{eMessage}' while getting folder content of '{path}' from '{netId}'. Results may be incomplete.", rwError.ToString(), path, _netId);
+                    _logger?.LogError("Unexpected exception '{eMessage}' while getting folder content of '{path}' from '{netId}'. Results may be incomplete.", rwResult.ErrorCode.ToString(), path, _netId);
                     yield break;
                 }
 
                 Structs.FileInfoByteMapped latestFile = Structs.Converter.MarshalToStructure<Structs.FileInfoByteMapped>(fileInfoBuffer);
+                Structs.FileInfoDetails latestFileDetails = (Structs.FileInfoDetails)latestFile;
                 idxOffs = latestFile.hFile;
                 nextFileBuffer = Array.Empty<byte>();
-                yield return (Structs.FileInfoDetails)latestFile;
+
+                if (latestFileDetails.fileName is "." or "..")  // ignore current dir and parent dir
+                    continue;
+
+                yield return latestFileDetails;
             }
         }
 
@@ -268,9 +290,9 @@ namespace AdsUtilities
                 .AddStringAscii(workingDirectory)
                 .AddStringAscii(commandLineParameters);
 
-            adsClient.Connect(new AmsAddress(_netId, AmsPort.SystemService));
-            var res = await adsClient.WriteAsync(Constants.AdsIGrpSysServStartProcess, 0, startProcessRequest.GetBytes(), cancel);
-            adsClient.Disconnect();
+            _adsClient.Connect(new AmsAddress(_netId, (int)Constants.AdsPortSystemService));
+            var res = await _adsClient.WriteAsync(Constants.AdsIGrpSysServStartProcess, 0, startProcessRequest.GetBytes(), cancel);
+            _adsClient.Disconnect();
             res.ThrowOnError();   
         }
 
@@ -281,11 +303,11 @@ namespace AdsUtilities
 
         public void Dispose()
         {
-            if (adsClient.IsConnected)
-                adsClient.Disconnect();
-            if (!adsClient.IsDisposed)
+            if (_adsClient.IsConnected)
+                _adsClient.Disconnect();
+            if (!_adsClient.IsDisposed)
             {
-                adsClient.Dispose();
+                _adsClient.Dispose();
                 GC.SuppressFinalize(this);
             }
         }

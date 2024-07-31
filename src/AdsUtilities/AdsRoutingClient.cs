@@ -23,7 +23,7 @@ namespace AdsUtilities
 
         private ILogger? _logger;
 
-        private readonly AdsClient adsClient = new();
+        private readonly AdsClient _adsClient = new();
 
         private readonly AmsNetId _netId;
 
@@ -50,12 +50,12 @@ namespace AdsUtilities
 
         public async Task RemoveLocalRouteEntryAsync(string routeName)
         {
-            adsClient.Connect(_netId, (int)Constants.AdsPortSystemService);
+            _adsClient.Connect(_netId, (int)Constants.AdsPortSystemService);
             WriteRequestHelper deleteRouteReq = new WriteRequestHelper()
                 .AddStringUTF8(routeName);
 
-            await adsClient.WriteAsync(Constants.AdsIGrpSysServDelRemote, 0, deleteRouteReq);
-            adsClient.Disconnect();
+            await _adsClient.WriteAsync(Constants.AdsIGrpSysServDelRemote, 0, deleteRouteReq);
+            _adsClient.Disconnect();
         }
 
         public async Task AddLocalRouteEntryAsync(string netIdEntry, string ipAddressEntry, string routeNameEntry, CancellationToken cancel = default) 
@@ -71,9 +71,9 @@ namespace AdsUtilities
                 .AddStringUTF8(ipAddressEntry)
                 .AddStringUTF8(routeNameEntry);
 
-            adsClient.Connect(_netId, (int)Constants.AdsPortSystemService);
-            await adsClient.WriteAsync(Constants.AdsIGrpSysServAddRemote, 0, addRouteRequest, cancel);
-            adsClient.Disconnect();
+            _adsClient.Connect(_netId, (int)Constants.AdsPortSystemService);
+            await _adsClient.WriteAsync(Constants.AdsIGrpSysServAddRemote, 0, addRouteRequest, cancel);
+            _adsClient.Disconnect();
         }
 
         public async Task AddRemoteRouteEntryAsync(string ipAddressRemote, string usernameRemote, string passwordRemote, string remoteRouteName, CancellationToken cancel = default)
@@ -136,6 +136,7 @@ namespace AdsUtilities
             List<Structs.NetworkInterfaceInfo> nicsInfo = await GetNetworkInterfacesAsync(cancel);
             bool foundNwAdapterInRange = false;
             bool rwSuccessAny = false;
+
             foreach (var nic in nicsInfo)
             {
                 if (!IsIpAddressInRange(nic.ipAddress, nic.subnetMask))   // look for a NIC with an IP that's in the same address range as the remote system and use this IP for the remote route entry
@@ -148,17 +149,19 @@ namespace AdsUtilities
 
                 byte[] rdBfr = new byte[2048];
 
-                adsClient.Connect(_netId, (int)Constants.AdsPortSystemService);
-                AdsErrorCode rwError = await adsClient.TryReadWriteAsync(Constants.AdsIGrpSysServBroadcast, 0, rdBfr, addRouteRequest.GetBytes(), cancel);
-                adsClient.Disconnect();
+                _adsClient.Connect(_netId, (int)Constants.AdsPortSystemService);
+                var rwResult = await _adsClient.ReadWriteAsync(Constants.AdsIGrpSysServBroadcast, 0, rdBfr, addRouteRequest.GetBytes(), cancel);
+                _adsClient.Disconnect();
 
-                if (rwError == AdsErrorCode.NoError)
+                if (rwResult.ErrorCode == AdsErrorCode.NoError)
                     rwSuccessAny = true;
 
                 foundNwAdapterInRange = true;
                 break;
             }
+
             addRouteRequest.Clear();
+
             if (!foundNwAdapterInRange)
                 _logger?.LogError("Error occurred when trying to add a remote route entry. No network adapter on the local system matched address range of the provided IP address. Please check the provided IP or the DHCP settings / the static IP on the remote system");
             if (!rwSuccessAny)
@@ -221,7 +224,7 @@ namespace AdsUtilities
         public async Task AddSubRouteAsync(string netIdGateway, string netIdSubRoute, string nameSubRoute, CancellationToken cancel= default)
         {
             using AdsRoutingClient routesReader = new(netIdGateway);
-            var routesGateway = await routesReader.GetRoutesListAsync();     // Check if there is a route between gateway and sub-route-system - mandatory for sub-route to work
+            var routesGateway = await routesReader.GetRoutesListAsync(cancel);     // Check if there is a route between gateway and sub-route-system - mandatory for sub-route to work
             if (!routesGateway.Where(r => r.NetId == netIdSubRoute).Any())
             {
                 _logger?.LogCritical("Sub-Route to {netIdSub} with gateway {netIdGate} could not be added because there is no existing route entry to the sub-route on the gateway. Make sure to add the remote route first.", netIdSubRoute, netIdGateway);
@@ -238,7 +241,7 @@ namespace AdsUtilities
 
             if (gatewayEntry != null)
             {
-                XElement subRoute = new XElement("SubRoute",
+                XElement subRoute = new ("SubRoute",
                                     new XElement("Name", nameSubRoute),
                                     new XElement("NetId", netIdSubRoute));
 
@@ -257,7 +260,7 @@ namespace AdsUtilities
         {
             string staticRoutesPath = GetTwinCatDirectory() + "/3.1/Target/StaticRoutes.xml";
             using AdsFileClient routesEditor = new(_netId);
-            byte[] staticRoutesContent = await routesEditor.FileReadFullAsync(staticRoutesPath, false);
+            byte[] staticRoutesContent = await routesEditor.FileReadFullAsync(staticRoutesPath, false, cancel);
             string staticRoutesString = Encoding.UTF8.GetString(staticRoutesContent.Where(c => c is not 0).ToArray());
             XDocument routesXml = XDocument.Parse(staticRoutesString);
 
@@ -266,7 +269,7 @@ namespace AdsUtilities
             if (connectionsEntry is null)
                 return;
 
-            XElement mqttRoute = new XElement("Mqtt",
+            XElement mqttRoute = new ("Mqtt",
             new XElement("Address", brokerAddress, new XAttribute("Port", $"{brokerPort}")));
 
             if (unidirectional)
@@ -303,22 +306,16 @@ namespace AdsUtilities
 
         private async Task<string> GetTwinCatDirectory()    // ToDo
         {
-            Structs.SystemInfo systemInfo = await GetSystemInfoAsync();
-            if (systemInfo.OsName.Contains("Windows"))
-                return "C:/TwinCAT";    // There may be an ADS command to read this. 
-            if (systemInfo.OsName.Contains("BSD"))
-                return "C:/usr/TwinCAT";
-            else 
-                return string.Empty;
+            return "C:/TwinCAT";    // There may be an existing index group / offset that stores the twincat directory (somewhere under port 10000?)
         }
 
         public async Task<Structs.SystemInfo> GetSystemInfoAsync(CancellationToken cancel = default)
         {
             byte[] rdBfr = new byte[2048];
 
-            adsClient.Connect(_netId, (int)Constants.AdsPortSystemService);
-            await adsClient.ReadAsync(Constants.AdsIGrpSysServTcSystemInfo, 1, rdBfr, cancel);
-            adsClient.Disconnect();
+            _adsClient.Connect(_netId, (int)Constants.AdsPortSystemService);
+            await _adsClient.ReadAsync(Constants.AdsIGrpSysServTcSystemInfo, 1, rdBfr, cancel);
+            _adsClient.Disconnect();
 
             string sysInfo = Encoding.UTF8.GetString(rdBfr);
             if (string.IsNullOrEmpty(sysInfo)) return new Structs.SystemInfo();
@@ -363,9 +360,9 @@ namespace AdsUtilities
         {
             byte[] rdBfr = new byte[2400]; //Read buffer is sufficient for up to 100 CPU Cores (Increase size if needed)
 
-            adsClient.Connect(_netId, (int)Constants.AdsPortR0RTime);
-            var readResult = await adsClient.ReadAsync(1, 15, rdBfr, cancel); //Retrieve new Data       ToDo: add idxGrp and idxOffs to constants
-            adsClient.Disconnect();
+            _adsClient.Connect(_netId, (int)Constants.AdsPortR0RTime);
+            var readResult = await _adsClient.ReadAsync(1, 15, rdBfr, cancel); //Retrieve new Data       ToDo: add idxGrp and idxOffs to constants
+            _adsClient.Disconnect();
 
             List<Structs.CpuUsage> cpuInfo = new();
             for (int i = 0; i < readResult.ReadBytes / 24; i++)
@@ -381,14 +378,14 @@ namespace AdsUtilities
         public async Task<List<Structs.StaticRoutesInfo>> GetRoutesListAsync(CancellationToken cancel = default)
         {
             // Read ADS routes from target system 
-            adsClient.Connect(_netId, (int)Constants.AdsPortSystemService);
+            _adsClient.Connect(_netId, (int)Constants.AdsPortSystemService);
             List<Structs.StaticRoutesInfo> routesList = new();
             for (uint i = 0; i < 100; i++)
             {
                 ReadRequestHelper routeInfo = new(235);
-                AdsErrorCode readError = await adsClient.TryReadAsync(Constants.AdsIGrpSysServEnumRemote, i, routeInfo,cancel);
+                var readResult = await _adsClient.ReadAsync(Constants.AdsIGrpSysServEnumRemote, i, routeInfo,cancel);
 
-                if (readError != AdsErrorCode.NoError)
+                if (readResult.ErrorCode != AdsErrorCode.NoError)
                     break;
 
                 string netIdRd = routeInfo.ExtractNetId();
@@ -404,7 +401,7 @@ namespace AdsUtilities
                 };
                 routesList.Add(entry);
             }
-            adsClient.Disconnect();
+            _adsClient.Disconnect();
 
             return routesList;
         }
@@ -413,9 +410,9 @@ namespace AdsUtilities
         {
             byte[] rdBfr = new byte[129];
 
-            adsClient.Connect(_netId, (int)Constants.AdsPortSystemService);
-            adsClient.Read(Constants.AdsIGrpSysServTcSystemInfo, 9, rdBfr);
-            adsClient.Disconnect();
+            _adsClient.Connect(_netId, (int)Constants.AdsPortSystemService);
+            _adsClient.Read(Constants.AdsIGrpSysServTcSystemInfo, 9, rdBfr);
+            _adsClient.Disconnect();
 
             return Encoding.UTF8.GetString(rdBfr);
         }
@@ -423,14 +420,14 @@ namespace AdsUtilities
         async Task<List<Structs.NetworkInterfaceInfo>> GetNetworkInterfacesAsync(CancellationToken cancel = default)
         {
             byte[] readBfr = new byte[4];
-            adsClient.Connect(_netId, (int)Constants.AdsPortSystemService);
-            await adsClient.ReadAsync(Constants.AdsIGrpSysServIpHelperApi, Constants.AdsIOffsIpHelperApiAdaptersInfo, readBfr, cancel);
+            _adsClient.Connect(_netId, (int)Constants.AdsPortSystemService);
+            await _adsClient.ReadAsync(Constants.AdsIGrpSysServIpHelperApi, Constants.AdsIOffsIpHelperApiAdaptersInfo, readBfr, cancel);
 
             uint nicBfrSize = BitConverter.ToUInt32(readBfr, 0);  
             byte[] nicBfr = new byte[nicBfrSize];
 
-            await adsClient.ReadAsync(Constants.AdsIGrpSysServIpHelperApi, Constants.AdsIOffsIpHelperApiAdaptersInfo, nicBfr, cancel);
-            adsClient.Disconnect();
+            await _adsClient.ReadAsync(Constants.AdsIGrpSysServIpHelperApi, Constants.AdsIOffsIpHelperApiAdaptersInfo, nicBfr, cancel);
+            _adsClient.Disconnect();
             
             const uint bytesPerNic = 640;             // Info on every NIC takes 640 bytes. There might be a data field in the byte array that contains that size. For now it's statically defined
             uint numOfNics = nicBfrSize / bytesPerNic;  
@@ -477,12 +474,12 @@ namespace AdsUtilities
             }
 
             // Register a notification. The results of the broadcast search will be sent as a response on this notification (one notification per found device)
-            adsClient.AdsNotification += RecievedBroadcastResponse;
+            _adsClient.AdsNotification += RecievedBroadcastResponse;
             NotificationSettings sttngs = new(AdsTransMode.OnChange, 100, 0);
 
-            adsClient.Connect(_netId, (int)Constants.AdsPortSystemService);
+            _adsClient.Connect(_netId, (int)Constants.AdsPortSystemService);
             
-            uint notiHdl  = adsClient.AddDeviceNotification(Constants.AdsIGrpSysServBroadcast, 0, 2048, sttngs, null);   
+            uint notiHdl  = _adsClient.AddDeviceNotification(Constants.AdsIGrpSysServBroadcast, 0, 2048, sttngs, null);   
 
             foreach (Structs.NetworkInterfaceInfo nic in interfacesToBroadcastOn)
             {
@@ -497,7 +494,7 @@ namespace AdsUtilities
                 Structs.TriggerBroadcastPacket broadcastPacket = new(broadcastAddress.GetAddressBytes(), AmsNetId.Local.ToBytes());
                 try
                 {
-                    await adsClient.WriteAsync(Constants.AdsIGrpSysServBroadcast, 1, Structs.Converter.StructureToByteArray(broadcastPacket), cancellationToken);     
+                    await _adsClient.WriteAsync(Constants.AdsIGrpSysServBroadcast, 1, Structs.Converter.StructureToByteArray(broadcastPacket), cancellationToken);     
                 }
                 catch (AdsErrorException ex)
                 {
@@ -515,9 +512,9 @@ namespace AdsUtilities
             finally
             {
                 // Unregister the Event / Handle
-                adsClient.DeleteDeviceNotification(notiHdl);
-                adsClient.AdsNotification -= RecievedBroadcastResponse;
-                adsClient.Disconnect();
+                _adsClient.DeleteDeviceNotification(notiHdl);
+                _adsClient.AdsNotification -= RecievedBroadcastResponse;
+                _adsClient.Disconnect();
             }
             return broadcastResults;
         }
@@ -538,10 +535,10 @@ namespace AdsUtilities
             }
 
             // Register a notification and set callback method - the system service generates notification responses for every remote system found on the broadcast
-            adsClient.AdsNotification += RecievedBroadcastResponse;
+            _adsClient.AdsNotification += RecievedBroadcastResponse;
             NotificationSettings sttngs = new(AdsTransMode.OnChange, 100, 0);
-            adsClient.Connect(_netId, (int)Constants.AdsPortSystemService);
-            var deviceNotiResult = await adsClient.AddDeviceNotificationAsync(Constants.AdsIGrpSysServBroadcast, 0, 2048, sttngs, null, cancellationToken);
+            _adsClient.Connect(_netId, (int)Constants.AdsPortSystemService);
+            var deviceNotiResult = await _adsClient.AddDeviceNotificationAsync(Constants.AdsIGrpSysServBroadcast, 0, 2048, sttngs, null, cancellationToken);
 
             foreach (var nic in interfacesToBroadcastOn)
             {
@@ -556,7 +553,7 @@ namespace AdsUtilities
                 Structs.TriggerBroadcastPacket broadcastPacket = new(broadcastAddress.GetAddressBytes(), AmsNetId.Local.ToBytes());
                 try
                 {
-                    await adsClient.WriteAsync(Constants.AdsIGrpSysServBroadcast, 1, Structs.Converter.StructureToByteArray(broadcastPacket), cancellationToken);  // This tells the system service to send a broadcast telegram on the selected NIC
+                    await _adsClient.WriteAsync(Constants.AdsIGrpSysServBroadcast, 1, Structs.Converter.StructureToByteArray(broadcastPacket), cancellationToken);  // This tells the system service to send a broadcast telegram on the selected NIC
                 }
                 catch (AdsErrorException ex)
                 {
@@ -594,9 +591,9 @@ namespace AdsUtilities
             finally
             {
                 // Unregister the Event / Handle after timeout has elapsed or the action was canceled 
-                await adsClient.DeleteDeviceNotificationAsync(deviceNotiResult.Handle, cancellationToken);
-                adsClient.AdsNotification -= RecievedBroadcastResponse;
-                adsClient.Disconnect();
+                await _adsClient.DeleteDeviceNotificationAsync(deviceNotiResult.Handle, cancellationToken);
+                _adsClient.AdsNotification -= RecievedBroadcastResponse;
+                _adsClient.Disconnect();
             }
         }
 
@@ -713,8 +710,8 @@ namespace AdsUtilities
         public async Task<Structs.RouterStatusInfo> GetRouterStatusInfoAsync(CancellationToken cancel = default)
         {
             ReadRequestHelper readRequest = new(32);
-            adsClient.Connect(_netId, (int)Constants.AdsPortRouter);
-            await adsClient.ReadAsync(1, 1, readRequest, cancel);  
+            _adsClient.Connect(_netId, (int)Constants.AdsPortRouter);
+            await _adsClient.ReadAsync(1, 1, readRequest, cancel);  
 
             Structs.RouterStatusInfo routerInfo = new()
             {
@@ -728,9 +725,9 @@ namespace AdsUtilities
 
         public async Task<short> GetPlatformLevelAsync(CancellationToken cancel = default)
         {
-            adsClient.Connect(_netId, (int)Constants.AdsPortLicenseServer);
-            short platformLevel = (await adsClient.ReadAnyAsync<short>(Constants.AdsIGrpLicenseInfo, 0x2, cancel)).Value;  
-            adsClient.Disconnect();
+            _adsClient.Connect(_netId, (int)Constants.AdsPortLicenseServer);
+            short platformLevel = (await _adsClient.ReadAnyAsync<short>(Constants.AdsIGrpLicenseInfo, 0x2, cancel)).Value;  
+            _adsClient.Disconnect();
 
             return platformLevel;
         }
@@ -739,9 +736,9 @@ namespace AdsUtilities
         {
             byte[] rdBfr = new byte[16];
 
-            adsClient.Connect(_netId, (int)Constants.AdsPortLicenseServer);           
-            await adsClient.ReadAsync(Constants.AdsIGrpLicenseInfo, 0x1, rdBfr, cancel);
-            adsClient.Disconnect();
+            _adsClient.Connect(_netId, (int)Constants.AdsPortLicenseServer);           
+            await _adsClient.ReadAsync(Constants.AdsIGrpLicenseInfo, 0x1, rdBfr, cancel);
+            _adsClient.Disconnect();
 
             return rdBfr;
         }
@@ -765,20 +762,20 @@ namespace AdsUtilities
 
         public async Task<uint> GetVolumeNumberAsync(CancellationToken cancel = default)
         {
-            adsClient.Connect(_netId, (int)Constants.AdsPortLicenseServer);        
-            uint volumeNo = (await adsClient.ReadAnyAsync<uint>(Constants.AdsIGrpLicenseInfo, 0x5, cancel)).Value;
-            adsClient.Disconnect();
+            _adsClient.Connect(_netId, (int)Constants.AdsPortLicenseServer);        
+            uint volumeNo = (await _adsClient.ReadAnyAsync<uint>(Constants.AdsIGrpLicenseInfo, 0x5, cancel)).Value;
+            _adsClient.Disconnect();
 
             return volumeNo;
         }
 
         public void Dispose()
         {
-            if (adsClient.IsConnected)
-                adsClient.Disconnect();
-            if (!adsClient.IsDisposed)
+            if (_adsClient.IsConnected)
+                _adsClient.Disconnect();
+            if (!_adsClient.IsDisposed)
             {
-                adsClient.Dispose();
+                _adsClient.Dispose();
                 GC.SuppressFinalize(this);
             }
         }

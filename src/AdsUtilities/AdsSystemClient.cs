@@ -8,7 +8,7 @@ namespace AdsUtilities
     {
         public string NetId { get { return _netId.ToString(); } }
 
-        private static readonly AdsClient adsClient = new();
+        private static readonly AdsClient _adsClient = new();
 
         private readonly AmsNetId _netId;
 
@@ -24,9 +24,9 @@ namespace AdsUtilities
 
         public async Task RebootAsync(uint delaySec = 0, CancellationToken cancel = default) 
         {
-            adsClient.Connect(_netId, (int)Constants.AdsPortSystemService);
-            await adsClient.WriteControlAsync(AdsState.Shutdown, 1, BitConverter.GetBytes(delaySec), cancel);
-            adsClient.Disconnect();
+            _adsClient.Connect(_netId, (int)Constants.AdsPortSystemService);
+            await _adsClient.WriteControlAsync(AdsState.Shutdown, 1, BitConverter.GetBytes(delaySec), cancel);
+            _adsClient.Disconnect();
         }
 
         // ToDo: Redo this. There already is an ads command to enable remote control on CE. Using file access in not necessary
@@ -44,9 +44,9 @@ namespace AdsUtilities
                 .Add(new byte[] { 0, (byte)registryTypeCode, 0, 0, 0 })
                 .Add(value);
 
-            adsClient.Connect(_netId, (int)Constants.AdsPortSystemService);
-            await adsClient.WriteAsync(Constants.AdsIGrpSysServRegHklm, 0, setRegRequest.GetBytes(), cancel);
-            adsClient.Disconnect();
+            _adsClient.Connect(_netId, (int)Constants.AdsPortSystemService);
+            await _adsClient.WriteAsync(Constants.AdsIGrpSysServRegHklm, 0, setRegRequest.GetBytes(), cancel);
+            _adsClient.Disconnect();
         }
 
         public async Task<byte[]> QueryRegEntryAsync(string subKey, string valueName, uint byteSize, CancellationToken cancel = default)
@@ -57,20 +57,20 @@ namespace AdsUtilities
 
             byte[] readBuffer = new byte[byteSize];
 
-            adsClient.Connect(_netId, (int)Constants.AdsPortSystemService);
-            await adsClient.ReadWriteAsync(Constants.AdsIGrpSysServRegHklm, 0, readBuffer, readRegRequest.GetBytes(), cancel);
-            adsClient.Disconnect();
+            _adsClient.Connect(_netId, (int)Constants.AdsPortSystemService);
+            await _adsClient.ReadWriteAsync(Constants.AdsIGrpSysServRegHklm, 0, readBuffer, readRegRequest.GetBytes(), cancel);
+            _adsClient.Disconnect();
 
             return readBuffer;
         }
 
         public void Dispose()
         {
-            if (adsClient.IsConnected)
-                adsClient.Disconnect();
-            if (!adsClient.IsDisposed)
+            if (_adsClient.IsConnected)
+                _adsClient.Disconnect();
+            if (!_adsClient.IsDisposed)
             {
-                adsClient.Dispose();
+                _adsClient.Dispose();
                 GC.SuppressFinalize(this);
             }
         }

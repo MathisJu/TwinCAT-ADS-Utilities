@@ -14,7 +14,7 @@ namespace AdsUtilities
     {
         public string NetId { get { return _netId.ToString(); } }
 
-        private readonly AdsClient adsClient = new();
+        private readonly AdsClient _adsClient = new();
 
         private readonly AmsNetId _netId;
 
@@ -37,13 +37,13 @@ namespace AdsUtilities
 
         public async Task<Structs.IoDevice> GetIoDeviceInfoAsync(uint deviceId, CancellationToken cancel = default)
         {
-            adsClient.Connect(_netId, (int)Constants.AdsPortR0Io);
-            uint readLen = (await adsClient.ReadAnyAsync<uint>(Constants.AdsIGrpIoDeviceStateBase + deviceId, Constants.AdsIOffsReadDeviceFullInfo, cancel)).Value;
+            _adsClient.Connect(_netId, (int)Constants.AdsPortR0Io);
+            uint readLen = (await _adsClient.ReadAnyAsync<uint>(Constants.AdsIGrpIoDeviceStateBase + deviceId, Constants.AdsIOffsReadDeviceFullInfo, cancel)).Value;
 
             ReadRequestHelper readRequest = new((int)readLen);
 
-            await adsClient.ReadAsync(Constants.AdsIGrpIoDeviceStateBase + deviceId, Constants.AdsIOffsReadDeviceFullInfo, readRequest, cancel);
-            adsClient.Disconnect();
+            await _adsClient.ReadAsync(Constants.AdsIGrpIoDeviceStateBase + deviceId, Constants.AdsIOffsReadDeviceFullInfo, readRequest, cancel);
+            _adsClient.Disconnect();
 
             // Get Master info
             uint dataLen = readRequest.ExtractUint32();
@@ -80,9 +80,9 @@ namespace AdsUtilities
         {
             ReadRequestHelper readRequest = new(402);
 
-            adsClient.Connect(_netId, (int)Constants.AdsPortR0Io);
-            await adsClient.ReadAsync(Constants.AdsIGrpIoDeviceStateBase, Constants.AdsIOffsReadDeviceId, readRequest, cancel);
-            adsClient.Disconnect();
+            _adsClient.Connect(_netId, (int)Constants.AdsPortR0Io);
+            await _adsClient.ReadAsync(Constants.AdsIGrpIoDeviceStateBase, Constants.AdsIOffsReadDeviceId, readRequest, cancel);
+            _adsClient.Disconnect();
 
             uint numberOfIoDevices = readRequest.ExtractUint16();
             List<Structs.IoDevice> ioDevices = new();
@@ -98,26 +98,26 @@ namespace AdsUtilities
 
         public T ReadCoeData<T>(string netId, int ecSlaveAddress, ushort index, ushort subIndex)
         {
-            adsClient.Connect(netId, ecSlaveAddress);
-            T value = (T)adsClient.ReadAny(Constants.AdsIGrpCoe, ((uint)index << 16) | subIndex, typeof(T));
-            adsClient.Disconnect();
+            _adsClient.Connect(netId, ecSlaveAddress);
+            T value = (T)_adsClient.ReadAny(Constants.AdsIGrpCoe, ((uint)index << 16) | subIndex, typeof(T));
+            _adsClient.Disconnect();
             return value;
         }
 
         public void WriteCoeData(string netId, int ecSlaveAddress, ushort index, ushort subIndex, object value)
         {
-            adsClient.Connect(netId, ecSlaveAddress);
-            adsClient.WriteAny(Constants.AdsIGrpCoe, ((uint)index << 16) | subIndex, value);
-            adsClient.Disconnect();
+            _adsClient.Connect(netId, ecSlaveAddress);
+            _adsClient.WriteAny(Constants.AdsIGrpCoe, ((uint)index << 16) | subIndex, value);
+            _adsClient.Disconnect();
         }
 
         public void Dispose()
         {
-            if (adsClient.IsConnected)
-                adsClient.Disconnect();
-            if (!adsClient.IsDisposed)
+            if (_adsClient.IsConnected)
+                _adsClient.Disconnect();
+            if (!_adsClient.IsDisposed)
             {
-                adsClient.Dispose();
+                _adsClient.Dispose();
                 GC.SuppressFinalize(this);
             }
         }
