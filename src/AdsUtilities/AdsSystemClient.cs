@@ -10,16 +10,24 @@ namespace AdsUtilities
 
         private static readonly AdsClient _adsClient = new();
 
-        private readonly AmsNetId _netId;
+        private AmsNetId? _netId;
 
-        public AdsSystemClient(AmsNetId netId)
+        public AdsSystemClient()
         {
-            _netId = netId;
+            
         }
 
-        public AdsSystemClient(string netId)
+        public bool Connect(string netId)
         {
-            _netId = AmsNetId.Parse(netId);
+            _netId = new AmsNetId(netId);
+            _adsClient.Connect(_netId, AmsPort.SystemService);
+            AdsErrorCode readStateError = _adsClient.TryReadState(out _);
+            return readStateError == AdsErrorCode.NoError;
+        }
+
+        public bool ConnectLocal()
+        {
+            return Connect(AmsNetId.Local.ToString());
         }
 
         public async Task RebootAsync(uint delaySec = 0, CancellationToken cancel = default) 

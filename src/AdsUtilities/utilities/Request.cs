@@ -78,7 +78,7 @@ namespace AdsUtilities
         }
         public T ExtractStruct<T>() where T : struct
         {
-            int structSize = Marshal.SizeOf(typeof(Structs.FileInfoByteMapped));
+            int structSize = Marshal.SizeOf(typeof(FileInfoByteMapped));
             if (_currentIndex + structSize > Bytes.Length)
             {
                 throw new InvalidOperationException("Tried to extract more bytes from array than it contains.");

@@ -16,7 +16,7 @@ namespace AdsUtilities
 
         private readonly AdsClient _adsClient = new();
 
-        private readonly AmsNetId _netId;
+        private AmsNetId? _netId;
 
         private ILogger? _logger;
 
@@ -26,14 +26,22 @@ namespace AdsUtilities
             _logger = logger;
         }
 
-        public AdsFileClient(string netId)
+        public AdsFileClient()
         {
-            _netId = AmsNetId.Parse(netId);
+            
         }
 
-        public AdsFileClient(AmsNetId netId)
+        public bool Connect(string netId)
         {
-            _netId = netId;
+            _netId = new AmsNetId(netId);
+            _adsClient.Connect(_netId, AmsPort.SystemService);
+            AdsErrorCode readStateError = _adsClient.TryReadState(out _);
+            return readStateError == AdsErrorCode.NoError;
+        }
+
+        public bool ConnectLocal()
+        {
+            return Connect(AmsNetId.Local.ToString());
         }
 
         private async Task<uint> FileOpenAsync(string path, uint openFlags, CancellationToken cancel = default)
@@ -42,11 +50,17 @@ namespace AdsUtilities
             byte[] rdBfr = new byte[4];
 
             _adsClient.Connect(_netId, (int)Constants.AdsPortSystemService);
-            var rwResult = await _adsClient.ReadWriteAsync(Constants.AdsIGrpSysServFOpen, openFlags, rdBfr, wrBfr, cancel);
+            var rwResult = await _adsClient.ReadWriteAsync(
+                Constants.AdsIGrpSysServFOpen, 
+                openFlags, 
+                rdBfr, 
+                wrBfr, 
+                cancel);
             _adsClient.Disconnect();
 
             if (rwResult.ErrorCode is AdsErrorCode.DeviceNotFound)
                 _logger?.LogError("Could not open file '{filePath}' on {netId} because the file was not found.", path, NetId);
+
             rwResult.ThrowOnError();
 
             return BitConverter.ToUInt32(rdBfr);   // Return file handle
@@ -69,15 +83,20 @@ namespace AdsUtilities
         private async Task FileCloseAsync(uint hFile, CancellationToken cancel = default)
         {
             _adsClient.Connect(_netId, (int)Constants.AdsPortSystemService);
-            await _adsClient.ReadWriteAsync(Constants.AdsIGrpSysServFClose, hFile, Array.Empty<byte>(), Array.Empty<byte>(), cancel);
+            await _adsClient.ReadWriteAsync(
+                Constants.AdsIGrpSysServFClose, 
+                hFile, 
+                Array.Empty<byte>(), 
+                Array.Empty<byte>(), 
+                cancel);
             _adsClient.Disconnect();
         }
 
-        private async Task<Structs.FileInfoByteMapped> GetFileInfoBytesAsync(string fileName, CancellationToken cancel = default)
+        private async Task<FileInfoByteMapped> GetFileInfoBytesAsync(string fileName, CancellationToken cancel = default)
         {
             uint hFile = await FileOpenReadingAsync(fileName, false, cancel);
             byte[] wrBfr = Encoding.UTF8.GetBytes(fileName);
-            byte[] rdBfr = new byte[Marshal.SizeOf(typeof(Structs.FileInfoByteMapped))];      // Allocate memory buffer the size of the byte stream returned by a file info request  
+            byte[] rdBfr = new byte[Marshal.SizeOf(typeof(FileInfoByteMapped))];      // Allocate memory buffer the size of the byte stream returned by a file info request  
 
             _adsClient.Connect(_netId, (int)Constants.AdsPortSystemService);
             await _adsClient.ReadWriteAsync(Constants.AdsIGrpSysServFFind, hFile, rdBfr, wrBfr, cancel);
@@ -85,7 +104,7 @@ namespace AdsUtilities
 
             await FileCloseAsync(hFile, cancel);
 
-            return Structs.Converter.MarshalToStructure<Structs.FileInfoByteMapped>(rdBfr);
+            return StructConverter.MarshalToStructure<FileInfoByteMapped>(rdBfr);
         }
 
         public async Task<byte[]> FileReadFullAsync(string path, bool binaryOpen = true, CancellationToken cancel = default)
@@ -189,10 +208,10 @@ namespace AdsUtilities
             _adsClient.Disconnect();
         }
 
-        public async Task<Structs.FileInfoDetails> GetFileInfoAsync(string path, CancellationToken cancel = default)
+        public async Task<FileInfoDetails> GetFileInfoAsync(string path, CancellationToken cancel = default)
         {
-            Structs.FileInfoByteMapped fileEntry = await GetFileInfoBytesAsync(path, cancel);
-            return (Structs.FileInfoDetails)fileEntry;
+            FileInfoByteMapped fileEntry = await GetFileInfoBytesAsync(path, cancel);
+            return (FileInfoDetails)fileEntry;
         }
 
         public async Task CreateDirectoryAsync(string path, CancellationToken cancel = default)
@@ -209,7 +228,7 @@ namespace AdsUtilities
             _adsClient.Disconnect();
         }
 
-        public async IAsyncEnumerable<Structs.FileInfoDetails> GetFolderContentStreamAsync(string path, [EnumeratorCancellation] CancellationToken cancel = default)
+        public async IAsyncEnumerable<FileInfoDetails> GetFolderContentStreamAsync(string path, [EnumeratorCancellation] CancellationToken cancel = default)
         {
             if (path.EndsWith("/") || path.EndsWith("\\"))
                 path += "*";    // Add wild-card character 
@@ -220,7 +239,7 @@ namespace AdsUtilities
 
             byte[] nextFileBuffer = new WriteRequestHelper().AddStringUTF8(path).GetBytes();               // for first file
 
-            byte[] fileInfoBuffer = new byte[Marshal.SizeOf(typeof(Structs.FileInfoByteMapped))];      // Allocate memory buffer the size of the byte stream returned by a file info request
+            byte[] fileInfoBuffer = new byte[Marshal.SizeOf(typeof(FileInfoByteMapped))];      // Allocate memory buffer the size of the byte stream returned by a file info request
 
             _adsClient.Connect(_netId, (int)Constants.AdsPortSystemService);
 
@@ -246,8 +265,8 @@ namespace AdsUtilities
                     yield break;
                 }
 
-                Structs.FileInfoByteMapped latestFile = Structs.Converter.MarshalToStructure<Structs.FileInfoByteMapped>(fileInfoBuffer);
-                Structs.FileInfoDetails latestFileDetails = (Structs.FileInfoDetails)latestFile;
+                FileInfoByteMapped latestFile = StructConverter.MarshalToStructure<FileInfoByteMapped>(fileInfoBuffer);
+                FileInfoDetails latestFileDetails = (FileInfoDetails)latestFile;
                 idxOffs = latestFile.hFile;
                 nextFileBuffer = Array.Empty<byte>();
 
@@ -258,9 +277,9 @@ namespace AdsUtilities
             }
         }
 
-        public async Task<List<Structs.FileInfoDetails>> GetFolderContentListAsync(string path, CancellationToken cancel = default)
+        public async Task<List<FileInfoDetails>> GetFolderContentListAsync(string path, CancellationToken cancel = default)
         {
-            List<Structs.FileInfoDetails> folderContent = new();
+            List<FileInfoDetails> folderContent = new();
             await foreach (var item in GetFolderContentStreamAsync(path, cancel))
             {
                 folderContent.Add(item);
@@ -268,9 +287,9 @@ namespace AdsUtilities
             return folderContent;
         }
 
-        public IEnumerable<Structs.FileInfoDetails> GetFolderContentStream(string path)
+        public IEnumerable<FileInfoDetails> GetFolderContentStream(string path)
         {
-            IAsyncEnumerator<Structs.FileInfoDetails> enumerator = GetFolderContentStreamAsync(path).GetAsyncEnumerator();
+            IAsyncEnumerator<FileInfoDetails> enumerator = GetFolderContentStreamAsync(path).GetAsyncEnumerator();
             while (true)
             {
                 var moveNextTask = Task.Run(() => enumerator.MoveNextAsync().AsTask());

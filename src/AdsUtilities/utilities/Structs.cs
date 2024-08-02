@@ -1,9 +1,9 @@
 ﻿using System.Runtime.InteropServices;
 using System.Text;
 
-namespace AdsUtilities.Structs
+namespace AdsUtilities
 {
-    internal static class Converter
+    internal static class StructConverter
     {
         internal static T MarshalToStructure<T>(Memory<byte> memory)
         {

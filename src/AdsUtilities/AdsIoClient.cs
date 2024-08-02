@@ -16,7 +16,7 @@ namespace AdsUtilities
 
         private readonly AdsClient _adsClient = new();
 
-        private readonly AmsNetId _netId;
+        private AmsNetId? _netId;
 
         private ILogger? _logger;
 
@@ -25,17 +25,26 @@ namespace AdsUtilities
             _logger = logger;
         }
 
-        public AdsIoClient(string netId)
+
+        public AdsIoClient()
         {
-            _netId = AmsNetId.Parse(netId);
+            
         }
 
-        public AdsIoClient(AmsNetId netId)
+        public bool Connect(string netId)
         {
-            _netId = netId;
+            _netId = new AmsNetId(netId);
+            _adsClient.Connect(_netId, AmsPort.SystemService);
+            AdsErrorCode readStateError = _adsClient.TryReadState(out _);
+            return readStateError == AdsErrorCode.NoError;
         }
 
-        public async Task<Structs.IoDevice> GetIoDeviceInfoAsync(uint deviceId, CancellationToken cancel = default)
+        public bool ConnectLocal()
+        {
+            return Connect(AmsNetId.Local.ToString());
+        }
+
+        public async Task<IoDevice> GetIoDeviceInfoAsync(uint deviceId, CancellationToken cancel = default)
         {
             _adsClient.Connect(_netId, (int)Constants.AdsPortR0Io);
             uint readLen = (await _adsClient.ReadAnyAsync<uint>(Constants.AdsIGrpIoDeviceStateBase + deviceId, Constants.AdsIOffsReadDeviceFullInfo, cancel)).Value;
@@ -57,7 +66,7 @@ namespace AdsUtilities
             string masterName = readRequest.ExtractStringWithLength();
 
             // Get slaves info
-            List<Structs.IoBox> boxes = new();
+            List<IoBox> boxes = new();
             while (!readRequest.IsFullyProcessed())
             {
                 byte[] unknown4 = readRequest.ExtractBytes(2);
@@ -68,15 +77,15 @@ namespace AdsUtilities
                 string netIdMaster = readRequest.ExtractNetId();
                 uint unknown6 = readRequest.ExtractUint16();   // In some cases this is the same as port, in some it is null
                 string slaveName = readRequest.ExtractStringWithLength();
-                Structs.IoBox box = new() { name = slaveName, port = port, boxId = id };
+                IoBox box = new() { name = slaveName, port = port, boxId = id };
                 boxes.Add(box);
             }
 
-            Structs.IoDevice ecMaster = new() { deviceId = deviceId, netId = masterNetId, deviceName = masterName, boxes = boxes, boxCount = slaveCnt };
+            IoDevice ecMaster = new() { deviceId = deviceId, netId = masterNetId, deviceName = masterName, boxes = boxes, boxCount = slaveCnt };
             return ecMaster;
         }
 
-        public async Task<List<Structs.IoDevice>> GetIoDevicesAsync(CancellationToken cancel = default)
+        public async Task<List<IoDevice>> GetIoDevicesAsync(CancellationToken cancel = default)
         {
             ReadRequestHelper readRequest = new(402);
 
@@ -85,7 +94,7 @@ namespace AdsUtilities
             _adsClient.Disconnect();
 
             uint numberOfIoDevices = readRequest.ExtractUint16();
-            List<Structs.IoDevice> ioDevices = new();
+            List<IoDevice> ioDevices = new();
 
             for (int i = 0; i < numberOfIoDevices; i++)
             {

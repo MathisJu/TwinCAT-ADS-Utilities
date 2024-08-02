@@ -7,7 +7,8 @@ public class AdsFileClientTests : IDisposable
 
     public AdsFileClientTests()
     {
-        _client = new AdsFileClient(AmsNetId.Local);
+        _client = new AdsFileClient();
+        _client.ConnectLocal();
 
         // Create a temporary directory for the tests
         _testDirectory = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
@@ -16,6 +17,7 @@ public class AdsFileClientTests : IDisposable
 
     public void Dispose()
     {
+        _client.Dispose();
         // Clean up the temporary directory and its contents
         if (Directory.Exists(_testDirectory))
         {
@@ -148,7 +150,7 @@ public class AdsFileClientTests : IDisposable
         await File.WriteAllBytesAsync(filePath, data);
 
         // Act
-        var fileInfos = new List<AdsUtilities.Structs.FileInfoDetails>();
+        var fileInfos = new List<FileInfoDetails>();
         await foreach (var info in _client.GetFolderContentStreamAsync(dirPath))
         {
             fileInfos.Add(info);
