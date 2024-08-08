@@ -6,7 +6,7 @@
         mc:Ignorable="d"
         xmlns:local="clr-namespace:AdsUtilitiesUI"
         d:DataContext="{d:DesignInstance local:MainWindow, IsDesignTimeCreatable=True}"
-        Title="MainWindow" Height="450" Width="800">
+        Title="MainWindow" Height="500" Width="800">
     <Grid>
         <Grid.RowDefinitions>
             <!--Route Settings-->
@@ -92,13 +92,17 @@
                                 <RowDefinition Height="auto"/>
                                 <RowDefinition Height="auto"/>
                                 <RowDefinition Height="auto"/>
+                                <RowDefinition Height="*"/>
+                                <RowDefinition Height="auto"/>
+                                <RowDefinition Height="auto"/>
                                 <RowDefinition/>
                             </Grid.RowDefinitions>
                             <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="2*"/>
+                                <ColumnDefinition Width="3*"/>
+                                <ColumnDefinition Width="5*"/>
+                                <ColumnDefinition Width="1*"/>
                                 <ColumnDefinition Width="4*"/>
-                                <ColumnDefinition Width="3*"/>
-                                <ColumnDefinition Width="3*"/>
+                                <ColumnDefinition Width="4*"/>
                             </Grid.ColumnDefinitions>
 
                             <!-- Route Name -->
@@ -111,7 +115,7 @@
 
                             <!-- Address -->
                             <ComboBox Grid.Row="2" Grid.Column="0" Text="IP Address" VerticalAlignment="Center" MinHeight="10" Margin="2" >
-                                <ComboBoxItem Content="IP Address"/>
+                                <ComboBoxItem Content="IP Address" IsSelected="True"/>
                                 <ComboBoxItem Content="Host Name"/>
                             </ComboBox>
                             <TextBox Grid.Row="2" Grid.Column="1" Margin="5" />
@@ -120,29 +124,37 @@
                             <TextBlock Grid.Row="3" Grid.Column="0" Text="Remote Route Name" VerticalAlignment="Center" Margin="5" />
                             <TextBox Grid.Row="3" Grid.Column="1" Margin="5" />
 
+                            <!-- Username -->
+                            <TextBlock Grid.Row="5" Grid.Column="0" Text="Username" VerticalAlignment="Center" Margin="5" />
+                            <TextBox Grid.Row="5" Grid.Column="1" Margin="5" />
+
+                            <!-- Password -->
+                            <TextBlock Grid.Row="6" Grid.Column="0" Text="Password" VerticalAlignment="Center" Margin="5" />
+                            <TextBox Grid.Row="6" Grid.Column="1" Margin="5" />
+
                             <!-- Target Route Settings -->
-                            <GroupBox Header="Target Route"  Grid.Column="2" Margin="2" Grid.RowSpan="3">
+                            <GroupBox Header="Target Route"  Grid.Column="3" Margin="5" Grid.RowSpan="3">
                                 <StackPanel>
-                                    <RadioButton Content="None / Server" GroupName="TargetRoute" />
+                                    <RadioButton Content="None" GroupName="TargetRoute" />
                                     <RadioButton Content="Static" GroupName="TargetRoute" IsChecked="True" />
                                     <RadioButton Content="Temporary" GroupName="TargetRoute" />
                                 </StackPanel>
                             </GroupBox>
 
                             <!-- Remote Route Settings -->
-                            <GroupBox Header="Remote Route"  Grid.Column="3" Margin="2" Grid.RowSpan="3">
+                            <GroupBox Header="Remote Route"  Grid.Column="4" Margin="5" Grid.RowSpan="3">
                                 <StackPanel>
-                                    <RadioButton Content="None / Server" GroupName="RemoteRoute" />
+                                    <RadioButton Content="None" GroupName="RemoteRoute" />
                                     <RadioButton Content="Static" GroupName="RemoteRoute" IsChecked="True" />
                                     <RadioButton Content="Temporary" GroupName="RemoteRoute" />
                                 </StackPanel>
                             </GroupBox>
-                            
+
                             <!-- Restore Default Button -->
-                            <Button Grid.Column="2" Grid.Row="3" Content="Restore Default" Margin="5"></Button>
+                            <Button Grid.Column="4" Grid.Row="5" Content="Restore Default" Margin="5"></Button>
 
                             <!-- Add Route Button -->
-                            <Button Grid.Column="3" Grid.Row="3" Content="Add Route" Margin="5"></Button>
+                            <Button Grid.Column="4" Grid.Row="6" Content="Add Route" Margin="5"></Button>
                         </Grid>
                     </TabItem>
                 </TabControl>
@@ -154,7 +166,22 @@
                         <ColumnDefinition />
                     </Grid.ColumnDefinitions>
                     <GroupBox Grid.Column="0" Header="Local" Margin="2">
-
+                        <TreeView Name="FileTreeView" SelectedItemChanged="FileTreeView_SelectedItemChanged">
+                            <TreeView.Resources>
+                                <Style TargetType="{x:Type TreeViewItem}">
+                                    <EventSetter Event="Expanded" Handler="TreeViewItem_Expanded"/>
+                                    <EventSetter Event="MouseRightButtonUp" Handler="TreeViewItem_RightClick"/>
+                                </Style>
+                            </TreeView.Resources>
+                            <TreeView.ItemTemplate>
+                                <HierarchicalDataTemplate ItemsSource="{Binding Children}">
+                                    <StackPanel Orientation="Horizontal">
+                                        <Image Width="16" Height="16" Source="{Binding Image}" Margin="2"/>
+                                        <TextBlock Text="{Binding Name}"/>
+                                    </StackPanel>
+                                </HierarchicalDataTemplate>
+                            </TreeView.ItemTemplate>
+                        </TreeView>
                     </GroupBox>
                     <GroupBox Grid.Column="1" Header="Target" Margin="2">
 
