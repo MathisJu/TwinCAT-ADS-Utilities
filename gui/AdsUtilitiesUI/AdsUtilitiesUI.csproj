@@ -18,6 +18,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="Beckhoff.TwinCAT.Ads" Version="6.1.260" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\..\src\AdsUtilities\AdsUtilities.csproj" />
   </ItemGroup>
 

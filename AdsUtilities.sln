@@ -9,6 +9,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AdsUtilitiesTests", "test\A
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AdsUtilitiesUI", "gui\AdsUtilitiesUI\AdsUtilitiesUI.csproj", "{AA7D3C60-2B9E-4E8C-B195-8D23E8114383}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "simpleTestProj", "simpleTestProj\simpleTestProj.csproj", "{576CF7F5-6653-4F43-B7E5-5CB25E4BDEE7}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -27,6 +29,10 @@ Global
 		{AA7D3C60-2B9E-4E8C-B195-8D23E8114383}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{AA7D3C60-2B9E-4E8C-B195-8D23E8114383}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{AA7D3C60-2B9E-4E8C-B195-8D23E8114383}.Release|Any CPU.Build.0 = Release|Any CPU
+		{576CF7F5-6653-4F43-B7E5-5CB25E4BDEE7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{576CF7F5-6653-4F43-B7E5-5CB25E4BDEE7}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{576CF7F5-6653-4F43-B7E5-5CB25E4BDEE7}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{576CF7F5-6653-4F43-B7E5-5CB25E4BDEE7}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

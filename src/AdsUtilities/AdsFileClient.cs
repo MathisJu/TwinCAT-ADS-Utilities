@@ -309,7 +309,7 @@ namespace AdsUtilities
                 .AddStringAscii(workingDirectory)
                 .AddStringAscii(commandLineParameters);
 
-            _adsClient.Connect(new AmsAddress(_netId, (int)Constants.AdsPortSystemService));
+            _adsClient.Connect(_netId, (int)Constants.AdsPortSystemService);
             var res = await _adsClient.WriteAsync(Constants.AdsIGrpSysServStartProcess, 0, startProcessRequest.GetBytes(), cancel);
             _adsClient.Disconnect();
             res.ThrowOnError();   

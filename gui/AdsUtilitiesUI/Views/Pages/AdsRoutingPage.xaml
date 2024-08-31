@@ -1,0 +1,132 @@
+﻿<Page x:Class="AdsUtilitiesUI.AdsRoutingPage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+      xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+      xmlns:local="clr-namespace:AdsUtilitiesUI"
+      d:DataContext="{d:DesignInstance IsDesignTimeCreatable=True}"
+      mc:Ignorable="d" 
+      d:DesignHeight="450" d:DesignWidth="800"
+      Title="AdsRoutingPage">
+
+    <Grid>
+        <TabControl Margin="5">
+            <TabItem Header="Search">
+                <Grid Margin="10">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="2*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <!-- Search Buttons -->
+                    <StackPanel Orientation="Horizontal" Grid.Row="0" Grid.ColumnSpan="3" Margin="0,0,0,10">
+                        <Button Content="Broadcast Search" Width="150" Margin="0,0,10,0"/>
+                        <Button Content="Search by IP / Hostname:" Width="150"/>
+                        <TextBox Width="200" Height="23" Margin="0,0,10,0"/>
+                    </StackPanel>
+
+                    <!-- Available Adapters -->
+                    <ScrollViewer Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2" Margin="0 0 0 5">
+                        <ListBox>
+
+                        </ListBox>
+                    </ScrollViewer>
+
+                    <!-- Search Results -->
+                    <ScrollViewer Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="2" VerticalScrollBarVisibility="Visible" Margin="0 5 0 0">
+                        <DataGrid AutoGenerateColumns="False" Height="auto">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="Hostname" Binding="{Binding Hostname}" Width="*"/>
+                                <DataGridTextColumn Header="IP Address" Binding="{Binding IPAddress}" Width="*"/>
+                                <DataGridTextColumn Header="AMS NetID" Binding="{Binding IPAddress}" Width="*"/>
+                                <DataGridTextColumn Header="TwinCAT" Binding="{Binding IPAddress}" Width="*"/>
+                                <DataGridTextColumn Header="OS" Binding="{Binding OS}" Width="*"/>
+                            </DataGrid.Columns>
+                        </DataGrid>
+                    </ScrollViewer>
+
+                    <!-- Add Selected Target Button -->
+                    <Button Content="Add Selected Target" Grid.Row="3" Grid.Column="1" Width="150" HorizontalAlignment="Right" Margin="0,10,0,0"/>
+                </Grid>
+            </TabItem>
+            <TabItem Header="Add">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="auto"/>
+                        <RowDefinition Height="auto"/>
+                        <RowDefinition Height="auto"/>
+                        <RowDefinition Height="auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="auto"/>
+                        <RowDefinition Height="auto"/>
+                        <RowDefinition/>
+                    </Grid.RowDefinitions>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="3*"/>
+                        <ColumnDefinition Width="5*"/>
+                        <ColumnDefinition Width="1*"/>
+                        <ColumnDefinition Width="4*"/>
+                        <ColumnDefinition Width="4*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <!-- Route Name -->
+                    <TextBlock Grid.Row="0" Grid.Column="0" Text="Route Name" VerticalAlignment="Center" Margin="5" />
+                    <TextBox Grid.Row="0" Grid.Column="1" Margin="5" />
+
+                    <!-- AMS NetID -->
+                    <TextBlock Grid.Row="1" Grid.Column="0" Text="AMS NetID" VerticalAlignment="Center" Margin="5" />
+                    <TextBox Grid.Row="1" Grid.Column="1" Margin="5" />
+
+                    <!-- Address -->
+                    <ComboBox Grid.Row="2" Grid.Column="0" Text="IP Address" VerticalAlignment="Center" MinHeight="10" Margin="2" >
+                        <ComboBoxItem Content="IP Address" IsSelected="True"/>
+                        <ComboBoxItem Content="Host Name"/>
+                    </ComboBox>
+                    <TextBox Grid.Row="2" Grid.Column="1" Margin="5" />
+
+                    <!-- Remote Route Name -->
+                    <TextBlock Grid.Row="3" Grid.Column="0" Text="Remote Route Name" VerticalAlignment="Center" Margin="5" />
+                    <TextBox Grid.Row="3" Grid.Column="1" Margin="5" />
+
+                    <!-- Username -->
+                    <TextBlock Grid.Row="5" Grid.Column="0" Text="Username" VerticalAlignment="Center" Margin="5" />
+                    <TextBox Grid.Row="5" Grid.Column="1" Margin="5" />
+
+                    <!-- Password -->
+                    <TextBlock Grid.Row="6" Grid.Column="0" Text="Password" VerticalAlignment="Center" Margin="5" />
+                    <TextBox Grid.Row="6" Grid.Column="1" Margin="5" />
+
+                    <!-- Target Route Settings -->
+                    <GroupBox Header="Target Route"  Grid.Column="3" Margin="5" Grid.RowSpan="3">
+                        <StackPanel>
+                            <RadioButton Content="None" GroupName="TargetRoute" />
+                            <RadioButton Content="Static" GroupName="TargetRoute" IsChecked="True" />
+                            <RadioButton Content="Temporary" GroupName="TargetRoute" />
+                        </StackPanel>
+                    </GroupBox>
+
+                    <!-- Remote Route Settings -->
+                    <GroupBox Header="Remote Route"  Grid.Column="4" Margin="5" Grid.RowSpan="3">
+                        <StackPanel>
+                            <RadioButton Content="None" GroupName="RemoteRoute" />
+                            <RadioButton Content="Static" GroupName="RemoteRoute" IsChecked="True" />
+                            <RadioButton Content="Temporary" GroupName="RemoteRoute" />
+                        </StackPanel>
+                    </GroupBox>
+
+                    <!-- Restore Default Button -->
+                    <Button Grid.Column="4" Grid.Row="5" Content="Restore Default" Margin="5"></Button>
+
+                    <!-- Add Route Button -->
+                    <Button Grid.Column="4" Grid.Row="6" Content="Add Route" Margin="5"></Button>
+                </Grid>
+            </TabItem>
+        </TabControl>
+    </Grid>
+</Page>
