@@ -21,49 +21,16 @@ namespace AdsUtilitiesUI;
 /// <summary>
 /// Interaction logic for MainWindow.xaml
 /// </summary>
-public partial class MainWindow : Window , INotifyPropertyChanged
+public partial class MainWindow : Window 
 {
-
-    public ObservableCollection<StaticRoutesInfo> StaticRoutes { get; set; }
-
-    private StaticRoutesInfo _selectedRoute;
-    public StaticRoutesInfo SelectedRoute
-    {
-        get => _selectedRoute;
-        set
-        {
-            if (_selectedRoute.Name != value.Name)
-            {
-                _selectedRoute = value;
-                OnPropertyChanged();
-                fileHandlingPage.TargetLeft = value;
-            }
-        }
-    }
-
-    public event PropertyChangedEventHandler PropertyChanged;
-
-    protected void OnPropertyChanged([CallerMemberName] string propertyName = null)
-    {
-        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-    }
-
-    private AdsRoutingPage adsRoutingPage = new();
-
-    private FileHandlingPage fileHandlingPage = new();
+    private MainWindowViewModel _viewModel = new();
 
     public MainWindow()
     {
         InitializeComponent();
-        
 
-        StaticRoutes = new ObservableCollection<StaticRoutesInfo>();
-        DataContext = this;
-
-        InitLogger();
-
-        LoadRoutesAsync();
-        
+        DataContext = _viewModel;
+        Loaded += _viewModel.MainWindow_Initilaize;
     }
 
     private void TabControl_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -78,13 +45,13 @@ public partial class MainWindow : Window , INotifyPropertyChanged
                     case "ADS Routing":
                         if (AdsRoutingFrame.Content == null)
                         {
-                            AdsRoutingFrame.Navigate(adsRoutingPage);
+                            AdsRoutingFrame.Navigate(_viewModel.adsRoutingPage);
                         }
                         break;
                     case "File Handling":
                         if (FileHandlingFrame.Content == null)
                         {
-                            FileHandlingFrame.Navigate(fileHandlingPage);
+                            FileHandlingFrame.Navigate(_viewModel.fileHandlingPage);
                         }
                         break;
                 }
@@ -92,44 +59,19 @@ public partial class MainWindow : Window , INotifyPropertyChanged
         }
     }
 
-    private void InitLogger()
-    {
-
-    }
-    
-
-
-
-    private async void LoadRoutesAsync()
-    {
-        using AdsRoutingClient adsRoutingClient = new();
-        adsRoutingClient.ConnectLocal();
-        List<StaticRoutesInfo> routes = await adsRoutingClient.GetRoutesListAsync();
-
-        StaticRoutes.Clear();
-
-        StaticRoutesInfo localSystem = new()
-        {
-            NetId = AmsNetId.Local.ToString(),
-            Name = "<Local>",
-            IpAddress = "0.0.0.0"
-        };
-        StaticRoutes.Add(localSystem);
-
-        foreach (var route in routes)
-        {
-            StaticRoutes.Add(route);
-        }
-        SelectedRoute = localSystem;
-        CmbBx_SelectRoute.SelectedItem = localSystem;
-    }
-
     private void CmbBx_SelectRoute_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
+
         if (CmbBx_SelectRoute.SelectedItem is StaticRoutesInfo selectedRoute)
         {
             // Update ui elements
         }
+
+    }
+    private void RefreshButton_Click(object sender, RoutedEventArgs e)
+    {
+        // Aufruf der Refresh-Methode im ViewModel
+        _viewModel?.Reload_Routes();
     }
 }
 

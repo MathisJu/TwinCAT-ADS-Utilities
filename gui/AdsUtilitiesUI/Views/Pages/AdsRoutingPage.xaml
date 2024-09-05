@@ -25,31 +25,89 @@
                     </Grid.ColumnDefinitions>
 
                     <!-- Search Buttons -->
-                    <StackPanel Orientation="Horizontal" Grid.Row="0" Grid.ColumnSpan="3" Margin="0,0,0,10">
-                        <Button Content="Broadcast Search" Width="150" Margin="0,0,10,0"/>
+                    <StackPanel Orientation="Horizontal" Grid.Row="0" Grid.ColumnSpan="2" Margin="0,0,0,10">
+                        <Button Content="Broadcast Search" Click="BroadcastBttn_Click" Width="150" Margin="0,0,10,0"/>
                         <Button Content="Search by IP / Hostname:" Width="150"/>
                         <TextBox Width="200" Height="23" Margin="0,0,10,0"/>
                     </StackPanel>
 
                     <!-- Available Adapters -->
-                    <ScrollViewer Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2" Margin="0 0 0 5">
-                        <ListBox>
+                    <Grid Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2" Margin="0 0 0 5">
+                        <!-- ListView Adapters -->
+                        <ListView ItemsSource="{Binding NetworkAdapterPairs}" ScrollViewer.VerticalScrollBarVisibility="Auto">
+                            <ListView.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <VirtualizingStackPanel Orientation="Vertical" />
+                                </ItemsPanelTemplate>
+                            </ListView.ItemsPanel>
+                            <ListView.ItemTemplate>
+                                <DataTemplate>
+                                    <Grid Margin="0,2" HorizontalAlignment="Stretch">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
 
-                        </ListBox>
-                    </ScrollViewer>
+                                        <!-- Erster Adapter in der linken Spalte -->
+                                        <StackPanel Orientation="Horizontal" Grid.Column="0" Margin="2" HorizontalAlignment="Stretch">
+                                            <CheckBox IsChecked="{Binding Adapter1.IsSelected}" Margin="0,0,10,0" />
+                                            <TextBlock Text="{Binding Adapter1.AdapterInfo.Name}" 
+                                               TextTrimming="CharacterEllipsis" 
+                                               TextWrapping="NoWrap"
+                                               VerticalAlignment="Center"
+                                               HorizontalAlignment="Stretch" />
+                                            <TextBlock Text="(" VerticalAlignment="Center"/>
+                                            <TextBlock Text="{Binding Adapter1.AdapterInfo.IpAddress}" VerticalAlignment="Center"/>
+                                            <TextBlock Text=")" VerticalAlignment="Center"/>
+                                        </StackPanel>
+
+                                        <!-- Zweiter Adapter in der rechten Spalte (falls vorhanden) -->
+                                        <StackPanel Orientation="Horizontal" Grid.Column="1" Margin="2" HorizontalAlignment="Stretch">
+                                            <CheckBox IsChecked="{Binding Adapter2.IsSelected}" Margin="0,0,10,0" />
+                                            <TextBlock Text="{Binding Adapter2.AdapterInfo.Name}" 
+                                               TextTrimming="CharacterEllipsis" 
+                                               TextWrapping="NoWrap"
+                                               VerticalAlignment="Center"
+                                               HorizontalAlignment="Stretch" />
+                                            <TextBlock Text="(" VerticalAlignment="Center"/>
+                                            <TextBlock Text="{Binding Adapter2.AdapterInfo.IpAddress}" VerticalAlignment="Center"/>
+                                            <TextBlock Text=")" VerticalAlignment="Center"/>
+                                            <!-- Trigger zur Steuerung der Sichtbarkeit -->
+                                            <StackPanel.Style>
+                                                <Style TargetType="StackPanel">
+                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding Adapter2}" Value="{x:Null}">
+                                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </StackPanel.Style>
+                                        </StackPanel>
+                                    </Grid>
+                                </DataTemplate>
+                            </ListView.ItemTemplate>
+
+                            <!-- Optional: Styles für ListViewItem, um sicherzustellen, dass sie auch strecken -->
+                            <ListView.ItemContainerStyle>
+                                <Style TargetType="ListViewItem">
+                                    <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                                </Style>
+                            </ListView.ItemContainerStyle>
+                        </ListView>
+                    </Grid>
+
 
                     <!-- Search Results -->
-                    <ScrollViewer Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="2" VerticalScrollBarVisibility="Visible" Margin="0 5 0 0">
-                        <DataGrid AutoGenerateColumns="False" Height="auto">
-                            <DataGrid.Columns>
-                                <DataGridTextColumn Header="Hostname" Binding="{Binding Hostname}" Width="*"/>
-                                <DataGridTextColumn Header="IP Address" Binding="{Binding IPAddress}" Width="*"/>
-                                <DataGridTextColumn Header="AMS NetID" Binding="{Binding IPAddress}" Width="*"/>
-                                <DataGridTextColumn Header="TwinCAT" Binding="{Binding IPAddress}" Width="*"/>
-                                <DataGridTextColumn Header="OS" Binding="{Binding OS}" Width="*"/>
-                            </DataGrid.Columns>
-                        </DataGrid>
-                    </ScrollViewer>
+                    <DataGrid Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="2" Margin="0 5 0 0" ItemsSource="{Binding TargetInfoList}" AutoGenerateColumns="False" Height="auto" VerticalScrollBarVisibility="Auto">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="Hostname" Binding="{Binding Name}" Width="*"/>
+                            <DataGridTextColumn Header="IP Address" Binding="{Binding IpAddress}" Width="*"/>
+                            <DataGridTextColumn Header="AMS NetID" Binding="{Binding NetId}" Width="*"/>
+                            <DataGridTextColumn Header="TwinCAT" Binding="{Binding TcVersion}" Width="*"/>
+                            <DataGridTextColumn Header="OS" Binding="{Binding OsVersion}" Width="*"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
 
                     <!-- Add Selected Target Button -->
                     <Button Content="Add Selected Target" Grid.Row="3" Grid.Column="1" Width="150" HorizontalAlignment="Right" Margin="0,10,0,0"/>

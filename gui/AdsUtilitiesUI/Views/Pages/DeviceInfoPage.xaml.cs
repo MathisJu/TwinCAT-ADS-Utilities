@@ -13,24 +13,16 @@ using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
 
-namespace AdsUtilitiesUI
+namespace AdsUtilitiesUI.Views.Pages
 {
     /// <summary>
-    /// Interaction logic for AdsRoutingPage.xaml
+    /// Interaction logic for DeviceInfoPage.xaml
     /// </summary>
-    public partial class AdsRoutingPage : Page
+    public partial class DeviceInfoPage : Page
     {
-        public AdsRoutingViewModel _viewModel = new();
-
-        public AdsRoutingPage()
+        public DeviceInfoPage()
         {
             InitializeComponent();
-            DataContext = _viewModel;
-        }
-
-        private async void BroadcastBttn_Click(object sender, RoutedEventArgs e)
-        {
-            await _viewModel.Broadcast();
         }
     }
 }

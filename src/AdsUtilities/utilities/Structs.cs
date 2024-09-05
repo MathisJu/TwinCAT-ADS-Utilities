@@ -141,8 +141,9 @@ namespace AdsUtilities
         public string NetId { get; set; }
         public string OsVersion { get; set; }
         public string Fingerprint { get; set; }
+        public string TcVersion { get; set; }
+
         //public string Comment;
-        //public string tcVersion;
         //public bool isRuntime;
         //public string HostName;
     }
@@ -156,12 +157,12 @@ namespace AdsUtilities
 
     public struct NetworkInterfaceInfo
     {
-        public string guid;
-        public string name;
-        public string ipAddress;
-        public string subnetMask;
-        public string defaultGateway;
-        public string dhcpServer;
+        public string Guid { get; set; }
+        public string Name { get; set; }
+        public string IpAddress { get; set; }
+        public string SubnetMask { get; set; }
+        public string DefaultGateway { get; set; }
+        public string DhcpServer { get; set; }
     }
 
     // this struct resembles the content of the 40 byte payload of the ads write packet that triggers a broadcast ads search

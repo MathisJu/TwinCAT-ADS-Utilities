@@ -43,10 +43,21 @@ namespace AdsUtilitiesUI
                     ReloadSecondaryRoutes(value.NetId);
                 }
             }
-        }    
+        }
 
 
-        public ObservableCollection<StaticRoutesInfo> SecondaryRoutes { get; set; }
+        private ObservableCollection<StaticRoutesInfo> _SecondaryRoutes;
+        public ObservableCollection<StaticRoutesInfo> SecondaryRoutes
+        {
+            get => _SecondaryRoutes;
+            set
+            {
+                _SecondaryRoutes = value;
+                OnPropertyChanged();
+                
+            }
+        }
+
         private StaticRoutesInfo _targetRight;
 
         public StaticRoutesInfo TargetRight
@@ -54,33 +65,23 @@ namespace AdsUtilitiesUI
             get => _targetRight;
             set
             {
-                if (_targetRight.Name != value.Name)
-                {
-                    _targetRight = value;
-                    OnPropertyChanged();
-                }
+                _targetRight = value;
+                OnPropertyChanged();
+                
             }
         }
 
         public async void ReloadSecondaryRoutes(string netId)
         {
-            using AdsRoutingClient routingClient = new ();
-            routingClient.Connect (netId);
-            var routes = await routingClient.GetRoutesListAsync();
-            SecondaryRoutes.Clear();
 
-            StaticRoutesInfo localSystem = new()
-            {
-                NetId = AmsNetId.Local.ToString(),
-                Name = "<Local>",
-                IpAddress = "0.0.0.0"
-            };
-            SecondaryRoutes.Add(localSystem);
-
+            // Asynchrone Methode aufrufen
+            var routes = await AdsHelper.LoadOnlineRoutesAsync(netId);
+            SecondaryRoutes = new ObservableCollection<StaticRoutesInfo>();
             foreach (var route in routes)
             {
                 SecondaryRoutes.Add(route);
             }
+            TargetRight = SecondaryRoutes.ElementAt(0);
         }
 
         public FileHandlingPage()

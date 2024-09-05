@@ -13,6 +13,8 @@ using System.Xml.Linq;
 using TwinCAT.Ads;
 using System.Security;
 using System.Runtime.InteropServices;
+using static AdsUtilities.ReadRequestHelper;
+using TwinCAT.PlcOpen;
 
 
 namespace AdsUtilities
@@ -147,13 +149,13 @@ namespace AdsUtilities
 
             foreach (var nic in nicsInfo)
             {
-                if (!IsIpAddressInRange(nic.ipAddress, nic.subnetMask))   // look for a NIC with an IP that's in the same address range as the remote system and use this IP for the remote route entry
+                if (!IsIpAddressInRange(nic.IpAddress, nic.SubnetMask))   // look for a NIC with an IP that's in the same address range as the remote system and use this IP for the remote route entry
                     continue;
 
                 byte[] Segment_IPADDRESS_LENGTH = Segments.LOCALHOST_L;
-                Segment_IPADDRESS_LENGTH[2] = (byte)(nic.ipAddress.Length + 1);
+                Segment_IPADDRESS_LENGTH[2] = (byte)(nic.IpAddress.Length + 1);
                 addRouteRequest.Add(Segment_IPADDRESS_LENGTH);
-                addRouteRequest.AddStringUTF8(nic.ipAddress);
+                addRouteRequest.AddStringUTF8(nic.IpAddress);
 
                 byte[] rdBfr = new byte[2048];
 
@@ -320,72 +322,6 @@ namespace AdsUtilities
             return "C:/TwinCAT";    // There may be an existing index group / offset that stores the twincat directory (somewhere under port 10000?)
         }
 
-        public async Task<SystemInfo> GetSystemInfoAsync(CancellationToken cancel = default)
-        {
-            byte[] rdBfr = new byte[2048];
-
-            _adsClient.Connect(_netId, (int)Constants.AdsPortSystemService);
-            await _adsClient.ReadAsync(Constants.AdsIGrpSysServTcSystemInfo, 1, rdBfr, cancel);
-            _adsClient.Disconnect();
-
-            string sysInfo = Encoding.UTF8.GetString(rdBfr);
-            if (string.IsNullOrEmpty(sysInfo)) return new SystemInfo();
-
-            XmlDocument xmlDoc = new();
-            xmlDoc.LoadXml(sysInfo);
-            SystemInfo devInfo = new()
-            {
-                TargetType = TryGetValueFromXml(xmlDoc, "//TargetType"),
-                TargetVersion = $"{TryGetValueFromXml(xmlDoc, "//TargetVersion/Version")}.{TryGetValueFromXml(xmlDoc, "//TargetVersion/Revision")}.{TryGetValueFromXml(xmlDoc, "//TargetVersion/Build")}",
-                TargetLevel = TryGetValueFromXml(xmlDoc, "//TargetFeatures/Level"),
-                TargetNetId = TryGetValueFromXml(xmlDoc, "//TargetFeatures/NetId"),
-                HardwareModel = TryGetValueFromXml(xmlDoc, "//Hardware/Model"),
-                HardwareSerialNumber = TryGetValueFromXml(xmlDoc, "//Hardware/SerialNo"),
-                HardwareCpuVersion = TryGetValueFromXml(xmlDoc, "//Hardware/CPUVersion"),
-                HardwareDate = TryGetValueFromXml(xmlDoc, "//Hardware/Date"),
-                HardwareCpuArchitecture = TryGetValueFromXml(xmlDoc, "//Hardware/CPUArchitecture"),
-                OsImageDevice = TryGetValueFromXml(xmlDoc, "//OsImage/ImageDevice"),
-                OsImageVersion = TryGetValueFromXml(xmlDoc, "//OsImage/ImageVersion"),
-                OsImageLevel = TryGetValueFromXml(xmlDoc, "//OsImage/ImageLevel"),
-                OsName = TryGetValueFromXml(xmlDoc, "//OsImage/OsName"),
-                OsVersion = TryGetValueFromXml(xmlDoc, "//OsImage/OsVersion")
-            };
-            return devInfo;
-
-            string TryGetValueFromXml(XmlDocument xmlDoc, string xpath)
-            {
-                try
-                {
-                    XmlNode? node = xmlDoc.SelectSingleNode(xpath);
-                    return node?.InnerText ?? string.Empty;
-                }
-                catch (XmlException)
-                {
-                    _logger?.LogWarning("Could not read property {xpath} from netId {netId}", xpath, _netId);
-                    return string.Empty;
-                }
-            }
-        }
-
-        public async Task<List<CpuUsage>> GetTcCpuUsageAsync(CancellationToken cancel = default)
-        {
-            byte[] rdBfr = new byte[2400]; //Read buffer is sufficient for up to 100 CPU Cores (Increase size if needed)
-
-            _adsClient.Connect(_netId, (int)Constants.AdsPortR0RTime);
-            var readResult = await _adsClient.ReadAsync(1, 15, rdBfr, cancel); //Retrieve new Data       ToDo: add idxGrp and idxOffs to constants
-            _adsClient.Disconnect();
-
-            List<CpuUsage> cpuInfo = new();
-            for (int i = 0; i < readResult.ReadBytes / 24; i++)
-            {
-                int baseIdx = i * 24;
-                int latencyWarning = (rdBfr[13 + baseIdx] << 8) + rdBfr[baseIdx + 12];
-                int coreLatency = (rdBfr[baseIdx + 9] << 8) + rdBfr[baseIdx + 8];
-                cpuInfo.Add(new CpuUsage { cpuNo = rdBfr[baseIdx], latencyWarning = (uint)latencyWarning, systemLatency = (uint)coreLatency, utilization = rdBfr[baseIdx + 16] });
-            }
-            return cpuInfo;
-        }
-
         public async Task<List<StaticRoutesInfo>> GetRoutesListAsync(CancellationToken cancel = default)
         {
             // Read ADS routes from target system 
@@ -428,7 +364,7 @@ namespace AdsUtilities
             return Encoding.UTF8.GetString(rdBfr);
         }
 
-        async Task<List<NetworkInterfaceInfo>> GetNetworkInterfacesAsync(CancellationToken cancel = default)
+        public async Task<List<NetworkInterfaceInfo>> GetNetworkInterfacesAsync(CancellationToken cancel = default)
         {
             byte[] readBfr = new byte[4];
             _adsClient.Connect(_netId, (int)Constants.AdsPortSystemService);
@@ -451,12 +387,12 @@ namespace AdsUtilities
                     {
                         NetworkInterfaceInfo newNic = new()
                         {
-                            guid = Encoding.UTF8.GetString(nicBfr[(Index)(i * bytesPerNic + 8)..(Index)(i * bytesPerNic + 267)]).Replace("\0", string.Empty),
-                            name = Encoding.UTF8.GetString(nicBfr[(Index)(i * bytesPerNic + 268)..(Index)(i * bytesPerNic + 380)]).Replace("\0", string.Empty),
-                            ipAddress = Encoding.UTF8.GetString(nicBfr[(Index)(i * bytesPerNic + 432)..(Index)(i * bytesPerNic + 447)]).Replace("\0", string.Empty),
-                            subnetMask = Encoding.UTF8.GetString(nicBfr[(Index)(i * bytesPerNic + 448)..(Index)(i * bytesPerNic + 463)]).Replace("\0", string.Empty),
-                            defaultGateway = Encoding.UTF8.GetString(nicBfr[(Index)(i * bytesPerNic + 472)..(Index)(i * bytesPerNic + 487)]).Replace("\0", string.Empty),
-                            dhcpServer = Encoding.UTF8.GetString(nicBfr[(Index)(i * bytesPerNic + 512)..(Index)(i * bytesPerNic + 527)]).Replace("\0", string.Empty)
+                            Guid = Encoding.UTF8.GetString(nicBfr[(Index)(i * bytesPerNic + 8)..(Index)(i * bytesPerNic + 267)]).Replace("\0", string.Empty),
+                            Name = Encoding.UTF8.GetString(nicBfr[(Index)(i * bytesPerNic + 268)..(Index)(i * bytesPerNic + 380)]).Replace("\0", string.Empty),
+                            IpAddress = Encoding.UTF8.GetString(nicBfr[(Index)(i * bytesPerNic + 432)..(Index)(i * bytesPerNic + 447)]).Replace("\0", string.Empty),
+                            SubnetMask = Encoding.UTF8.GetString(nicBfr[(Index)(i * bytesPerNic + 448)..(Index)(i * bytesPerNic + 463)]).Replace("\0", string.Empty),
+                            DefaultGateway = Encoding.UTF8.GetString(nicBfr[(Index)(i * bytesPerNic + 472)..(Index)(i * bytesPerNic + 487)]).Replace("\0", string.Empty),
+                            DhcpServer = Encoding.UTF8.GetString(nicBfr[(Index)(i * bytesPerNic + 512)..(Index)(i * bytesPerNic + 527)]).Replace("\0", string.Empty)
                         };
                         lock (nicList)
                         {
@@ -494,9 +430,9 @@ namespace AdsUtilities
 
             foreach (NetworkInterfaceInfo nic in interfacesToBroadcastOn)
             {
-                if (nic.ipAddress is "0.0.0.0" or null)
+                if (nic.IpAddress is "0.0.0.0" or null || !IPAddress.TryParse(nic.IpAddress, out _))
                 {
-                    _logger?.LogInformation("The NIC '{nicName}' has no assigned IP address. The request for an ADS broadcast search was aborted.", nic.name);
+                    _logger?.LogInformation("The NIC '{nicName}' has no assigned IP address. The request for an ADS broadcast search was aborted.", nic.Name);
                     continue;
                 }
 
@@ -509,7 +445,7 @@ namespace AdsUtilities
                 }
                 catch (AdsErrorException ex)
                 {
-                    _logger?.LogInformation("Could not perform an ADS broadcast search on adapter '{nicName}'. The request was aborted due to error: '{error}'.", nic.name, ex.Message);
+                    _logger?.LogInformation("Could not perform an ADS broadcast search on adapter '{nicName}'. The request was aborted due to error: '{error}'.", nic.Name, ex.Message);
                 }
             }
             try
@@ -535,13 +471,13 @@ namespace AdsUtilities
             ushort secondsTimeout = 5,
             [EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
-            List<TargetInfo> broadcastResults = new ();
-            TaskCompletionSource completionSource = new ();
+            BlockingCollection<TargetInfo> broadcastResults = new();
+            TaskCompletionSource completionSource = new();
 
             void RecievedBroadcastResponse(object sender, AdsNotificationEventArgs e)
             {
                 var targetInfo = ParseBroadcastReturn(e.Data.ToArray());
-                broadcastResults.Add(targetInfo);
+                broadcastResults.Add(targetInfo);   // Add responses to the thread-safe collection
                 completionSource.TrySetResult();    // Signals that there is a new response to the broadcast search
             }
 
@@ -553,9 +489,9 @@ namespace AdsUtilities
 
             foreach (var nic in interfacesToBroadcastOn)
             {
-                if (nic.ipAddress is "0.0.0.0" or null)
+                if (nic.IpAddress is "0.0.0.0" or null || !IPAddress.TryParse(nic.IpAddress, out _))
                 {
-                    _logger?.LogInformation("The NIC '{nicName}' has no assigned IP address. The request for an ADS broadcast search was aborted.", nic.name);
+                    _logger?.LogInformation("The NIC '{nicName}' has no assigned IP address. The request for an ADS broadcast search was aborted.", nic.Name);
                     continue;
                 }
 
@@ -568,7 +504,7 @@ namespace AdsUtilities
                 }
                 catch (AdsErrorException ex)
                 {
-                    _logger?.LogInformation("Could not perform an ADS broadcast search on adapter '{nicName}'. The request was aborted due to error: '{error}'.", nic.name, ex.Message);
+                    _logger?.LogInformation("Could not perform an ADS broadcast search on adapter '{nicName}'. The request was aborted due to error: '{error}'.", nic.Name, ex.Message);
                 }
             }
 
@@ -585,13 +521,10 @@ namespace AdsUtilities
                         break;
                     }
 
-                    if (broadcastResults.Any())     // Check for new broadcast responses
+                    // Process all received broadcast results safely
+                    while (broadcastResults.TryTake(out var result, 100, cancellationToken))
                     {
-                        foreach (var result in broadcastResults)    
-                        {
-                            yield return result;
-                        }
-                        broadcastResults.Clear();
+                        yield return result;
                     }
 
                     // Check for new responses every 100ms and when a new response is signaled
@@ -601,10 +534,19 @@ namespace AdsUtilities
             }
             finally
             {
+                // Mark the collection as complete to exit the foreach loop safely
+                broadcastResults.CompleteAdding();
+
                 // Unregister the Event / Handle after timeout has elapsed or the action was canceled 
                 await _adsClient.DeleteDeviceNotificationAsync(deviceNotiResult.Handle, cancellationToken);
                 _adsClient.AdsNotification -= RecievedBroadcastResponse;
                 _adsClient.Disconnect();
+            }
+
+            // Drain remaining items after marking collection complete
+            while (broadcastResults.TryTake(out var result))
+            {
+                yield return result;
             }
         }
 
@@ -621,8 +563,8 @@ namespace AdsUtilities
 
         private static IPAddress CalculateBroadcastAddress(NetworkInterfaceInfo nic)
         {
-            IPAddress gatewayAddress = IPAddress.Parse(nic.defaultGateway);
-            IPAddress subnetAddress = IPAddress.Parse(nic.subnetMask);
+            IPAddress gatewayAddress = IPAddress.Parse(nic.DefaultGateway);
+            IPAddress subnetAddress = IPAddress.Parse(nic.SubnetMask);
             byte[] gatewayBytes = gatewayAddress.GetAddressBytes();
             byte[] subnetBytes = subnetAddress.GetAddressBytes();
             byte[] broadcastBytes = new byte[4];
@@ -635,66 +577,168 @@ namespace AdsUtilities
             return new IPAddress(broadcastBytes);
         }
 
-        private static TargetInfo ParseBroadcastReturn(byte[] broadcastReturn)
+        public static TargetInfo ParseBroadcastReturn(byte[] data)
         {
-            const int startingOffset = 4;
-
-            const int startIp = startingOffset;
-            const int lenIp = 4;
-            byte[] ip = broadcastReturn.Skip(startIp).Take(lenIp).ToArray();
-            string ipAddr = $"{ip[0]}.{ip[1]}.{ip[2]}.{ip[3]}";
-
-            // ToDo: Add route for remaining info returned from broadcast including Port, Route Type
-
-            const int startNetId = 28;
-            const int lenNetId = 6;
-            byte[] netId = broadcastReturn.Skip(startNetId).Take(lenNetId).ToArray();
-            string netIdStr = $"{netId[0]}.{netId[1]}.{netId[2]}.{netId[3]}.{netId[4]}.{netId[5]}";
-
-            const int startName = 44;
-            int lenName = broadcastReturn[42] - 1;
-            byte[] name = broadcastReturn.Skip(startName).Take(lenName).ToArray();
-            string deviceName = Encoding.UTF8.GetString(name);
-
-            int startTcType = startName + lenName;
-            const int lenTcType = 8;
-            byte[] tcType = broadcastReturn.Skip(startTcType).Take(lenTcType).ToArray();    // {4,0,148,0,148,0,0,0} for engineering and {4,0,20,1,20,1,00} for runtime
-
-            int startOsVer = startTcType + lenTcType + 1;
-            const int lenOsVer = 12;
-            byte[] osVer = broadcastReturn.Skip(startOsVer).Take(lenOsVer).ToArray();
-            ushort osKey = (ushort)(osVer[0] * 256 + osVer[4]);
-            ushort osBuildKey = (ushort)(osVer[8] * 256 + osVer[9]);
-            string os = OS_IDS.ContainsKey(osKey) ? OS_IDS[osKey] : osKey.ToString("X2");
-            string osVersionString;
-            if (osKey > 0x0C00) //TCBSD has no BuildKey
-                osVersionString = $"TwinCAT/BSD ({osVer[0]}.{osVer[4]})";
-            else if (os.Contains("Windows")) //Windows 10 has BulidKey
-                osVersionString = os + " " + (OS_BUILDIDS.ContainsKey(osBuildKey) ? OS_BUILDIDS[osBuildKey] : osBuildKey.ToString("X2"));
-            else if (osKey < 0x0500) //TCRTOS
-                osVersionString = $"TC/RTOS ({osVer[0]}.{osVer[4]})";
-            else
-                osVersionString = os;
-
-            // TC version
-
-            // ???? currently not interpreted parameters
-
-            // ToDo: There should be indicators as to where in the byte array the fingerprint starts. for now we look for the sequence 0-65-0 that indicates the start of the 65 bytes field of the fingerprint
-            int startFingerprint = startOsVer + lenOsVer; // + something else
-            for (int i = startFingerprint; i < broadcastReturn.Length - 2; i++)
+            TargetInfo targetInfo = new TargetInfo
             {
-                if (broadcastReturn[i] == 0 && broadcastReturn[i + 1] == 65 && broadcastReturn[i + 2] == 0)
+                IpAddress = string.Empty,
+                NetId = string.Empty,
+                Name = string.Empty,
+                TcVersion = string.Empty,
+                Fingerprint = string.Empty,
+                //TcType = string.Empty,
+                OsVersion = string.Empty
+            };
+
+            Dictionary<string, string> TcTypeDictionary = new()// {4,0,148,0,148,0,0,0} for engineering and {4,0,20,1,20,1,00} for runtime
+            {
+                { "04-00-94-00-94-00-00-00", "Engineering" },
+                { "04-00-14-01-14-01-00-00", "Runtime" }
+                // Add more mappings as needed
+            };
+
+            Dictionary<ushort, string> OsIdDictionary = new()
+            {
+                {0x0700, "Windows CE (7.0)"},
+                {0x0602, "Windows 8/8.1/10"}, //TC2 images and TC3 images up to 4020
+                {0x0A00, "Windows"},
+                {0x0601, "Windows 7"},
+                {0x0600, "Windows CE (6.0)"},
+                {0x0500, "Windows CE (5.0)"},
+                {0x0501, "Windows XP"},
+                {0x0009, "RTOS"}
+                //{0x0C02, "TwinCAT/BSD (12.2)"},
+                //{0x0D01, "TwinCAT/BSD (13.1)"},
+                //{0x0D02, "TwinCAT/BSD (13.2)"}
+                // Add more mappings as needed
+            };
+
+            // Windows build versions
+            Dictionary<ushort, string> OsBuildDictionary = new()
+            {
+                // all tested with 4022 !
+                {0x5D58, "11 (22621) 22H2"},
+                {0x654A, "10 (19045) 22H2"},
+                {0x644A, "10 (19044) 21H2"},
+                {0x634A, "10 (19043) 21H1"},
+                {0x624A, "10 (19042) 20H2"},// 4.8.1
+                {0x614A, "10 (19041) 2004"},// only up to .NET Framework 4.8
+                {0x4447, "10 (18363) 1909"},// only up to .NET Framework 4.8
+                {0xBA47, "10 (18362) 1903"},// only up to .NET Framework 4.8
+                {0x6345, "10 (17763) 1809"},// only up to .NET Framework 4.8
+                {0xEE42, "10 (17134) 1803"},// only up to .NET Framework 4.8
+                {0xAB3F, "10 (16299) 1709"},// only up to .NET Framework 4.8
+                {0xD73A, "10 (15063) 1703"},// only up to .NET Framework 4.8
+                {0x3938, "10 (14393) 1607"},
+                {0x5A29, "10 (10586) 1511"},// only up to .NET Framework 4.6.2
+                {0x0028, "10 (10240) 1507"} // only up to .NET Framework 4.6.2
+                // Add more mappings as needed
+            };
+
+
+            int index = 0;
+
+            while (index < data.Length)
+            {
+                // Check for IP Address Header: 2-0-191-3
+                if (MatchHeader(data, index, new byte[] { 2, 0, 191, 3 }))
                 {
-                    startFingerprint = i + 3;
-                    break;
+                    index += 4; // Move past header
+                    if (index + 4 <= data.Length)
+                    {
+                        targetInfo.IpAddress = $"{data[index]}.{data[index + 1]}.{data[index + 2]}.{data[index + 3]}";
+                        index += 4; // Move past IP address
+                    }
+                }
+                // Check for NetId Header: 1-0-0-128
+                else if (MatchHeader(data, index, new byte[] { 1, 0, 0, 128 }))
+                {
+                    index += 4; // Move past header
+                    if (index + 6 <= data.Length)
+                    {
+                        targetInfo.NetId = string.Join(".", data.Skip(index).Take(6).Select(b => b.ToString()));
+                        index += 6; // Move past NetId
+                    }
+                }
+                // Check for Name Header: 5-0-x-0, where x is the name's length
+                else if (data[index] == 5 && data[index + 1] == 0 && data[index + 2] != 0 && data[index + 3] == 0)
+                {
+                    int nameLength = data[index + 2];
+                    index += 4; // Move past header
+                    if (index + nameLength <= data.Length)
+                    {
+                        targetInfo.Name = Encoding.UTF8.GetString(data, index, nameLength);
+                        index += nameLength; // Move past Name
+                    }
+
+                    // Parse TcType (8-byte field after Name)
+                    if (index + 8 <= data.Length)
+                    {
+                        string tcTypeBytes = BitConverter.ToString(data, index, 8);
+                        //targetInfo.TcType = TcTypeDictionary.ContainsKey(tcTypeBytes) ? TcTypeDictionary[tcTypeBytes] : string.Empty;
+                        var tcType = TcTypeDictionary.ContainsKey(tcTypeBytes) ? TcTypeDictionary[tcTypeBytes] : string.Empty;
+                        index += 8; // Move past TcType
+                    }
+
+                    // Parse OsVersion (12-byte field after TcType)
+                    if (index + 12 <= data.Length)
+                    {
+                        byte[] osVer = new byte[12];
+                        Array.Copy(data, index, osVer, 0, 12);
+
+                        ushort osKey = (ushort)(osVer[0] * 256 + osVer[4]);
+                        ushort osBuildKey = (ushort)(osVer[8] * 256 + osVer[9]);
+                        string os = OsIdDictionary.ContainsKey(osKey) ? OsIdDictionary[osKey] : osKey.ToString("X2");
+                        if (osKey > 0x0C00) //TCBSD has no BuildKey
+                            targetInfo.OsVersion = $"TwinCAT/BSD ({osVer[0]}.{osVer[4]})";
+                        else if (os.Contains("Windows")) //Windows 10 has BulidKey
+                            targetInfo.OsVersion = os + " " + (OsBuildDictionary.ContainsKey(osBuildKey) ? OsBuildDictionary[osBuildKey] : osBuildKey.ToString("X2"));
+                        else if (osKey < 0x0500) //TCRTOS
+                            targetInfo.OsVersion = $"TC/RTOS ({osVer[0]}.{osVer[4]})";
+                        else
+                            targetInfo.OsVersion = os;
+
+                        index += 12; // Move past OsVersion
+                    }
+                }
+                // Check for TcVersion Header: 3-0-4-0
+                else if (MatchHeader(data, index, new byte[] { 3, 0, 4, 0 }))
+                {
+                    index += 4; // Move past header
+                    if (index + 4 <= data.Length)
+                    {
+                        targetInfo.TcVersion = $"{data[index]}.{data[index + 1]}.{data[index + 2] + 256 * data[index + 3]}";
+                        index += 4; // Move past TcVersion
+                    }
+                }
+                // Check for Fingerprint Header: 18-0-65
+                else if (MatchHeader(data, index, new byte[] { 18, 0, 65 }))
+                {
+                    index += 3; // Move past header
+                    if (index + 64 <= data.Length)
+                    {
+                        targetInfo.Fingerprint = BitConverter.ToString(data, index, 64).Replace("-", "").ToLower();
+                        index += 64; // Move past Fingerprint
+                    }
+                }
+                else
+                {
+                    index++; // Move to the next byte if no matching header is found
                 }
             }
-            const int lenFingerprint = 64;
-            byte[] fingerprint = broadcastReturn.Skip(startFingerprint).Take(lenFingerprint).ToArray();
-            string fingerprintStr = Encoding.UTF8.GetString(fingerprint);
 
-            return new TargetInfo { IpAddress = ipAddr, Name = deviceName, NetId = netIdStr, OsVersion = osVersionString, Fingerprint = fingerprintStr };
+            return targetInfo;
+        }
+
+
+        private static bool MatchHeader(byte[] data, int index, byte[] header)
+        {
+            if (index + header.Length > data.Length) return false;
+            for (int i = 0; i < header.Length; i++)
+            {
+                if (data[index + i] != header[i]) return false;
+            }
+            return true;
         }
 
         public async Task ChangeNetIdAsync(string netIdNew, bool rebootNow = false, CancellationToken cancel = default)
@@ -716,69 +760,7 @@ namespace AdsUtilities
             {
                 await systemClient.RebootAsync(0, cancel);
             }
-        }
-
-        public async Task<RouterStatusInfo> GetRouterStatusInfoAsync(CancellationToken cancel = default)
-        {
-            ReadRequestHelper readRequest = new(32);
-            _adsClient.Connect(_netId, (int)Constants.AdsPortRouter);
-            await _adsClient.ReadAsync(1, 1, readRequest, cancel);  
-
-            RouterStatusInfo routerInfo = new()
-            {
-                RouterMemoryBytesReserved = readRequest.ExtractUint32(),
-                RouterMemoryBytesAvailable = readRequest.ExtractUint32(),
-                registeredPorts = readRequest.ExtractUint32(),
-                registeredDrivers = readRequest.ExtractUint32()
-            };
-            return routerInfo;
-        }
-
-        public async Task<short> GetPlatformLevelAsync(CancellationToken cancel = default)
-        {
-            _adsClient.Connect(_netId, (int)Constants.AdsPortLicenseServer);
-            short platformLevel = (await _adsClient.ReadAnyAsync<short>(Constants.AdsIGrpLicenseInfo, 0x2, cancel)).Value;  
-            _adsClient.Disconnect();
-
-            return platformLevel;
-        }
-
-        private async Task<byte[]> GetSystemIdBytesAsync(CancellationToken cancel = default)
-        {
-            byte[] rdBfr = new byte[16];
-
-            _adsClient.Connect(_netId, (int)Constants.AdsPortLicenseServer);           
-            await _adsClient.ReadAsync(Constants.AdsIGrpLicenseInfo, 0x1, rdBfr, cancel);
-            _adsClient.Disconnect();
-
-            return rdBfr;
-        }
-
-        public async Task<Guid> GetSystemIdGuidAsync(CancellationToken cancel = default) 
-        {
-            byte[] sysId = await GetSystemIdBytesAsync(cancel);
-            return new Guid(sysId);
-        }
-
-        public async Task<string> GetSystemIdStringAsync(CancellationToken cancel = default)
-        {
-            byte[] sysId = await GetSystemIdBytesAsync(cancel);
-            return string.Format("{0:X2}{1:X2}{2:X2}{3:X2}-{4:X2}{5:X2}-{6:X2}{7:X2}-{8:X2}{9:X2}-{10:X2}{11:X2}{12:X2}{13:X2}{14:X2}{15:X2}",
-                sysId[3], sysId[2], sysId[1], sysId[0],
-                sysId[5], sysId[4], sysId[7], sysId[6],
-                sysId[8], sysId[9], sysId[10], sysId[11],
-                sysId[12], sysId[13], sysId[14], sysId[15]
-            );
-        }
-
-        public async Task<uint> GetVolumeNumberAsync(CancellationToken cancel = default)
-        {
-            _adsClient.Connect(_netId, (int)Constants.AdsPortLicenseServer);        
-            uint volumeNo = (await _adsClient.ReadAnyAsync<uint>(Constants.AdsIGrpLicenseInfo, 0x5, cancel)).Value;
-            _adsClient.Disconnect();
-
-            return volumeNo;
-        }
+        }    
 
         public void Dispose()
         {
@@ -789,44 +771,6 @@ namespace AdsUtilities
                 _adsClient.Dispose();
                 GC.SuppressFinalize(this);
             }
-        }
-
-        private static readonly Dictionary<ushort, string> OS_IDS =
-            new()
-            {
-                {0x0700, "Win CE (7.0)"},
-                {0x0602, "Win 8/8.1/10"}, //TC2 images and TC3 images up to 4020
-                {0x0A00, "Windows"},
-                {0x0601, "Win 7"},
-                {0x0600, "Win CE (6.0)"},
-                {0x0500, "Win CE (5.0)"},
-                {0x0501, "Win XP"},
-                {0x0009, "RTOS"}
-                //{0x0C02, "TwinCAT/BSD (12.2)"},
-                //{0x0D01, "TwinCAT/BSD (13.1)"},
-                //{0x0D02, "TwinCAT/BSD (13.2)"}
-            };
-
-        // Windows build versions
-        private static readonly Dictionary<ushort, string> OS_BUILDIDS =
-            new()
-            {
-                // all tested with 4022 !
-                {0x5D58, "11 (22621) 22H2"},
-                {0x654A, "10 (19045) 22H2"},
-                {0x644A, "10 (19044) 21H2"},
-                {0x634A, "10 (19043) 21H1"},
-                {0x624A, "10 (19042) 20H2"},// 4.8.1
-                {0x614A, "10 (19041) 2004"},// only up to .NET Framework 4.8
-                {0x4447, "10 (18363) 1909"},// only up to .NET Framework 4.8
-                {0xBA47, "10 (18362) 1903"},// only up to .NET Framework 4.8
-                {0x6345, "10 (17763) 1809"},// only up to .NET Framework 4.8
-                {0xEE42, "10 (17134) 1803"},// only up to .NET Framework 4.8
-                {0xAB3F, "10 (16299) 1709"},// only up to .NET Framework 4.8
-                {0xD73A, "10 (15063) 1703"},// only up to .NET Framework 4.8
-                {0x3938, "10 (14393) 1607"},
-                {0x5A29, "10 (10586) 1511"},// only up to .NET Framework 4.6.2
-                {0x0028, "10 (10240) 1507"} // only up to .NET Framework 4.6.2
-            };       
+        }      
     }
 }

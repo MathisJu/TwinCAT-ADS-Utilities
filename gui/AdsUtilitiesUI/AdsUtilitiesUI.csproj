@@ -15,6 +15,8 @@
     <None Remove="Images\folderdrive.png" />
     <None Remove="Images\folderdrive_hidden.png" />
     <None Remove="Images\harddrive.png" />
+    <None Remove="Images\magnifying_glass.png" />
+    <None Remove="Images\refresh.png" />
   </ItemGroup>
 
   <ItemGroup>
@@ -42,6 +44,12 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Resource>
     <Resource Include="Images\harddrive.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Resource>
+    <Resource Include="Images\magnifying_glass.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Resource>
+    <Resource Include="Images\refresh.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Resource>
   </ItemGroup>

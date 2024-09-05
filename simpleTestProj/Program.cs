@@ -1,11 +1,7 @@
 ﻿using AdsUtilities;
 
-AdsFileClient fileClient = new();
-
-fileClient.ConnectLocal();
-
-var fileList = await fileClient.GetFolderContentListAsync("C:");
-foreach(var file in fileList)
-{
-    Console.WriteLine(file.fileName);
-}
+AdsSystemClient adsSystemClient = new AdsSystemClient();
+adsSystemClient.ConnectLocal();
+var sysInfo = await adsSystemClient.GetSystemInfoAsync();
+Console.WriteLine(sysInfo.ToString());
+;

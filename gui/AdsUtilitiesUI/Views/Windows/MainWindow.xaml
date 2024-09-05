@@ -5,15 +5,14 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d"
         xmlns:local="clr-namespace:AdsUtilitiesUI"
-        Title="MainWindow" Height="500" Width="800">
+        Title="MainWindow" Height="550" Width="900">
     <Grid>
         <Grid.RowDefinitions>
             <!--Route Selection-->
             <RowDefinition Height="50" />
             <!--Main Area-->
             <RowDefinition Height="3*"/>
-            <!--Logs Area-->
-            <RowDefinition Height="*"/>
+
         </Grid.RowDefinitions>
 
         <GridSplitter Grid.Row="4" HorizontalAlignment="Stretch" VerticalAlignment="Center" Background="LightGray" ShowsPreview="True" Height="1" />
@@ -22,6 +21,8 @@
         <Grid Grid.Row="0" Margin=" 0 0 0 15">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="auto"/>
+                <ColumnDefinition Width="2*"/>
+                <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="*"/>
 
             </Grid.ColumnDefinitions>
@@ -35,6 +36,15 @@
                   Margin="5 5" 
                   SelectionChanged="CmbBx_SelectRoute_SelectionChanged">
             </ComboBox>
+            <Button Name="Bttn_Refresh"
+                    Grid.Column="2"
+                    Margin="5 5"
+                    Click="RefreshButton_Click">
+                <Button.Content>
+                    <Image Source="/Images/refresh.png" 
+                       Stretch="Uniform" />
+                </Button.Content>
+            </Button>
 
         </Grid>
         
@@ -49,12 +59,5 @@
             </TabItem>
             <TabItem Header="Device Info"/>
         </TabControl>
-
-        <!--Logs Area-->
-        <GroupBox Grid.Row="2" Header="Logger" Margin="5,5,5,5">
-            <ScrollViewer VerticalScrollBarVisibility="Auto">
-                <TextBox Name="TxtBx_Logs" Margin="2" IsReadOnly="True" />
-            </ScrollViewer>
-        </GroupBox>
     </Grid>
 </Window>
