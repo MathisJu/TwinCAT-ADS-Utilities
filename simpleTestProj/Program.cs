@@ -1,7 +1,6 @@
 ﻿using AdsUtilities;
 
-AdsSystemClient adsSystemClient = new AdsSystemClient();
-adsSystemClient.ConnectLocal();
-var sysInfo = await adsSystemClient.GetSystemInfoAsync();
-Console.WriteLine(sysInfo.ToString());
-;
+AdsSystemClient client = new ();
+client.Connect("5.30.228.96.1.1");
+await client.RebootAsync();
+Console.WriteLine("Done");

@@ -201,7 +201,9 @@ namespace AdsUtilities
 
             for (int i = 0; i < networkAddressBytes.Length; i++)
             {
-                networkAddressBytes[i] = (byte)(ipAdressBytes[i] & subnetMaskBytes[i]);
+                networkAddressBytes[i] = (byte)(ipAdressBytes[i] & subnetMaskBytes[
+                    
+                    i]);
             }
 
             return new IPAddress(networkAddressBytes);
@@ -241,7 +243,8 @@ namespace AdsUtilities
                 _logger?.LogCritical("Sub-Route to {netIdSub} with gateway {netIdGate} could not be added because there is no existing route entry to the sub-route on the gateway. Make sure to add the remote route first.", netIdSubRoute, netIdGateway);
                 return;
             }
-            string staticRoutesPath = GetTwinCatDirectory() + "/3.1/Target/StaticRoutes.xml";
+
+            string staticRoutesPath = "/TwinCAT/3.1/Target/StaticRoutes.xml";
             using AdsFileClient routesEditor = new();
             routesEditor.Connect(_netId.ToString());
             byte[] staticRoutesContent = await routesEditor.FileReadFullAsync(staticRoutesPath, false, cancel);
@@ -270,7 +273,8 @@ namespace AdsUtilities
 
         public async Task AddAdsMqttRouteAsync(string brokerAddress, uint brokerPort, string topic, bool unidirectional = false, uint qualityOfService = default, string user = default, string password = default, CancellationToken cancel = default)
         {
-            string staticRoutesPath = GetTwinCatDirectory() + "/3.1/Target/StaticRoutes.xml";
+            string staticRoutesPath = "/TwinCAT/3.1/Target/StaticRoutes.xml";
+
             using AdsFileClient routesEditor = new();
             routesEditor.Connect(_netId.ToString());
             byte[] staticRoutesContent = await routesEditor.FileReadFullAsync(staticRoutesPath, false, cancel);
@@ -316,11 +320,6 @@ namespace AdsUtilities
             public List<string>? Cipher = default;
             public string? RevocationList = default;
         }*/
-
-        private async Task<string> GetTwinCatDirectory()    // ToDo
-        {
-            return "C:/TwinCAT";    // There may be an existing index group / offset that stores the twincat directory (somewhere under port 10000?)
-        }
 
         public async Task<List<StaticRoutesInfo>> GetRoutesListAsync(CancellationToken cancel = default)
         {
@@ -667,7 +666,7 @@ namespace AdsUtilities
                     index += 4; // Move past header
                     if (index + nameLength <= data.Length)
                     {
-                        targetInfo.Name = Encoding.UTF8.GetString(data, index, nameLength);
+                        targetInfo.Name = Encoding.UTF8.GetString(data, index, nameLength - 1); // -1 to skip string termination
                         index += nameLength; // Move past Name
                     }
 
@@ -729,7 +728,6 @@ namespace AdsUtilities
 
             return targetInfo;
         }
-
 
         private static bool MatchHeader(byte[] data, int index, byte[] header)
         {

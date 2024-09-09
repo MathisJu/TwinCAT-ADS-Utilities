@@ -5,8 +5,10 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using System.Security;
 using System.Text;
 using System.Threading.Tasks;
+using System.Windows.Data;
 
 namespace AdsUtilitiesUI
 {
@@ -21,6 +23,11 @@ namespace AdsUtilitiesUI
         {
             NetworkAdapterPairs = new ObservableCollection<NetworkAdapterPair>();
             TargetInfoList = new ObservableCollection<TargetInfo>();
+
+            AddRouteSelection = new()
+            {
+                RemoteName = Environment.MachineName
+            };
         }
 
         private StaticRoutesInfo _Target;
@@ -36,6 +43,38 @@ namespace AdsUtilitiesUI
                     OnPropertyChanged();
                     _ = LoadNetworkAdaptersAsync();
                 }
+            }
+        }
+
+        private TargetInfo _TargetListSelection;
+        public TargetInfo TargetListSelection 
+        {
+            get => _TargetListSelection;
+            set
+            {
+                if (_TargetListSelection.Name != value.Name || _TargetListSelection.NetId != value.NetId || _TargetListSelection.IpAddress != value.IpAddress) 
+                { 
+                    _TargetListSelection = value;
+                    OnPropertyChanged();
+                    AddRouteSelection.HostName = value.Name;
+                    AddRouteSelection.Name = value.Name;
+                    AddRouteSelection.NetId = value.NetId;
+                    AddRouteSelection.IpAddress = value.IpAddress;
+                    
+                    OnPropertyChanged(nameof(AddRouteSelection));
+                }
+            }
+        } 
+
+        private AddRouteInfo _AddRouteSelection;
+
+        public AddRouteInfo AddRouteSelection
+        {
+            get => _AddRouteSelection;
+            set
+            {
+                _AddRouteSelection = value;
+                OnPropertyChanged();
             }
         }
 
@@ -83,6 +122,31 @@ namespace AdsUtilitiesUI
             }
         }
 
+        public async Task AddRoute()
+        {
+            using AdsRoutingClient routingClient = new();
+            routingClient.Connect(Target.NetId);
+
+            if (AddRouteSelection.TypeStaticLocal)
+            {
+                await routingClient.AddLocalRouteEntryAsync(AddRouteSelection.NetId, AddRouteSelection.IpAddress, AddRouteSelection.Name); // ToDo: Add option for route via Hostname
+            }
+            if (AddRouteSelection.TypeTempLocal)
+            {
+                throw new NotImplementedException("Temp routes not supported yet"); // ToDo: Add temporary route option
+            }
+
+
+            if (AddRouteSelection.TypeStaticRemote)
+            {
+                await routingClient.AddRemoteRouteEntryAsync(AddRouteSelection.IpAddress, AddRouteSelection.Username, AddRouteSelection.Password, AddRouteSelection.RemoteName);
+            }
+            if (AddRouteSelection.TypeTempRemote)
+            {
+                throw new NotImplementedException("Temp routes not supported yet"); // ToDo: Add temporary route option
+            }
+        }
+
         public event PropertyChangedEventHandler PropertyChanged;
         protected void OnPropertyChanged([CallerMemberName] string propertyName = null)
         {
@@ -116,4 +180,152 @@ namespace AdsUtilitiesUI
         public NetworkAdapterItem Adapter2 { get; set; } // Kann null sein, wenn die Anzahl ungerade ist
     }
 
+    public class AddRouteInfo : INotifyPropertyChanged
+    {
+        public string Name { get; set; }
+        public string NetId { get; set; }
+        public string IpAddress { get; set; }
+        public string HostName { get; set; }
+        public string RemoteName { get; set; }
+        public string Username { get; set; }
+        public string Password { get; set; }
+
+        private bool _addByIpAddress = true;
+        private bool _addByHostname;
+
+        public bool AddByIpAddress
+        {
+            get { return _addByIpAddress; }
+            set
+            {
+                if (_addByIpAddress != value)
+                {
+                    _addByIpAddress = value;
+                    OnPropertyChanged(nameof(AddByIpAddress));
+                }
+            }
+        }
+        public bool AddByHostname
+        {
+            get { return _addByHostname; }
+            set
+            {
+                if (_addByHostname != value)
+                {
+                    _addByHostname = value;
+                    OnPropertyChanged(nameof(_addByHostname));
+                }
+            }
+        }
+
+        private bool _typeNoneRemote;
+        private bool _typeStaticRemote = true;
+        private bool _typeTempRemote;
+
+        public bool TypeNoneRemote
+        {
+            get { return _typeNoneRemote; }
+            set
+            {
+                if (_typeNoneRemote != value)
+                {
+                    _typeNoneRemote = value;
+                    OnPropertyChanged(nameof(TypeNoneRemote));
+                }
+            }
+        }
+
+        public bool TypeStaticRemote
+        {
+            get { return _typeStaticRemote; }
+            set
+            {
+                if (_typeStaticRemote != value)
+                {
+                    _typeStaticRemote = value;
+                    OnPropertyChanged(nameof(TypeStaticRemote));
+                }
+            }
+        }
+
+        public bool TypeTempRemote
+        {
+            get { return _typeTempRemote; }
+            set
+            {
+                if (_typeTempRemote != value)
+                {
+                    _typeTempRemote = value;
+                    OnPropertyChanged(nameof(TypeTempRemote));
+                }
+            }
+        }
+        private bool _typeNoneLocal;
+        private bool _typeStaticLocal = true;
+        private bool _typeTempLocal;
+
+        public bool TypeNoneLocal
+        {
+            get { return _typeNoneLocal; }
+            set
+            {
+                if (_typeNoneLocal != value)
+                {
+                    _typeNoneLocal = value;
+                    OnPropertyChanged(nameof(_typeNoneLocal));
+                }
+            }
+        }
+
+        public bool TypeStaticLocal
+        {
+            get { return _typeStaticLocal; }
+            set
+            {
+                if (_typeStaticLocal != value)
+                {
+                    _typeStaticLocal = value;
+                    OnPropertyChanged(nameof(_typeStaticLocal));
+                }
+            }
+        }
+
+        public bool TypeTempLocal
+        {
+            get { return _typeTempLocal; }
+            set
+            {
+                if (_typeTempLocal != value)
+                {
+                    _typeTempLocal = value;
+                    OnPropertyChanged(nameof(TypeTempLocal));
+                }
+            }
+        }
+
+        public event PropertyChangedEventHandler PropertyChanged;
+        protected virtual void OnPropertyChanged(string propertyName)
+        {
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+        }
+
+        public bool AllParametersProvided()
+        {
+            if (string.IsNullOrWhiteSpace(Name))
+                return false;
+            if (string.IsNullOrWhiteSpace(NetId))
+                return false;
+            if(string.IsNullOrWhiteSpace(IpAddress) && AddByIpAddress)
+                return false;
+            if(string.IsNullOrWhiteSpace(HostName) && AddByHostname)
+                return false;
+            if(string.IsNullOrWhiteSpace(RemoteName))
+                return false;
+            if (string.IsNullOrWhiteSpace(Username)) 
+                return false;
+            if (string.IsNullOrWhiteSpace(Password)) 
+                return false;
+            return true;
+        }
+    }
 }

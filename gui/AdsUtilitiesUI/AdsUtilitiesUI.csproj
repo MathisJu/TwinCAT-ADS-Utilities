@@ -9,14 +9,41 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Remove="Images\075b_UpFolder_16x16_72.png" />
+    <None Remove="Images\arrow-left.svg" />
+    <None Remove="Images\arrow-right.svg" />
+    <None Remove="Images\arrow-up.svg" />
+    <None Remove="Images\arrows-right-left.svg" />
+    <None Remove="Images\Back.png" />
+    <None Remove="Images\clipboard-copy.svg" />
+    <None Remove="Images\clipboard.svg" />
+    <None Remove="Images\command.svg" />
+    <None Remove="Images\copy-x.svg" />
+    <None Remove="Images\copy.svg" />
+    <None Remove="Images\edit.svg" />
+    <None Remove="Images\file-info.svg" />
     <None Remove="Images\file.png" />
     <None Remove="Images\file_simple.png" />
     <None Remove="Images\file_simple_hidden.png" />
+    <None Remove="Images\fingerprint.svg" />
     <None Remove="Images\folderdrive.png" />
     <None Remove="Images\folderdrive_hidden.png" />
+    <None Remove="Images\folderopened_yellow_64.png" />
+    <None Remove="Images\Folder_yellow_32.png" />
+    <None Remove="Images\forward.png" />
     <None Remove="Images\harddrive.png" />
+    <None Remove="Images\info-circle.svg" />
+    <None Remove="Images\IsHiddenVisible.png" />
     <None Remove="Images\magnifying_glass.png" />
+    <None Remove="Images\pencil.svg" />
+    <None Remove="Images\plus.svg" />
+    <None Remove="Images\prompt.svg" />
     <None Remove="Images\refresh.png" />
+    <None Remove="Images\refresh.svg" />
+    <None Remove="Images\reload.svg" />
+    <None Remove="Images\settings.svg" />
+    <None Remove="Images\x.svg" />
+    <None Remove="Images\zoom.svg" />
   </ItemGroup>
 
   <ItemGroup>
@@ -28,6 +55,45 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Resource Include="Images\075b_UpFolder_16x16_72.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Resource>
+    <Resource Include="Images\arrow-left.svg">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Resource>
+    <Resource Include="Images\arrow-right.svg">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Resource>
+    <Resource Include="Images\arrow-up.svg">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Resource>
+    <Resource Include="Images\arrows-right-left.svg">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Resource>
+    <Resource Include="Images\Back.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Resource>
+    <Resource Include="Images\clipboard-copy.svg">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Resource>
+    <Resource Include="Images\clipboard.svg">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Resource>
+    <Resource Include="Images\command.svg">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Resource>
+    <Resource Include="Images\copy-x.svg">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Resource>
+    <Resource Include="Images\copy.svg">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Resource>
+    <Resource Include="Images\edit.svg">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Resource>
+    <Resource Include="Images\file-info.svg">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Resource>
     <Resource Include="Images\file.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Resource>
@@ -37,19 +103,61 @@
     <Resource Include="Images\file_simple_hidden.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Resource>
+    <Resource Include="Images\fingerprint.svg">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Resource>
     <Resource Include="Images\folderdrive.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Resource>
     <Resource Include="Images\folderdrive_hidden.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Resource>
+    <Resource Include="Images\folderopened_yellow_64.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Resource>
+    <Resource Include="Images\Folder_yellow_32.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Resource>
+    <Resource Include="Images\forward.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Resource>
     <Resource Include="Images\harddrive.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Resource>
+    <Resource Include="Images\info-circle.svg">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Resource>
+    <Resource Include="Images\IsHiddenVisible.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Resource>
     <Resource Include="Images\magnifying_glass.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Resource>
+    <Resource Include="Images\pencil.svg">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Resource>
+    <Resource Include="Images\plus.svg">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Resource>
+    <Resource Include="Images\prompt.svg">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Resource>
     <Resource Include="Images\refresh.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Resource>
+    <Resource Include="Images\refresh.svg">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Resource>
+    <Resource Include="Images\reload.svg">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Resource>
+    <Resource Include="Images\settings.svg">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Resource>
+    <Resource Include="Images\x.svg">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Resource>
+    <Resource Include="Images\zoom.svg">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Resource>
   </ItemGroup>

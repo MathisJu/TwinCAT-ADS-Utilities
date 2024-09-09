@@ -33,11 +33,8 @@ namespace AdsUtilitiesUI
             get => _Target;
             set
             {
-                if (_Target.IpAddress == null || _Target.Name != value.Name)
-                {
-                    _Target = value;
-                    LoadRootDirectories();
-                }
+                _Target = value;
+                LoadRootDirectories(_Target.NetId);
             }
         }
 
@@ -51,10 +48,11 @@ namespace AdsUtilitiesUI
             }
         }
 
-        private void LoadRootDirectories()
+        private void LoadRootDirectories(string netId)
         {
-            string rootDirectory = "C:\\";  // ToDo: Make this dynamic for different operating systems
-            var rootFolder = new FileSystemItem(
+            string rootDirectory = "/";
+
+            FileSystemItem rootFolder = new FileSystemItem(
                 DeviceNetID: Target.NetId,
                 Name: rootDirectory,
                 IsDirectory: true,
@@ -67,12 +65,10 @@ namespace AdsUtilitiesUI
                 IsRoot: true);
 
             rootFolder.LoadChildren();
-
+            
             RootItems = new ObservableCollection<FileSystemItem> { rootFolder };
             OnPropertyChanged(nameof(RootItems));
         }
-
-        
 
         protected void OnPropertyChanged(string propertyName)
         {

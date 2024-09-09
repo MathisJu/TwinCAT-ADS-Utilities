@@ -6,185 +6,186 @@
       xmlns:local="clr-namespace:AdsUtilitiesUI"
       d:DataContext="{d:DesignInstance IsDesignTimeCreatable=True}"
       mc:Ignorable="d" 
-      d:DesignHeight="450" d:DesignWidth="800"
+      d:DesignHeight="600" d:DesignWidth="900"
       Title="AdsRoutingPage">
 
+
     <Grid>
-        <TabControl Margin="5">
-            <TabItem Header="Search">
-                <Grid Margin="10">
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="*"/>
-                        <RowDefinition Height="2*"/>
-                        <RowDefinition Height="Auto"/>
-                    </Grid.RowDefinitions>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="Auto"/>
-                    </Grid.ColumnDefinitions>
+        <Grid Margin="10">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="2*"/>
 
-                    <!-- Search Buttons -->
-                    <StackPanel Orientation="Horizontal" Grid.Row="0" Grid.ColumnSpan="2" Margin="0,0,0,10">
-                        <Button Content="Broadcast Search" Click="BroadcastBttn_Click" Width="150" Margin="0,0,10,0"/>
-                        <Button Content="Search by IP / Hostname:" Width="150"/>
-                        <TextBox Width="200" Height="23" Margin="0,0,10,0"/>
+                <RowDefinition Height="2*"/>
+            </Grid.RowDefinitions>
+
+            <!-- Search Buttons -->
+            <StackPanel Orientation="Horizontal" Grid.Row="0" Grid.ColumnSpan="2" Margin="0,0,0,10">
+                <Button Content="Broadcast Search" Click="BroadcastBttn_Click" Width="150" Margin="0,0,10,0"/>
+                <Button Content="Search by IP / Hostname:" Width="150"/>
+                <TextBox Width="200" Height="23" Margin="0,0,10,0"/>
+            </StackPanel>
+
+            <!-- Available Adapters -->
+            <Grid Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2" Margin="0 0 0 5">
+                <!-- ListView Adapters -->
+                <ListView ItemsSource="{Binding NetworkAdapterPairs}" ScrollViewer.VerticalScrollBarVisibility="Auto">
+                    <ListView.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <VirtualizingStackPanel Orientation="Vertical" />
+                        </ItemsPanelTemplate>
+                    </ListView.ItemsPanel>
+                    <ListView.ItemTemplate>
+                        <DataTemplate>
+                            <Grid Margin="0,2" HorizontalAlignment="Stretch">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+
+                                <!-- Erster Adapter in der linken Spalte -->
+                                <StackPanel Orientation="Horizontal" Grid.Column="0" Margin="2" HorizontalAlignment="Stretch">
+                                    <CheckBox IsChecked="{Binding Adapter1.IsSelected}" Margin="0,0,10,0" />
+                                    <TextBlock Text="{Binding Adapter1.AdapterInfo.Name}" 
+                                            TextTrimming="CharacterEllipsis" 
+                                            TextWrapping="NoWrap"
+                                            VerticalAlignment="Center"
+                                            HorizontalAlignment="Stretch" />
+                                    <TextBlock Text=" (" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{Binding Adapter1.AdapterInfo.IpAddress}" VerticalAlignment="Center"/>
+                                    <TextBlock Text=")" VerticalAlignment="Center"/>
+                                </StackPanel>
+
+                                <!-- Zweiter Adapter in der rechten Spalte (falls vorhanden) -->
+                                <StackPanel Orientation="Horizontal" Grid.Column="1" Margin="2" HorizontalAlignment="Stretch">
+                                    <CheckBox IsChecked="{Binding Adapter2.IsSelected}" Margin="0,0,10,0" />
+                                    <TextBlock Text="{Binding Adapter2.AdapterInfo.Name}" 
+                                            TextTrimming="CharacterEllipsis" 
+                                            TextWrapping="NoWrap"
+                                            VerticalAlignment="Center"
+                                            HorizontalAlignment="Stretch" />
+                                    <TextBlock Text=" (" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{Binding Adapter2.AdapterInfo.IpAddress}" VerticalAlignment="Center"/>
+                                    <TextBlock Text=")" VerticalAlignment="Center"/>
+                                    <!-- Trigger zur Steuerung der Sichtbarkeit -->
+                                    <StackPanel.Style>
+                                        <Style TargetType="StackPanel">
+                                            <Setter Property="Visibility" Value="Visible"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding Adapter2}" Value="{x:Null}">
+                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </StackPanel.Style>
+                                </StackPanel>
+                            </Grid>
+                        </DataTemplate>
+                    </ListView.ItemTemplate>
+
+                    <!-- Optional: Styles für ListViewItem, um sicherzustellen, dass sie auch strecken -->
+                    <ListView.ItemContainerStyle>
+                        <Style TargetType="ListViewItem">
+                            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                        </Style>
+                    </ListView.ItemContainerStyle>
+                </ListView>
+            </Grid>
+
+
+            <!-- Search Results -->
+            <DataGrid Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="2" Margin="0 5 0 0" 
+                      ItemsSource="{Binding TargetInfoList}" SelectedItem="{Binding TargetListSelection}" 
+                      AutoGenerateColumns="False" Height="auto" VerticalScrollBarVisibility="Auto"
+                      GridLinesVisibility="None" IsReadOnly="True">
+                <DataGrid.Columns>
+                    <DataGridTextColumn Header="Hostname" Binding="{Binding Name}" Width="3*"/>
+                    <DataGridTextColumn Header="IP Address" Binding="{Binding IpAddress}" Width="3*"/>
+                    <DataGridTextColumn Header="AMS NetID" Binding="{Binding NetId}" Width="3*"/>
+                    <DataGridTextColumn Header="TwinCAT" Binding="{Binding TcVersion}" Width="2*"/>
+                    <DataGridTextColumn Header="OS" Binding="{Binding OsVersion}" Width="4*"/>
+                </DataGrid.Columns>
+            </DataGrid>
+
+            <!-- Add Route Section -->
+            <Grid Grid.Row="3" Margin="0 15 0 0">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="20"/>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="4*"/>
+                    <ColumnDefinition Width="4*"/>
+                    <ColumnDefinition Width="2*"/>
+                    <ColumnDefinition Width="4*"/>
+                    <ColumnDefinition Width="4*"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- Route Name -->
+                <TextBlock Grid.Row="0" Grid.Column="0" Text="Route Name" VerticalAlignment="Center" Margin="2" />
+                <TextBox x:Name="InputName" Grid.Row="0" Grid.Column="1" Margin="2" Text="{Binding AddRouteSelection.Name}"/>
+
+                <!-- AMS NetID -->
+                <TextBlock Grid.Row="1" Grid.Column="0" Text="AMS NetID" VerticalAlignment="Center" Margin="2" />
+                <TextBox x:Name="InputNetid" Grid.Row="1" Grid.Column="1" Margin="2" Text="{Binding AddRouteSelection.NetId}"/>
+
+                <!-- IP Address -->
+                <TextBlock Grid.Row="2" Grid.Column="0" Text="IP Address" VerticalAlignment="Center" Margin="2" />
+                <TextBox x:Name="InputIp" Grid.Row="2" Grid.Column="1" Margin="2" Text="{Binding AddRouteSelection.IpAddress}"/>
+
+                <!-- Host Name -->
+                <TextBlock Grid.Row="3" Grid.Column="0" Text="Host Name" VerticalAlignment="Center" Margin="2" />
+                <TextBox x:Name="InputHostname" Grid.Row="3" Grid.Column="1" Margin="2" Text="{Binding AddRouteSelection.HostName}"/>
+                
+                <!-- IP or Hostname -->
+                <RadioButton IsChecked="{Binding AddRouteSelection.AddByIpAddress}" Grid.Row="2" Grid.Column="0" HorizontalAlignment="Right" VerticalAlignment="Center" GroupName="IpOrHostname"/>
+                <RadioButton IsChecked="{Binding AddRouteSelection.AddByHostname}" Grid.Row="3" Grid.Column="0" HorizontalAlignment="Right" VerticalAlignment="Center" GroupName="IpOrHostname"/>
+
+                <!-- Remote Route Name -->
+                <TextBlock Grid.Row="0" Grid.Column="3" Text="Remote Route Name" VerticalAlignment="Center" Margin="2" />
+                <TextBox x:Name="InputNameRemote" Grid.Row="0" Grid.Column="4" Margin="2" Text="{Binding AddRouteSelection.RemoteName}"/>
+
+                <!-- Password -->
+                <TextBlock Grid.Row="6" Grid.Column="0" Text="Password" VerticalAlignment="Center" Margin="2" />
+                <PasswordBox x:Name="InputPassword" Grid.Row="6" Grid.Column="1" Margin="2" PasswordChanged="PasswordBox_PasswordChanged"/>
+
+                <!-- Username -->
+                <TextBlock Grid.Row="5" Grid.Column="0" Text="Username" VerticalAlignment="Center" Margin="2" />
+                <TextBox x:Name="InputUsername" Grid.Row="5" Grid.Column="1" Margin="2" Text="{Binding AddRouteSelection.Username}"/>
+                
+                <!-- Target Route Settings -->
+                <GroupBox Header="Target Route"  Grid.Column="3" Grid.Row="1"  Margin="5" Grid.RowSpan="3">
+                    <StackPanel>
+                        <RadioButton IsChecked="{Binding AddRouteSelection.TypeNoneLocal}" Content="None" GroupName="TargetRoute"/>
+                        <RadioButton IsChecked="{Binding AddRouteSelection.TypeStaticLocal}" Content="Static" GroupName="TargetRoute"/>
+                        <RadioButton IsChecked="{Binding AddRouteSelection.TypeTempLocal}" Content="Temporary" GroupName="TargetRoute"/>
                     </StackPanel>
+                </GroupBox>
 
-                    <!-- Available Adapters -->
-                    <Grid Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2" Margin="0 0 0 5">
-                        <!-- ListView Adapters -->
-                        <ListView ItemsSource="{Binding NetworkAdapterPairs}" ScrollViewer.VerticalScrollBarVisibility="Auto">
-                            <ListView.ItemsPanel>
-                                <ItemsPanelTemplate>
-                                    <VirtualizingStackPanel Orientation="Vertical" />
-                                </ItemsPanelTemplate>
-                            </ListView.ItemsPanel>
-                            <ListView.ItemTemplate>
-                                <DataTemplate>
-                                    <Grid Margin="0,2" HorizontalAlignment="Stretch">
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="*" />
-                                            <ColumnDefinition Width="*" />
-                                        </Grid.ColumnDefinitions>
+                <!-- Remote Route Settings -->
+                <GroupBox Header="Remote Route"  Grid.Column="4" Grid.Row="1" Margin="5" Grid.RowSpan="3">
+                    <StackPanel>
+                        <RadioButton IsChecked="{Binding AddRouteSelection.TypeNoneRemote}"  Content="None" GroupName="RemoteRoute" />
+                        <RadioButton IsChecked="{Binding AddRouteSelection.TypeStaticRemote}" Content="Static" GroupName="RemoteRoute"/>
+                        <RadioButton IsChecked="{Binding AddRouteSelection.TypeTempRemote}"  Content="Temporary" GroupName="RemoteRoute" />
+                    </StackPanel>
+                </GroupBox>
 
-                                        <!-- Erster Adapter in der linken Spalte -->
-                                        <StackPanel Orientation="Horizontal" Grid.Column="0" Margin="2" HorizontalAlignment="Stretch">
-                                            <CheckBox IsChecked="{Binding Adapter1.IsSelected}" Margin="0,0,10,0" />
-                                            <TextBlock Text="{Binding Adapter1.AdapterInfo.Name}" 
-                                               TextTrimming="CharacterEllipsis" 
-                                               TextWrapping="NoWrap"
-                                               VerticalAlignment="Center"
-                                               HorizontalAlignment="Stretch" />
-                                            <TextBlock Text="(" VerticalAlignment="Center"/>
-                                            <TextBlock Text="{Binding Adapter1.AdapterInfo.IpAddress}" VerticalAlignment="Center"/>
-                                            <TextBlock Text=")" VerticalAlignment="Center"/>
-                                        </StackPanel>
+                <!-- Restore Default Button -->
+                <Button Grid.Column="4" Grid.Row="5" Content="Restore Default" Margin="2"></Button>
 
-                                        <!-- Zweiter Adapter in der rechten Spalte (falls vorhanden) -->
-                                        <StackPanel Orientation="Horizontal" Grid.Column="1" Margin="2" HorizontalAlignment="Stretch">
-                                            <CheckBox IsChecked="{Binding Adapter2.IsSelected}" Margin="0,0,10,0" />
-                                            <TextBlock Text="{Binding Adapter2.AdapterInfo.Name}" 
-                                               TextTrimming="CharacterEllipsis" 
-                                               TextWrapping="NoWrap"
-                                               VerticalAlignment="Center"
-                                               HorizontalAlignment="Stretch" />
-                                            <TextBlock Text="(" VerticalAlignment="Center"/>
-                                            <TextBlock Text="{Binding Adapter2.AdapterInfo.IpAddress}" VerticalAlignment="Center"/>
-                                            <TextBlock Text=")" VerticalAlignment="Center"/>
-                                            <!-- Trigger zur Steuerung der Sichtbarkeit -->
-                                            <StackPanel.Style>
-                                                <Style TargetType="StackPanel">
-                                                    <Setter Property="Visibility" Value="Visible"/>
-                                                    <Style.Triggers>
-                                                        <DataTrigger Binding="{Binding Adapter2}" Value="{x:Null}">
-                                                            <Setter Property="Visibility" Value="Collapsed"/>
-                                                        </DataTrigger>
-                                                    </Style.Triggers>
-                                                </Style>
-                                            </StackPanel.Style>
-                                        </StackPanel>
-                                    </Grid>
-                                </DataTemplate>
-                            </ListView.ItemTemplate>
+                <!-- Add Route Button -->
+                <Button Grid.Column="4" Grid.Row="6" Content="Add Route" Margin="2" Click="AddRouteButton_Click"></Button>
 
-                            <!-- Optional: Styles für ListViewItem, um sicherzustellen, dass sie auch strecken -->
-                            <ListView.ItemContainerStyle>
-                                <Style TargetType="ListViewItem">
-                                    <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
-                                </Style>
-                            </ListView.ItemContainerStyle>
-                        </ListView>
-                    </Grid>
+            </Grid>
 
-
-                    <!-- Search Results -->
-                    <DataGrid Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="2" Margin="0 5 0 0" ItemsSource="{Binding TargetInfoList}" AutoGenerateColumns="False" Height="auto" VerticalScrollBarVisibility="Auto">
-                        <DataGrid.Columns>
-                            <DataGridTextColumn Header="Hostname" Binding="{Binding Name}" Width="*"/>
-                            <DataGridTextColumn Header="IP Address" Binding="{Binding IpAddress}" Width="*"/>
-                            <DataGridTextColumn Header="AMS NetID" Binding="{Binding NetId}" Width="*"/>
-                            <DataGridTextColumn Header="TwinCAT" Binding="{Binding TcVersion}" Width="*"/>
-                            <DataGridTextColumn Header="OS" Binding="{Binding OsVersion}" Width="*"/>
-                        </DataGrid.Columns>
-                    </DataGrid>
-
-                    <!-- Add Selected Target Button -->
-                    <Button Content="Add Selected Target" Grid.Row="3" Grid.Column="1" Width="150" HorizontalAlignment="Right" Margin="0,10,0,0"/>
-                </Grid>
-            </TabItem>
-            <TabItem Header="Add">
-                <Grid>
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="auto"/>
-                        <RowDefinition Height="auto"/>
-                        <RowDefinition Height="auto"/>
-                        <RowDefinition Height="auto"/>
-                        <RowDefinition Height="*"/>
-                        <RowDefinition Height="auto"/>
-                        <RowDefinition Height="auto"/>
-                        <RowDefinition/>
-                    </Grid.RowDefinitions>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="3*"/>
-                        <ColumnDefinition Width="5*"/>
-                        <ColumnDefinition Width="1*"/>
-                        <ColumnDefinition Width="4*"/>
-                        <ColumnDefinition Width="4*"/>
-                    </Grid.ColumnDefinitions>
-
-                    <!-- Route Name -->
-                    <TextBlock Grid.Row="0" Grid.Column="0" Text="Route Name" VerticalAlignment="Center" Margin="5" />
-                    <TextBox Grid.Row="0" Grid.Column="1" Margin="5" />
-
-                    <!-- AMS NetID -->
-                    <TextBlock Grid.Row="1" Grid.Column="0" Text="AMS NetID" VerticalAlignment="Center" Margin="5" />
-                    <TextBox Grid.Row="1" Grid.Column="1" Margin="5" />
-
-                    <!-- Address -->
-                    <ComboBox Grid.Row="2" Grid.Column="0" Text="IP Address" VerticalAlignment="Center" MinHeight="10" Margin="2" >
-                        <ComboBoxItem Content="IP Address" IsSelected="True"/>
-                        <ComboBoxItem Content="Host Name"/>
-                    </ComboBox>
-                    <TextBox Grid.Row="2" Grid.Column="1" Margin="5" />
-
-                    <!-- Remote Route Name -->
-                    <TextBlock Grid.Row="3" Grid.Column="0" Text="Remote Route Name" VerticalAlignment="Center" Margin="5" />
-                    <TextBox Grid.Row="3" Grid.Column="1" Margin="5" />
-
-                    <!-- Username -->
-                    <TextBlock Grid.Row="5" Grid.Column="0" Text="Username" VerticalAlignment="Center" Margin="5" />
-                    <TextBox Grid.Row="5" Grid.Column="1" Margin="5" />
-
-                    <!-- Password -->
-                    <TextBlock Grid.Row="6" Grid.Column="0" Text="Password" VerticalAlignment="Center" Margin="5" />
-                    <TextBox Grid.Row="6" Grid.Column="1" Margin="5" />
-
-                    <!-- Target Route Settings -->
-                    <GroupBox Header="Target Route"  Grid.Column="3" Margin="5" Grid.RowSpan="3">
-                        <StackPanel>
-                            <RadioButton Content="None" GroupName="TargetRoute" />
-                            <RadioButton Content="Static" GroupName="TargetRoute" IsChecked="True" />
-                            <RadioButton Content="Temporary" GroupName="TargetRoute" />
-                        </StackPanel>
-                    </GroupBox>
-
-                    <!-- Remote Route Settings -->
-                    <GroupBox Header="Remote Route"  Grid.Column="4" Margin="5" Grid.RowSpan="3">
-                        <StackPanel>
-                            <RadioButton Content="None" GroupName="RemoteRoute" />
-                            <RadioButton Content="Static" GroupName="RemoteRoute" IsChecked="True" />
-                            <RadioButton Content="Temporary" GroupName="RemoteRoute" />
-                        </StackPanel>
-                    </GroupBox>
-
-                    <!-- Restore Default Button -->
-                    <Button Grid.Column="4" Grid.Row="5" Content="Restore Default" Margin="5"></Button>
-
-                    <!-- Add Route Button -->
-                    <Button Grid.Column="4" Grid.Row="6" Content="Add Route" Margin="5"></Button>
-                </Grid>
-            </TabItem>
-        </TabControl>
+        </Grid>
     </Grid>
 </Page>

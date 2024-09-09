@@ -9,7 +9,7 @@ namespace AdsUtilities
     {
         public string NetId { get { return _netId.ToString(); } }
 
-        private static readonly AdsClient _adsClient = new();
+        private readonly AdsClient _adsClient = new();
 
         private AmsNetId? _netId;
 
@@ -34,7 +34,7 @@ namespace AdsUtilities
         public async Task RebootAsync(uint delaySec = 0, CancellationToken cancel = default) 
         {
             _adsClient.Connect(_netId, (int)Constants.AdsPortSystemService);
-            await _adsClient.WriteControlAsync(AdsState.Shutdown, 1, BitConverter.GetBytes(delaySec), cancel);
+            var res = await _adsClient.WriteControlAsync(AdsState.Shutdown, 1, BitConverter.GetBytes(delaySec), cancel);
             _adsClient.Disconnect();
         }
 
