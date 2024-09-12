@@ -63,28 +63,36 @@ namespace AdsUtilitiesUI
             {
                 foreach (var textBox in missingTextInputs)
                 {
-                    HighlightControl(textBox);
+                    HighlightControl(textBox, Colors.Pink, 1);
                 }
 
                 foreach (var passwordBox in missingPasswordInputs)
                 {
-                    HighlightControl(passwordBox);
+                    HighlightControl(passwordBox, Colors.Pink, 1);
                 }
             }
         }
-        private void HighlightControl(Control control)
+        private static void HighlightControl(Control control, Color highlightBackgroundColor, int durationSeconds)
         {
             // Highlight control by changing background color
-            control.Background = new SolidColorBrush(Colors.Pink);
-
-            // Animation that resets color
-            var animation = new ColorAnimation
+            if (control.Background is SolidColorBrush originalBrush)
             {
-                To = Colors.Transparent,
-                Duration = new Duration(TimeSpan.FromSeconds(1)),
-                AutoReverse = false
-            };
-            control.Background.BeginAnimation(SolidColorBrush.ColorProperty, animation);
+                var originalColor = originalBrush.Color;
+
+                var highlightBrush = new SolidColorBrush(highlightBackgroundColor);
+                control.Background = highlightBrush;
+
+                // Animation that resets color
+                var animation = new ColorAnimation
+                {
+                    To = originalColor,
+                    Duration = new Duration(TimeSpan.FromSeconds(durationSeconds)),
+                    AutoReverse = false
+                };
+
+                highlightBrush.BeginAnimation(SolidColorBrush.ColorProperty, animation);
+            }
+            
         }
         
 

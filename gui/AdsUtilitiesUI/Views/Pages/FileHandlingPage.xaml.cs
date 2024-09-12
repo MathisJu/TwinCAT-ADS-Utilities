@@ -36,12 +36,10 @@ namespace AdsUtilitiesUI
             get => _targetLeft;
             set
             {
-                if (_targetLeft.Name != value.Name)
-                {
-                    _targetLeft = value;
-                    OnPropertyChanged();
-                    ReloadSecondaryRoutes(value.NetId);
-                }
+                _targetLeft = value;
+                OnPropertyChanged();
+                ReloadSecondaryRoutes(value.NetId);
+                
             }
         }
 
@@ -53,8 +51,7 @@ namespace AdsUtilitiesUI
             set
             {
                 _SecondaryRoutes = value;
-                OnPropertyChanged();
-                
+                OnPropertyChanged();                
             }
         }
 
@@ -66,8 +63,7 @@ namespace AdsUtilitiesUI
             set
             {
                 _targetRight = value;
-                OnPropertyChanged();
-                
+                OnPropertyChanged();      
             }
         }
 

@@ -52,9 +52,9 @@
                 <RowDefinition/>
             </Grid.RowDefinitions>
 
+
             <ComboBox 
                 Name="CmbBx_SeondaryRoutes"
-                Grid.Row="0"
                 Margin="5"
                 ItemsSource="{Binding SecondaryRoutes}" 
                 DisplayMemberPath="Name"

@@ -5,7 +5,8 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d"
         xmlns:local="clr-namespace:AdsUtilitiesUI"
-        Title="ADS Utilities Dialog" Height="660" Width="900">
+        Icon="/Images/icon.png"
+        Title="ADS Utilities" Height="660" Width="900">
     <Grid>
         <Grid.RowDefinitions>
             <!--Route Selection-->
@@ -19,43 +20,52 @@
 
 
         <!--Routes Selection-->
-        <Grid Grid.Row="0" Margin=" 0 5 0 5">
+        <Grid Grid.Row="0" Margin=" 5">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="auto"/>
                 <ColumnDefinition Width="2*"/>
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="3*"/>
 
             </Grid.ColumnDefinitions>
 
-            <TextBlock Text="Target:" Margin="10" VerticalAlignment="Center"/>
+            <TextBlock Text="Target:" Margin="10" VerticalAlignment="Center" FontSize="14"/>
             <ComboBox Name="CmbBx_SelectRoute" 
                   Grid.Column="1"
                   ItemsSource="{Binding StaticRoutes}" 
                   DisplayMemberPath="Name"
                   SelectedItem="{Binding SelectedRoute}" 
                   Margin="5 5" 
-                  SelectionChanged="CmbBx_SelectRoute_SelectionChanged">
+                  SelectionChanged="CmbBx_SelectRoute_SelectionChanged"
+                  VerticalContentAlignment="Center">
             </ComboBox>
             <Button Name="Bttn_Refresh"
                     Grid.Column="2"
                     Margin="5 5"
-                    Click="RefreshButton_Click">
-                <Button.Content>
-                    <Image Source="/Images/refresh.png" 
-                       Stretch="Uniform" />
-                </Button.Content>
+                    Click="RefreshButton_Click"
+                    Content="Refresh Routes">
+            </Button>
+            <Button Name="Bttn_RemoteControl"
+                    Grid.Column="3"
+                    Margin="5 5"
+                    Click="Bttn_RemoteControl_Click"
+                    Content="Remote Control">
             </Button>
 
         </Grid>
 
         <!--Seperation line-->
-        <Border Background="Gray" Height="1" Grid.Row="1" Margin="0 0 0 10" />
+        <Border Background="Gray" Height="1" Grid.Row="1" Margin="0" />
 
         <!--Main Area-->
-        <TabControl Grid.Row="2" Margin="5,5,5,5" Grid.RowSpan="1" SelectionChanged="TabControl_SelectionChanged">
+        
+        <!--Background-->
+        <Rectangle Grid.Row="2" Fill="{StaticResource BackgroundBlueGrey}" Panel.ZIndex="0"/>
+        <!--TabControl to select function group-->
+        <TabControl Grid.Row="2" Margin="5,15,5,5" Grid.RowSpan="1" SelectionChanged="TabControl_SelectionChanged" Background="{StaticResource BackgroundNeutralGrey}">
             <TabItem Header="ADS Routing">
-                <Frame x:Name="AdsRoutingFrame" NavigationUIVisibility="Hidden" />
+                <Frame x:Name="AdsRoutingFrame" NavigationUIVisibility="Hidden"/>
             </TabItem>
             <TabItem Header="File Handling">
                 <Frame x:Name="FileHandlingFrame" NavigationUIVisibility="Hidden" />

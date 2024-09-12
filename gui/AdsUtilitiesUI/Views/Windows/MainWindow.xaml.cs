@@ -70,8 +70,12 @@ public partial class MainWindow : Window
     }
     private void RefreshButton_Click(object sender, RoutedEventArgs e)
     {
-        // Aufruf der Refresh-Methode im ViewModel
         _viewModel?.Reload_Routes();
+    }
+
+    private void Bttn_RemoteControl_Click(object sender, RoutedEventArgs e)
+    {
+        _viewModel?.SetupRemoteConnection();
     }
 }
 

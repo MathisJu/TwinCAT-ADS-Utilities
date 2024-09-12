@@ -431,7 +431,7 @@ namespace AdsUtilities
             {
                 if (nic.IpAddress is "0.0.0.0" or null || !IPAddress.TryParse(nic.IpAddress, out _))
                 {
-                    _logger?.LogInformation("The NIC '{nicName}' has no assigned IP address. The request for an ADS broadcast search was aborted.", nic.Name);
+                    _logger?.LogInformation("The NIC '{nicName}' has no valid IP address. The request for an ADS broadcast search was aborted.", nic.Name);
                     continue;
                 }
 
@@ -476,7 +476,7 @@ namespace AdsUtilities
             void RecievedBroadcastResponse(object sender, AdsNotificationEventArgs e)
             {
                 var targetInfo = ParseBroadcastReturn(e.Data.ToArray());
-                broadcastResults.Add(targetInfo);   // Add responses to the thread-safe collection
+                broadcastResults.Add(targetInfo, cancellationToken);   // Add responses to the thread-safe collection
                 completionSource.TrySetResult();    // Signals that there is a new response to the broadcast search
             }
 
@@ -490,7 +490,7 @@ namespace AdsUtilities
             {
                 if (nic.IpAddress is "0.0.0.0" or null || !IPAddress.TryParse(nic.IpAddress, out _))
                 {
-                    _logger?.LogInformation("The NIC '{nicName}' has no assigned IP address. The request for an ADS broadcast search was aborted.", nic.Name);
+                    _logger?.LogInformation("The NIC '{nicName}' has no valid IP address. The request for an ADS broadcast search was aborted.", nic.Name);
                     continue;
                 }
 
@@ -562,15 +562,16 @@ namespace AdsUtilities
 
         private static IPAddress CalculateBroadcastAddress(NetworkInterfaceInfo nic)
         {
-            IPAddress gatewayAddress = IPAddress.Parse(nic.DefaultGateway);
             IPAddress subnetAddress = IPAddress.Parse(nic.SubnetMask);
-            byte[] gatewayBytes = gatewayAddress.GetAddressBytes();
             byte[] subnetBytes = subnetAddress.GetAddressBytes();
             byte[] broadcastBytes = new byte[4];
 
+            IPAddress ipAddress = IPAddress.Parse(nic.IpAddress);
+            byte[] ipBytes = ipAddress.GetAddressBytes();
+
             for (int i = 0; i < 4; i++)
             {
-                broadcastBytes[i] = (byte)(gatewayBytes[i] | ~subnetBytes[i]);
+                broadcastBytes[i] = (byte)(ipBytes[i] | ~subnetBytes[i]);
             }
 
             return new IPAddress(broadcastBytes);
