@@ -172,7 +172,7 @@ namespace AdsUtilities
         [MarshalAs(UnmanagedType.ByValArray, SizeConst = 4)]
         private readonly byte[] reserved1;
         [MarshalAs(UnmanagedType.ByValArray, SizeConst = 4)]
-        private readonly byte[] broadcastIp;            
+        private readonly byte[] ipAddress;            
         [MarshalAs(UnmanagedType.ByValArray, SizeConst = 8)]
         private readonly byte[] nullBytes1;
         [MarshalAs(UnmanagedType.ByValArray, SizeConst = 4)]
@@ -191,10 +191,10 @@ namespace AdsUtilities
         private readonly byte[] nullBytes4;
 
         // ToDo: Restructure this
-        public TriggerBroadcastPacket(byte[] broadcastAddress, byte[] netId)
+        public TriggerBroadcastPacket(byte[] ipAddress, byte[] netId)
         {
             reserved1 = new byte[]{ 2, 0, 191, 3};
-            broadcastIp = broadcastAddress;
+            this.ipAddress = ipAddress;
             nullBytes1 = new byte[8];
             reserved2 = new byte[] { 3, 102, 20, 113 };
             nullBytes2 = new byte[4];

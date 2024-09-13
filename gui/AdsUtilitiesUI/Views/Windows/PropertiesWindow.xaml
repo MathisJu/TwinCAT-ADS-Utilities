@@ -5,18 +5,27 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:AdsUtilitiesUI"
         mc:Ignorable="d"
-        Title="PropertiesWindow" Height="450" Width="800">
-    <Grid>
-        <StackPanel Margin="10">
-            <TextBlock Text="Name:" FontWeight="Bold"/>
-            <TextBlock Text="{Binding Name}" Margin="0,0,0,10"/>
-            <TextBlock Text="Size:" FontWeight="Bold"/>
-            <TextBlock Text="{Binding Size}" Margin="0,0,0,10"/>
-            <TextBlock Text="Date Created:" FontWeight="Bold"/>
-            <TextBlock Text="{Binding DateCreated}" Margin="0,0,0,10"/>
-            <TextBlock Text="Date Modified:" FontWeight="Bold"/>
-            <TextBlock Text="{Binding DateModified}" Margin="0,0,0,10"/>
-            <Button Content="OK" Width="75" HorizontalAlignment="Right" Click="OKButton_Click"/>
-        </StackPanel>
-    </Grid>
+        Height="200" Width="275"
+        WindowStyle="SingleBorderWindow"
+        ResizeMode="NoResize"
+        Background="WhiteSmoke">
+
+    <DataGrid Margin="10" Height="Auto"
+                ItemsSource="{Binding FileProperties}" 
+                AutoGenerateColumns="False" 
+                GridLinesVisibility="None" IsReadOnly="True"
+                HeadersVisibility="Column"
+                CanUserAddRows="False"
+                ScrollViewer.CanContentScroll="True"
+                VerticalScrollBarVisibility="Hidden"
+                HorizontalScrollBarVisibility="Hidden"
+                Background="White">
+        <!-- Passe diesen Wert je nach Bedarf an -->
+            <DataGrid.Columns>
+                <DataGridTextColumn Header="Property" Binding="{Binding Property}" Width="2*"/>
+                    <DataGridTextColumn Header="Value" Binding="{Binding Value}" Width="3*"/>
+            </DataGrid.Columns>
+
+        </DataGrid>
+  
 </Window>

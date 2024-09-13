@@ -1,4 +1,5 @@
 ﻿using AdsUtilities;
+using AdsUtilitiesUI.Views.Windows;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -83,7 +84,31 @@ namespace AdsUtilitiesUI
             AdsFileClient destinationFileClient = new AdsFileClient();
             if (!destinationFileClient.Connect(targetFolder.DeviceNetID)) { return; }
 
-            await sourceFileClient.FileCopyAsync($"{sourceFile.ParentDirectory}/{sourceFile.Name}", destinationFileClient, $"{targetFolder.ParentDirectory}/{targetFolder.Name}/{sourceFile.Name}"); // ToDo: add progress bar
+            var progressWindow = new CopyProgressWindow(sourceFile, targetFolder);
+            var cts = new CancellationTokenSource(); // Erstelle ein CancellationTokenSource
+            progressWindow.CancellationRequested += () => cts.Cancel(); // Event für Cancel-Button
+
+            progressWindow.Show();
+
+            var progress = new Progress<double>(value =>
+            {
+                // Aktualisiere die ProgressBar im ProgressWindow
+                progressWindow.SetProgress(value);
+            });
+
+            try
+            {
+                await sourceFileClient.FileCopyAsync($"{sourceFile.ParentDirectory}/{sourceFile.Name}", destinationFileClient, $"{targetFolder.ParentDirectory}/{targetFolder.Name}/{sourceFile.Name}", true, progress, 100, cts.Token); // ToDo: add progress bar
+                await Task.Delay(15000);
+            }
+            catch (OperationCanceledException)
+            {
+                MessageBox.Show("Task wurde abgebrochen.");
+            }
+            finally
+            {
+                progressWindow.Close();
+            }
         }
     }
 
@@ -137,6 +162,21 @@ namespace AdsUtilitiesUI
                     this.Image = LoadBitmapImage("Images/file_simple.png");
             }
         }
+        public static string ConvertByteSize(long byteSize)
+        {
+            string[] units = { "B", "KB", "MB", "GB", "TB" };
+            double size = byteSize;
+            int unitIndex = 0;
+
+            while (size >= 1024 && unitIndex < units.Length - 1)
+            {
+                size /= 1024;
+                unitIndex++;
+            }
+
+            return $"{size:F2} {units[unitIndex]}";
+        }
+
 
         public void LoadChildren()
         {

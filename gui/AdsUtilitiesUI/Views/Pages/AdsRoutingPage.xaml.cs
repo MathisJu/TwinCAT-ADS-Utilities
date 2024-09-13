@@ -1,6 +1,8 @@
-﻿using System;
+﻿using AdsUtilities;
+using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
@@ -74,9 +76,17 @@ namespace AdsUtilitiesUI
         }
         private static void HighlightControl(Control control, Color highlightBackgroundColor, int durationSeconds)
         {
+            if (control.Tag is bool isAnimating && isAnimating)
+            {
+                // Do not start a new animation if it is already running
+                return;
+            }
+
             // Highlight control by changing background color
             if (control.Background is SolidColorBrush originalBrush)
             {
+                // Use Tag to indicate that animation is running
+                control.Tag = true;
                 var originalColor = originalBrush.Color;
 
                 var highlightBrush = new SolidColorBrush(highlightBackgroundColor);
@@ -90,11 +100,30 @@ namespace AdsUtilitiesUI
                     AutoReverse = false
                 };
 
+                animation.Completed += (s, e) =>
+                {
+                    // Reset flag when animation is finished
+                    control.Tag = false;
+                };
+
                 highlightBrush.BeginAnimation(SolidColorBrush.ColorProperty, animation);
             }
-            
         }
-        
 
+        private async void SearchByIpOrNameButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (string.IsNullOrEmpty(_viewModel.IpOrHostnameInput))
+            {
+                return;
+            }
+            if (IPAddress.TryParse(_viewModel.IpOrHostnameInput, out _))
+            {
+                await _viewModel.SearchByIp();
+            }
+            else
+            {
+                await _viewModel.SearchByName();
+            }
+        }
     }
 }

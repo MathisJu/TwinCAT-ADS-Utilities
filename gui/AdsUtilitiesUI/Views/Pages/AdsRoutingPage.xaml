@@ -11,7 +11,7 @@
 
 
     <Grid>
-        <Grid Margin="10">
+        <Grid Margin="10, 20">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="*"/>
@@ -23,8 +23,8 @@
             <!-- Search Buttons -->
             <StackPanel Orientation="Horizontal" Grid.Row="0" Grid.ColumnSpan="2" Margin="0,0,0,10">
                 <Button Content="Broadcast Search" Click="BroadcastBttn_Click" Width="170" Margin="0,0,10,0"/>
-                <Button Content="Search by IP / Hostname:" Width="170"/>
-                <TextBox Width="200" Height="23" Margin="0,0,10,0"/>
+                <Button Content="Search by IP / Hostname:" Click="SearchByIpOrNameButton_Click" Width="170"/>
+                <TextBox Width="200" Height="23" Margin="0,0,10,0" VerticalContentAlignment="Center" Text="{Binding IpOrHostnameInput}"/>
             </StackPanel>
 
             <!-- Available Adapters -->
@@ -98,7 +98,8 @@
             <DataGrid Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="2" Margin="0 5 0 0" 
                       ItemsSource="{Binding TargetInfoList}" SelectedItem="{Binding TargetListSelection}" 
                       AutoGenerateColumns="False" Height="auto" VerticalScrollBarVisibility="Auto"
-                      GridLinesVisibility="None" IsReadOnly="True">
+                      GridLinesVisibility="None" IsReadOnly="True"
+                      HeadersVisibility="Column">
                 <DataGrid.Columns>
                     <DataGridTextColumn Header="Hostname" Binding="{Binding Name}" Width="3*"/>
                     <DataGridTextColumn Header="IP Address" Binding="{Binding IpAddress}" Width="3*"/>
@@ -177,9 +178,6 @@
                         <RadioButton IsChecked="{Binding AddRouteSelection.TypeTempRemote}"  Content="Temporary" GroupName="RemoteRoute" />
                     </StackPanel>
                 </GroupBox>
-
-                <!-- Restore Default Button -->
-                <Button Grid.Column="4" Grid.Row="5" Content="Restore Default" Margin="2"></Button>
 
                 <!-- Add Route Button -->
                 <Button Grid.Column="4" Grid.Row="6" Content="Add Route" Margin="2" Click="AddRouteButton_Click"></Button>

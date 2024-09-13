@@ -403,6 +403,83 @@ namespace AdsUtilities
             return nicList;            
         }
 
+        public async IAsyncEnumerable<TargetInfo> AdsSearchByIpAsync(
+            string ipAddress,
+            ushort secondsTimeout = 5,
+            [EnumeratorCancellation] CancellationToken cancellationToken = default)
+        {
+            if (!IPAddress.TryParse(ipAddress, out var ip))
+                yield break;
+
+            BlockingCollection<TargetInfo> broadcastResults = new();
+            TaskCompletionSource completionSource = new();
+
+            void RecievedBroadcastResponse(object sender, AdsNotificationEventArgs e)
+            {
+                var targetInfo = ParseBroadcastReturn(e.Data.ToArray());
+                broadcastResults.Add(targetInfo, cancellationToken);   // Add responses to the thread-safe collection
+                completionSource.TrySetResult();    // Signals that there is a new response to the broadcast search
+            }
+
+            // Register a notification and set callback method - the system service generates notification responses for every remote system found on the broadcast
+            _adsClient.AdsNotification += RecievedBroadcastResponse;
+            NotificationSettings sttngs = new(AdsTransMode.OnChange, 100, 0);
+            _adsClient.Connect(_netId, (int)Constants.AdsPortSystemService);
+            var deviceNotiResult = await _adsClient.AddDeviceNotificationAsync(Constants.AdsIGrpSysServBroadcast, 0, 2048, sttngs, null, cancellationToken);
+
+            TriggerBroadcastPacket broadcastPacket = new(ip.GetAddressBytes(), AmsNetId.Local.ToBytes());
+            try
+            {
+                await _adsClient.WriteAsync(Constants.AdsIGrpSysServBroadcast, 1, StructConverter.StructureToByteArray(broadcastPacket), cancellationToken);  // This tells the system service to send a broadcast telegram on the selected NIC
+            }
+            catch (AdsErrorException ex)
+            {
+                // ToDo: Add logging
+            }
+            
+
+            var timeout = TimeSpan.FromSeconds(secondsTimeout);
+            var startTime = DateTime.UtcNow;
+
+            try
+            {
+                while (DateTime.UtcNow - startTime < timeout)   // Wait for broadcast responses to arrive
+                {
+                    if (cancellationToken.IsCancellationRequested)
+                    {
+                        _logger?.LogInformation("ADS broadcast search was canceled by caller. The list of available TwinCAT systems may be incomplete.");
+                        break;
+                    }
+
+                    // Process all received broadcast results safely
+                    while (broadcastResults.TryTake(out var result, 100, cancellationToken))
+                    {
+                        yield return result;
+                    }
+
+                    // Check for new responses every 100ms and when a new response is signaled
+                    await Task.WhenAny(completionSource.Task, Task.Delay(100, cancellationToken));
+                    completionSource = new TaskCompletionSource();  // reset for next response
+                }
+            }
+            finally
+            {
+                // Mark the collection as complete to exit the foreach loop safely
+                broadcastResults.CompleteAdding();
+
+                // Unregister the Event / Handle after timeout has elapsed or the action was canceled 
+                await _adsClient.DeleteDeviceNotificationAsync(deviceNotiResult.Handle, cancellationToken);
+                _adsClient.AdsNotification -= RecievedBroadcastResponse;
+                _adsClient.Disconnect();
+            }
+
+            // Drain remaining items after marking collection complete
+            while (broadcastResults.TryTake(out var result))
+            {
+                yield return result;
+            }
+        }
+
         public async Task<List<TargetInfo>> AdsBroadcastSearchAsync(ushort secondsTimeout = 5, CancellationToken cancellationToken = default)
         {
             List<NetworkInterfaceInfo> nicsInfo = await GetNetworkInterfacesAsync(cancellationToken);

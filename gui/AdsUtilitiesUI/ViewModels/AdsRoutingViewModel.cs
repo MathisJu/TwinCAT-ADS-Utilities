@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Linq;
+using System.Net;
 using System.Runtime.CompilerServices;
 using System.Security;
 using System.Text;
@@ -18,6 +19,9 @@ namespace AdsUtilitiesUI
         public ObservableCollection<NetworkAdapterPair> NetworkAdapterPairs { get; set; }
 
         public ObservableCollection<TargetInfo> TargetInfoList { get; set; }
+
+        private string _IpOrHostnameInput;
+        public string IpOrHostnameInput { get => _IpOrHostnameInput; set { _IpOrHostnameInput = value; OnPropertyChanged(); } }
 
         public AdsRoutingViewModel()
         {
@@ -93,13 +97,51 @@ namespace AdsUtilitiesUI
                 if (nicsToBroadcastOn.Count == 0)
                     return;
 
-                AdsRoutingClient client = new();
+                using AdsRoutingClient client = new();
                 client.Connect(Target.NetId);
                 TargetInfoList.Clear();
                 await foreach (var target in client.AdsBroadcastSearchStreamAsync(nicsToBroadcastOn))
                 {
                     TargetInfoList.Add(target);
                 }
+            }
+        }
+
+        public async Task SearchByIp()
+        {
+            await SearchByIp(IpOrHostnameInput);
+        }
+
+        public async Task SearchByIp(string ipAddress)
+        {
+            using AdsRoutingClient client = new();
+            client.Connect(Target.NetId);
+            TargetInfoList.Clear();
+            await foreach (var target in client.AdsSearchByIpAsync(ipAddress))
+            {
+                TargetInfoList.Add(target);
+            }
+        }
+
+        public async Task SearchByName()
+        {
+            try
+            {
+                // The Search by Hostname function in the default route dialog sends a search command that contains the corresponfing ip address. There might be an ADS function to get the ip for a known name but for now it is done using dns directly
+                IPHostEntry hostEntry = Dns.GetHostEntry(IpOrHostnameInput);
+
+                if (hostEntry.AddressList.Length > 0)
+                {
+                    await SearchByIp(hostEntry.AddressList[0].ToString());  
+                }
+                else
+                {
+                    return;
+                }
+            }
+            catch (Exception ex)
+            {
+                return;
             }
         }
 

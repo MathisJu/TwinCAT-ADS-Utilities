@@ -38,11 +38,9 @@ namespace AdsUtilitiesUI
             {
                 _targetLeft = value;
                 OnPropertyChanged();
-                ReloadSecondaryRoutes(value.NetId);
-                
+                ReloadSecondaryRoutes(value.NetId);           
             }
         }
-
 
         private ObservableCollection<StaticRoutesInfo> _SecondaryRoutes;
         public ObservableCollection<StaticRoutesInfo> SecondaryRoutes

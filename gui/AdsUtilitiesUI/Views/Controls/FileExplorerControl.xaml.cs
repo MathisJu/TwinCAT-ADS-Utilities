@@ -163,7 +163,7 @@ namespace AdsUtilitiesUI
 
         private void Rename_Click(object sender, RoutedEventArgs e)
         {
-            FileSystemItem fileItem = GetSelectedFileSystemItem(sender);
+            FileSystemItem? fileItem = GetSelectedFileSystemItem(sender);
             if (fileItem != null)
             {
                 if (fileItem.IsSystemFile || fileItem.IsRoot)   // ToDo: Add log event that system files cannot be renamed
@@ -179,38 +179,41 @@ namespace AdsUtilitiesUI
 
         private void Delete_Click(object sender, RoutedEventArgs e)
         {
-            var menuItem = sender as MenuItem;
-            if (menuItem != null)
+            FileSystemItem? fileItem = GetSelectedFileSystemItem(sender);
             {
-                var treeViewItem = FindAncestor<TreeViewItem>((DependencyObject)menuItem);
-                if (treeViewItem != null)
+                if (fileItem != null)
                 {
-                    var fileItem = treeViewItem.DataContext as FileSystemItem;
-                    if (fileItem != null)
+                    if (MessageBox.Show("Are you sure you want to delete this file?", "Delete Confirmation", MessageBoxButton.YesNo) == MessageBoxResult.Yes)
                     {
-                        if (MessageBox.Show("Are you sure you want to delete this file?", "Delete Confirmation", MessageBoxButton.YesNo) == MessageBoxResult.Yes)
-                        {
-                            DeleteFile(fileItem);
-                        }
+                        DeleteFile(fileItem);
                     }
                 }
+                
             }
         }
 
         private void Properties_Click(object sender, RoutedEventArgs e)
         {
-            var menuItem = sender as MenuItem;
-            if (menuItem != null)
+            FileSystemItem? fileItem = GetSelectedFileSystemItem(sender);
+            if (fileItem != null)
             {
-                var treeViewItem = FindAncestor<TreeViewItem>((DependencyObject)menuItem);
-                if (treeViewItem != null)
+                PropertiesWindow propertiesWindow = new(fileItem);
+
+                if (sender is FrameworkElement element)
                 {
-                    var fileItem = treeViewItem.DataContext as FileSystemItem;
-                    if (fileItem != null)
-                    {
-                        ShowProperties(fileItem);
-                    }
+                    // Berechne die Position des Elements in Bildschirmkoordinaten
+                    Point elementScreenPosition = element.PointToScreen(new Point(0, 0));
+
+
+                    // Setze die Position des neuen Fensters basierend auf der Position des Elements
+                    propertiesWindow.Left = elementScreenPosition.X; // Rechts vom Element
+                    propertiesWindow.Top = elementScreenPosition.Y; // Gleiche Höhe wie das Element
+
+
                 }
+
+
+                propertiesWindow.Show();
             }
         }
 
@@ -223,13 +226,6 @@ namespace AdsUtilitiesUI
                 return inputDialog.ResponseText;
             }
             return string.Empty;
-        }
-
-        private void ShowProperties(FileSystemItem fileItem)
-        {
-            // Create and show a properties window with placeholder information
-            PropertiesWindow propertiesWindow = new PropertiesWindow(fileItem);
-            propertiesWindow.ShowDialog();
         }
 
         private void RenameFile(FileSystemItem fileItem, string newName)
