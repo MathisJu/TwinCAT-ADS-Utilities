@@ -36,10 +36,11 @@ namespace AdsUtilities
             _netId = new AmsNetId(netId);
             _adsClient.Connect(_netId, AmsPort.SystemService);
             AdsErrorCode readStateError = _adsClient.TryReadState(out _);
+            _adsClient.Disconnect();
             return readStateError == AdsErrorCode.NoError;
         }
 
-        public bool ConnectLocal()
+        public bool Connect()
         {
             return Connect(AmsNetId.Local.ToString());
         }
@@ -47,7 +48,7 @@ namespace AdsUtilities
         private async Task<uint> FileOpenAsync(string path, uint openFlags, CancellationToken cancel = default)
         {
             byte[] wrBfr = Encoding.UTF8.GetBytes(path);
-            byte[] rdBfr = new byte[4];
+            byte[] rdBfr = new byte[sizeof(UInt32)];
 
             _adsClient.Connect(_netId, (int)Constants.AdsPortSystemService);
             var rwResult = await _adsClient.ReadWriteAsync(
@@ -68,15 +69,15 @@ namespace AdsUtilities
 
         private async Task<uint> FileOpenReadingAsync(string path, bool binaryOpen = true, CancellationToken cancel = default)
         {
-            uint tmpOpenMode = Constants.FOpenModeRead;
-            if (binaryOpen) tmpOpenMode += Constants.FOpenModeBinary;
+            uint tmpOpenMode = Constants.FOpenModeRead | 65536U;
+            if (binaryOpen) tmpOpenMode |= Constants.FOpenModeBinary;
             return await FileOpenAsync(path, tmpOpenMode, cancel);
         }
 
         private async Task<uint> FileOpenWritingAsync(string path, bool binaryOpen = true, CancellationToken cancel = default)
         {
-            uint tmpOpenMode = Constants.FOpenModeWrite;
-            if (binaryOpen) tmpOpenMode += Constants.FOpenModeBinary;
+            uint tmpOpenMode = Constants.FOpenModeWrite | 65536U;
+            if (binaryOpen) tmpOpenMode |= Constants.FOpenModeBinary;
             return await FileOpenAsync(path, tmpOpenMode, cancel);
         }
 
@@ -140,7 +141,7 @@ namespace AdsUtilities
                 byte[] fileContentBuffer = await FileReadChunkAsync(hFileRead, chunkSizeBytes, cancel);
                 await destinationFileClient.FileWriteChunkAsync(hFileWrite, fileContentBuffer, cancel);
 
-                if(progress is not null)
+                if (progress is not null)
                 {
                     bytesCopied += fileContentBuffer.Length;
                     double progressPercentage = 100 * (double)bytesCopied / fileSize;
@@ -151,9 +152,10 @@ namespace AdsUtilities
                     continue;
                 break;
             }
-
             await FileCloseAsync(hFileRead, cancel);
             await destinationFileClient.FileCloseAsync(hFileWrite, cancel);
+            
+            
         }
 
         public async Task FileCopyAsync(string pathSource, string pathDestination, bool binaryOpen = true, IProgress<double>? progress = null, uint chunkSizeBytes = 10_000, CancellationToken cancel = default) 

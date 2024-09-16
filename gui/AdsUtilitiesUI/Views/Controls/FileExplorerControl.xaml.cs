@@ -27,8 +27,11 @@ namespace AdsUtilitiesUI
         public FileExplorerControl()
         {
             InitializeComponent();
-            DataContext = new FileExplorerViewModel();
+            _viewModel = new();
+            DataContext = _viewModel;
         }
+
+        public FileExplorerViewModel _viewModel;
 
         public static readonly DependencyProperty TargetProperty =
             DependencyProperty.Register("Target", typeof(StaticRoutesInfo), typeof(FileExplorerControl),
@@ -169,11 +172,26 @@ namespace AdsUtilitiesUI
                 if (fileItem.IsSystemFile || fileItem.IsRoot)   // ToDo: Add log event that system files cannot be renamed
                     return;
 
-                string newName = PromptForNewName(fileItem.Name);
-                if (!string.IsNullOrEmpty(newName))
+                // Create a simple input dialog to get the new name
+                InputDialog inputDialog = new InputDialog("Rename File", "Enter new name:", fileItem.Name) { Owner = Application.Current.MainWindow };
+                
+
+                if (sender is FrameworkElement element)
                 {
-                    RenameFile(fileItem, newName);
+                    // Berechne die Position des Elements in Bildschirmkoordinaten
+                    Point elementScreenPosition = element.PointToScreen(new Point(0, 0));
+
+
+                    // Setze die Position des neuen Fensters basierend auf der Position des Elements
+                    inputDialog.Left = elementScreenPosition.X; // Rechts vom Element
+                    inputDialog.Top = elementScreenPosition.Y; // Gleiche Höhe wie das Element
                 }
+
+                if (inputDialog.ShowDialog() == true)
+                {
+                    RenameFile(fileItem, inputDialog.ResponseText);
+                }
+
             }
         }
 
@@ -215,17 +233,6 @@ namespace AdsUtilitiesUI
 
                 propertiesWindow.Show();
             }
-        }
-
-        private string PromptForNewName(string currentName)
-        {
-            // Create a simple input dialog to get the new name
-            InputDialog inputDialog = new InputDialog("Rename File", "Enter new name:", currentName) { Owner = Application.Current.MainWindow };
-            if (inputDialog.ShowDialog() == true)
-            {
-                return inputDialog.ResponseText;
-            }
-            return string.Empty;
         }
 
         private void RenameFile(FileSystemItem fileItem, string newName)

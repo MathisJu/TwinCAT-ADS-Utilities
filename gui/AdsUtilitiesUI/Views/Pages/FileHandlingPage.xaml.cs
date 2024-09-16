@@ -67,8 +67,6 @@ namespace AdsUtilitiesUI
 
         public async void ReloadSecondaryRoutes(string netId)
         {
-
-            // Asynchrone Methode aufrufen
             var routes = await AdsHelper.LoadOnlineRoutesAsync(netId);
             SecondaryRoutes = new ObservableCollection<StaticRoutesInfo>();
             foreach (var route in routes)

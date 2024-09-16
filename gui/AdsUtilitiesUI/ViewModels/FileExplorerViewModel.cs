@@ -19,12 +19,14 @@ using System.Windows.Navigation;
 using System.Windows.Shapes;
 namespace AdsUtilitiesUI
 {
-    class FileExplorerViewModel : INotifyPropertyChanged
+    public class FileExplorerViewModel : INotifyPropertyChanged
     {
         public FileExplorerViewModel()
         {
             
         }
+
+        public StatusViewModel? StatusLogger;
 
         public event PropertyChangedEventHandler? PropertyChanged;
 
@@ -85,29 +87,27 @@ namespace AdsUtilitiesUI
             if (!destinationFileClient.Connect(targetFolder.DeviceNetID)) { return; }
 
             var progressWindow = new CopyProgressWindow(sourceFile, targetFolder);
-            var cts = new CancellationTokenSource(); // Erstelle ein CancellationTokenSource
-            progressWindow.CancellationRequested += () => cts.Cancel(); // Event für Cancel-Button
+            var cts = new CancellationTokenSource(); 
+            progressWindow.CancellationRequested += () => cts.Cancel(); // Event for Cancel-Button
 
             progressWindow.Show();
 
             var progress = new Progress<double>(value =>
             {
-                // Aktualisiere die ProgressBar im ProgressWindow
+                // Update ProgressBar
                 progressWindow.SetProgress(value);
             });
 
             try
             {
-                await sourceFileClient.FileCopyAsync($"{sourceFile.ParentDirectory}/{sourceFile.Name}", destinationFileClient, $"{targetFolder.ParentDirectory}/{targetFolder.Name}/{sourceFile.Name}", true, progress, 100, cts.Token); // ToDo: add progress bar
-                await Task.Delay(15000);
+                await sourceFileClient.FileCopyAsync($"{sourceFile.ParentDirectory}/{sourceFile.Name}", destinationFileClient, $"{targetFolder.ParentDirectory}/{targetFolder.Name}/{sourceFile.Name}", true, progress, 100, cts.Token);
+                await Task.Delay(1000, cts.Token);
             }
-            catch (OperationCanceledException)
-            {
-                MessageBox.Show("Task wurde abgebrochen.");
-            }
+            catch (OperationCanceledException){ }   // ToDo: Add Logger entry
             finally
             {
                 progressWindow.Close();
+
             }
         }
     }
@@ -178,12 +178,12 @@ namespace AdsUtilitiesUI
         }
 
 
-        public void LoadChildren()
+        public async Task LoadChildren()
         {
             using AdsFileClient fileClient = new();
             fileClient.Connect(DeviceNetID);
             string fullPath = System.IO.Path.Combine(ParentDirectory, Name);
-            foreach (var file in fileClient.GetFolderContentStream(fullPath))   // ToDo: Use async version
+            await foreach (var file in fileClient.GetFolderContentStreamAsync(fullPath))   // ToDo: Use async version
             {
                 FileSystemItem item = new
                 (
@@ -202,7 +202,8 @@ namespace AdsUtilitiesUI
                 {
                     item.Children.Add(null); // Placeholder for Lazy Loading
                 }
-                Children.Add(item);
+
+                Children.Add(item);     // ToDo: Should test if item already exists for reloading the directory content e.g. after copying a file
             }
         }
         private static BitmapImage LoadBitmapImage(string relativePath)

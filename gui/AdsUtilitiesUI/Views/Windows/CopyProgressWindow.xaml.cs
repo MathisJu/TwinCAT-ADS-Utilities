@@ -21,7 +21,7 @@ namespace AdsUtilitiesUI.Views.Windows
     /// </summary>
     public partial class CopyProgressWindow : Window, INotifyPropertyChanged
     {
-        public event Action CancellationRequested; // Event für den Abbruch
+        public event Action CancellationRequested;
 
         public FileSystemItem SourceFile { get; private set; }
 
@@ -41,6 +41,7 @@ namespace AdsUtilitiesUI.Views.Windows
         {
             InitializeComponent();
             Title = sourceFile.Name;
+            Icon = sourceFile.Image;    // ToDo: Use a Clock or some kind of copying-image
             SourceFile = sourceFile ;
             DestinationFolder = destinationFolder ;
             DataContext = this;

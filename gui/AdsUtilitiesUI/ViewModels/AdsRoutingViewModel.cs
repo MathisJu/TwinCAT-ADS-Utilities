@@ -20,6 +20,8 @@ namespace AdsUtilitiesUI
 
         public ObservableCollection<TargetInfo> TargetInfoList { get; set; }
 
+        public StatusViewModel? StatusLogger;
+
         private string _IpOrHostnameInput;
         public string IpOrHostnameInput { get => _IpOrHostnameInput; set { _IpOrHostnameInput = value; OnPropertyChanged(); } }
 
@@ -127,7 +129,7 @@ namespace AdsUtilitiesUI
         {
             try
             {
-                // The Search by Hostname function in the default route dialog sends a search command that contains the corresponfing ip address. There might be an ADS function to get the ip for a known name but for now it is done using dns directly
+                // The Search by Hostname function in the default route dialog sends a search command that contains the corresponding ip address. There might be an ADS function to get the ip for a known name but for now it is done using dns directly
                 IPHostEntry hostEntry = Dns.GetHostEntry(IpOrHostnameInput);
 
                 if (hostEntry.AddressList.Length > 0)
@@ -175,17 +177,18 @@ namespace AdsUtilitiesUI
             }
             if (AddRouteSelection.TypeTempLocal)
             {
-                throw new NotImplementedException("Temp routes not supported yet"); // ToDo: Add temporary route option
+                StatusLogger?.ShowError("Temporary routes not implemented yet."); // ToDo: Add temporary route option
             }
 
 
             if (AddRouteSelection.TypeStaticRemote)
             {
                 await routingClient.AddRemoteRouteEntryAsync(AddRouteSelection.IpAddress, AddRouteSelection.Username, AddRouteSelection.Password, AddRouteSelection.RemoteName);
+                StatusLogger?.ShowSuccess("Route added.");
             }
             if (AddRouteSelection.TypeTempRemote)
             {
-                throw new NotImplementedException("Temp routes not supported yet"); // ToDo: Add temporary route option
+                StatusLogger?.ShowError("Temporary routes not implemented yet.");// ToDo: Add temporary route option
             }
         }
 
@@ -219,7 +222,7 @@ namespace AdsUtilitiesUI
     public class NetworkAdapterPair
     {
         public NetworkAdapterItem Adapter1 { get; set; }
-        public NetworkAdapterItem Adapter2 { get; set; } // Kann null sein, wenn die Anzahl ungerade ist
+        public NetworkAdapterItem Adapter2 { get; set; } // Is null if number of nics is uneven
     }
 
     public class AddRouteInfo : INotifyPropertyChanged

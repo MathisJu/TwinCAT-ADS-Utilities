@@ -5,17 +5,17 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:AdsUtilitiesUI"
         mc:Ignorable="d"
-        Title="InputDialog" Height="95" Width="300" WindowStartupLocation="CenterOwner"
+        Title="InputDialog" Height="85" Width="250" 
         ResizeMode="NoResize" WindowStyle="None" ShowInTaskbar="True" Topmost="True"
         AllowsTransparency="True">
     <Border BorderBrush="Gray" BorderThickness="1" CornerRadius="2" Background="White">
         <Border.Effect>
             <DropShadowEffect ShadowDepth="3" Opacity="0.3" BlurRadius="10"/>
         </Border.Effect>
-        <StackPanel>
-            <TextBlock Name="PromptText" Margin="10 5 10 5"/>
-            <TextBox Name="ResponseTextBox" Margin="10 5 10 5"/>
-            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="5">
+        <StackPanel Background="WhiteSmoke">
+            <TextBlock Name="PromptText" Margin="10 5 10 0"/>
+            <TextBox Name="ResponseTextBox" Margin="10 5 10 0"/>
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="5" >
                 <Button Content="OK" Width="75" Click="OKButton_Click" Margin="5"/>
                 <Button Content="Cancel" Width="75" IsCancel="True" Margin="5"/>
             </StackPanel>

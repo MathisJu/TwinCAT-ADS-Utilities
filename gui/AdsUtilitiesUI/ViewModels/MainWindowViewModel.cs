@@ -29,17 +29,26 @@ namespace AdsUtilitiesUI
     {
         public MainWindowViewModel() 
         {
+            StatusLogger = new();
 
-        }
+            adsRoutingPage = new();
+            adsRoutingPage._viewModel.StatusLogger = StatusLogger;
+
+            fileHandlingPage = new();
+            fileHandlingPage.FileExplorerLeft._viewModel.StatusLogger = StatusLogger;
+            fileHandlingPage.FileExplorerRight._viewModel.StatusLogger = StatusLogger;
+            }
 
         public async void MainWindow_Initilaize(object sender, RoutedEventArgs e)
         {
             await Reload_Routes();
         }
 
-        public AdsRoutingPage adsRoutingPage = new();
+        public AdsRoutingPage adsRoutingPage;
 
-        public FileHandlingPage fileHandlingPage = new();
+        public FileHandlingPage fileHandlingPage;
+
+        public StatusViewModel StatusLogger { get; }
 
 
         public async Task Reload_Routes()

@@ -16,7 +16,7 @@
             <TextBlock Name="PromptText" Margin="10 5 10 5"/>
             <TextBox Name="ResponseTextBox" Margin="10 5 10 5"/>
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="5">
-                <TextBlock Text="Generate SSH Key" Margin="5 5 0 5"/>
+                <TextBlock Text="CreateSSHKey(WIP, dont use)" Margin="5 5 0 5"/>
                 <CheckBox IsChecked="{Binding AddSshKey}" VerticalAlignment="Center" Margin="5 5 10 5"/>
                 <Button Content="OK" Width="75" Click="OKButton_Click" Margin="5"/>
                 <Button Content="Cancel" Width="75" IsCancel="True" Margin="5"/>

@@ -11,8 +11,6 @@
   <ItemGroup>
     <None Remove="Images\075b_UpFolder_16x16_72.png" />
     <None Remove="Images\Back.png" />
-    <None Remove="Images\clipboard.svg" />
-    <None Remove="Images\edit.svg" />
     <None Remove="Images\file.png" />
     <None Remove="Images\file_simple.png" />
     <None Remove="Images\file_simple_hidden.png" />
@@ -23,6 +21,12 @@
     <None Remove="Images\forward.png" />
     <None Remove="Images\harddrive.png" />
     <None Remove="Images\icon.png" />
+    <None Remove="Images\icon_delete.png" />
+    <None Remove="Images\icon_delete_16x.png" />
+    <None Remove="Images\icon_info.png" />
+    <None Remove="Images\icon_info_16x.png" />
+    <None Remove="Images\icon_rename.png" />
+    <None Remove="Images\icon_rename_16x.png" />
     <None Remove="Images\IsHiddenVisible.png" />
     <None Remove="Images\magnifying_glass.png" />
     <None Remove="Images\refresh.png" />
@@ -41,12 +45,6 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Resource>
     <Resource Include="Images\Back.png">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Resource>
-    <Resource Include="Images\clipboard.svg">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Resource>
-    <Resource Include="Images\edit.svg">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Resource>
     <Resource Include="Images\file.png">
@@ -77,6 +75,24 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Resource>
     <Resource Include="Images\icon.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Resource>
+    <Resource Include="Images\icon_delete.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Resource>
+    <Resource Include="Images\icon_delete_16x.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Resource>
+    <Resource Include="Images\icon_info.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Resource>
+    <Resource Include="Images\icon_info_16x.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Resource>
+    <Resource Include="Images\icon_rename.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Resource>
+    <Resource Include="Images\icon_rename_16x.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Resource>
     <Resource Include="Images\IsHiddenVisible.png">

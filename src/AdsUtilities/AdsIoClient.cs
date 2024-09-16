@@ -36,10 +36,11 @@ namespace AdsUtilities
             _netId = new AmsNetId(netId);
             _adsClient.Connect(_netId, AmsPort.SystemService);
             AdsErrorCode readStateError = _adsClient.TryReadState(out _);
+            _adsClient.Disconnect();
             return readStateError == AdsErrorCode.NoError;
         }
 
-        public bool ConnectLocal()
+        public bool Connect()
         {
             return Connect(AmsNetId.Local.ToString());
         }

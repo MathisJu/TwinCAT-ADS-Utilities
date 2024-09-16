@@ -13,6 +13,8 @@
             <RowDefinition Height="50" />
             <!--Main Area-->
             <RowDefinition/>
+            <!--Logging Area-->
+            <RowDefinition Height="Auto"/>
 
         </Grid.RowDefinitions>
 
@@ -76,5 +78,17 @@
             </TabItem>
             <TabItem Header="Device Info"/>
         </TabControl>
+
+        <!-- Logging Area -->
+        <StatusBar VerticalAlignment="Bottom" Grid.Row="2" Background="CornflowerBlue">
+            <StatusBarItem>
+                <StackPanel Orientation="Horizontal" Visibility="{Binding StatusLogger.IsVisible}">
+                    <Image Source="{Binding StatusLogger.Icon}" Width="16" Height="16" Margin="0,0,5,0"/>
+                    <TextBlock Text="{Binding StatusLogger.Message}" Foreground="White" />
+                </StackPanel>
+            </StatusBarItem>
+        </StatusBar>
     </Grid>
+    
+    
 </Window>
