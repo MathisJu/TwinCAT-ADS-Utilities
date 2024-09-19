@@ -1,4 +1,5 @@
 ﻿using AdsUtilities;
+using AdsUtilitiesUI.ViewModels;
 using Microsoft.Win32;
 using System;
 using System.Collections.Generic;
@@ -25,48 +26,71 @@ using TwinCAT.Ads.SumCommand;
 
 namespace AdsUtilitiesUI
 {
-    class MainWindowViewModel : INotifyPropertyChanged
+    class MainWindowViewModel : ViewModelBase
     {
+        public ObservableCollection<TabViewModel> Tabs { get; set; }
+        private TabViewModel _selectedTab;
+
+        private readonly TargetService _targetService;
+
+        private readonly LoggerService _loggerService;
+
+        public ObservableCollection<StaticRoutesInfo> AvailableTargets => _targetService.AvailableTargets;
+
+        public ObservableCollection<LogMessage> LogMessages { get; set; }
+
+        private StaticRoutesInfo _selectedTarget;
+        public StaticRoutesInfo SelectedTarget
+        {
+            get => _selectedTarget;
+            set
+            {
+                if (_selectedTarget.NetId != value.NetId)
+                {
+                    _selectedTarget = value;
+                    _targetService.CurrentTarget = value; // TargetService aktualisieren
+                    OnPropertyChanged(nameof(SelectedTarget));
+                }
+            }
+        }
+
+        public TabViewModel SelectedTab
+        {
+            get => _selectedTab;
+            set
+            {
+                _selectedTab = value;
+                OnPropertyChanged();
+            }
+        }
+
         public MainWindowViewModel() 
         {
-            StatusLogger = new();
+            _targetService = new TargetService();
+            _targetService.OnTargetChanged += TargetService_OnTargetChanged;
 
-            adsRoutingPage = new();
-            adsRoutingPage._viewModel.StatusLogger = StatusLogger;
+            LogMessages = new();
+            _loggerService = new LoggerService(LogMessages, System.Windows.Threading.Dispatcher.CurrentDispatcher);
 
-            fileHandlingPage = new();
-            fileHandlingPage.FileExplorerLeft._viewModel.StatusLogger = StatusLogger;
-            fileHandlingPage.FileExplorerRight._viewModel.StatusLogger = StatusLogger;
-            }
-
-        public async void MainWindow_Initilaize(object sender, RoutedEventArgs e)
-        {
-            await Reload_Routes();
-        }
-
-        public AdsRoutingPage adsRoutingPage;
-
-        public FileHandlingPage fileHandlingPage;
-
-        public StatusViewModel StatusLogger { get; }
-
-
-        public async Task Reload_Routes()
-        {
-            // Asynchrone Methode aufrufen
-            var routes = await AdsHelper.LoadOnlineRoutesAsync(AmsNetId.Local.ToString());
-            StaticRoutes = new ObservableCollection<StaticRoutesInfo>();
-            foreach (var route in routes)
+            Tabs = new ObservableCollection<TabViewModel>
             {
-                StaticRoutes.Add(route);
-            }
-            SelectedRoute = routes.ElementAt(0);
+                new TabViewModel("Ads Routing", new AdsRoutingViewModel(_targetService, _loggerService)),
+                new TabViewModel("File Access", new FileHandlingViewModel(_targetService, _loggerService)),
+            };
+            SelectedTab = Tabs[0];
         }
+
+        private void TargetService_OnTargetChanged(object sender, StaticRoutesInfo newTarget)
+        {
+            // Synchronisieren des ausgewählten Targets
+            SelectedTarget = newTarget;
+        }
+      
 
         public async Task SetupRemoteConnection()
         {
             // Cancel if route is local or invalid
-            if (IPAddress.TryParse(SelectedRoute.IpAddress, out IPAddress address))
+            if (IPAddress.TryParse(SelectedTarget.IpAddress, out IPAddress address))
             {
                 if (address.AddressFamily == AddressFamily.InterNetwork)
                 {
@@ -77,12 +101,12 @@ namespace AdsUtilitiesUI
                 }
             }
 
-            if (string.IsNullOrEmpty(SelectedRoute.NetId))
+            if (string.IsNullOrEmpty(SelectedTarget.NetId))
                 return;
 
             // Check OS
             using AdsSystemClient systemClient = new AdsSystemClient();
-            systemClient.Connect(SelectedRoute.NetId);
+            systemClient.Connect(SelectedTarget.NetId);
             SystemInfo sysInfo = await systemClient.GetSystemInfoAsync();
             string os = sysInfo.OsName;
 
@@ -122,7 +146,7 @@ namespace AdsUtilitiesUI
                 // Prozess starten, der den RDP-Client mit der angegebenen IP-Adresse öffnet
                 Process rdpProcess = new Process();
                 rdpProcess.StartInfo.FileName = "mstsc";
-                rdpProcess.StartInfo.Arguments = $"/v:{SelectedRoute.IpAddress}";
+                rdpProcess.StartInfo.Arguments = $"/v:{SelectedTarget.IpAddress}";
                 rdpProcess.StartInfo.UseShellExecute = true;
                 rdpProcess.StartInfo.WindowStyle = ProcessWindowStyle.Normal;
 
@@ -144,7 +168,7 @@ namespace AdsUtilitiesUI
 
 
             using TcpClient tcpClient = new TcpClient();
-            var connectTask = tcpClient.ConnectAsync(SelectedRoute.IpAddress, 987);
+            var connectTask = tcpClient.ConnectAsync(SelectedTarget.IpAddress, 987);
 
             if (await Task.WhenAny(connectTask, Task.Delay(100)) == connectTask)
             {
@@ -158,7 +182,7 @@ namespace AdsUtilitiesUI
 
             Process cerhostProcess = new Process();
             cerhostProcess.StartInfo.FileName = cerhostPath;
-            cerhostProcess.StartInfo.Arguments = SelectedRoute.IpAddress;
+            cerhostProcess.StartInfo.Arguments = SelectedTarget.IpAddress;
             cerhostProcess.Start();
 
         }
@@ -195,7 +219,7 @@ namespace AdsUtilitiesUI
         private void GenerateAndDeploySSHKeyAsync(string username)
         {
             string localHostname = Environment.MachineName;
-            string sshKeyName = SelectedRoute.Name;
+            string sshKeyName = SelectedTarget.Name;
             string keyPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".ssh", sshKeyName);    // ToDo: Test if exists
             string configPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".ssh", "config");
 
@@ -213,11 +237,11 @@ namespace AdsUtilitiesUI
             string publicKeyPath = $"{keyPath}.pub";
 
             // Kopiere den öffentlichen Schlüssel zum Zielgerät (füge ihn zu authorized_keys hinzu)
-            string scpCommand = $"scp -o StrictHostKeyChecking=no '{publicKeyPath}' {username}@{SelectedRoute.IpAddress}:~/.ssh ; ssh {username}@{SelectedRoute.IpAddress} -t 'cd ~/.ssh && cat {sshKeyName}.pub >> ./authorized_keys && rm ./{sshKeyName}.pub'";
+            string scpCommand = $"scp -o StrictHostKeyChecking=no '{publicKeyPath}' {username}@{SelectedTarget.IpAddress}:~/.ssh ; ssh {username}@{SelectedTarget.IpAddress} -t 'cd ~/.ssh && cat {sshKeyName}.pub >> ./authorized_keys && rm ./{sshKeyName}.pub'";
             ExecuteShellCommand(scpCommand);
 
-            string configEntry = $"Host {SelectedRoute.Name}\n\tUser {username}\n\tHostName {SelectedRoute.Name}\n\tIdentityFile \"{keyPath}\"\n"
-                + $"Host {SelectedRoute.IpAddress}\n\tUser {username}\n\tHostName {SelectedRoute.IpAddress}\n\tIdentityFile \"{keyPath}\"";
+            string configEntry = $"Host {SelectedTarget.Name}\n\tUser {username}\n\tHostName {SelectedTarget.Name}\n\tIdentityFile \"{keyPath}\"\n"
+                + $"Host {SelectedTarget.IpAddress}\n\tUser {username}\n\tHostName {SelectedTarget.IpAddress}\n\tIdentityFile \"{keyPath}\"";
 
             // Füge den Eintrag in die SSH-Konfigurationsdatei ein
             File.AppendAllText(configPath, configEntry);
@@ -234,40 +258,6 @@ namespace AdsUtilitiesUI
                 UseShellExecute = false,
                 CreateNoWindow = false
             };
-
-            try
-            {
-                using (var process = Process.Start(processStartInfo))
-                {
-                    string output = process.StandardOutput.ReadToEnd();
-                    string error = process.StandardError.ReadToEnd();
-
-                    process.WaitForExit();
-
-                    if (!string.IsNullOrEmpty(error))
-                    {
-                        Console.WriteLine($"Fehler: {error}");
-                    }
-                    else
-                    {
-                        Console.WriteLine($"Ausgabe: {output}");
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Fehler beim Ausführen des Befehls: {ex.Message}");
-            }
-        }
-
-        static void ExecuteCmdCommand(string command)
-        {
-            System.Diagnostics.ProcessStartInfo processStartInfo = new System.Diagnostics.ProcessStartInfo();
-            processStartInfo.WindowStyle = System.Diagnostics.ProcessWindowStyle.Hidden;
-            processStartInfo.FileName = "cmd.exe";
-            processStartInfo.Arguments = command;
-            processStartInfo.RedirectStandardOutput = true;
-            processStartInfo.RedirectStandardError = true;
 
             try
             {
@@ -321,12 +311,6 @@ namespace AdsUtilitiesUI
                         
                     }
                 }
-
-
-
-
-               
-
                 
             }
             catch (Exception ex)
@@ -337,7 +321,7 @@ namespace AdsUtilitiesUI
 
         public void SshConnectWithoutKey(string username)
         {
-            string sshCommand = $"ssh {username}@{SelectedRoute.IpAddress}";
+            string sshCommand = $"ssh {username}@{SelectedTarget.IpAddress}";
 
             // PowerShell-Prozess konfigurieren
             var processStartInfo = new ProcessStartInfo
@@ -394,36 +378,5 @@ namespace AdsUtilitiesUI
             
             return string.Empty;
         }
-
-        private ObservableCollection<StaticRoutesInfo> _StaticRoutes;
-        public ObservableCollection<StaticRoutesInfo> StaticRoutes
-        {
-            get => _StaticRoutes;
-            set
-            {
-                _StaticRoutes = value;
-                OnPropertyChanged();
-            }
-        }
-
-        private StaticRoutesInfo _selectedRoute;
-        public StaticRoutesInfo SelectedRoute
-        {
-            get => _selectedRoute;
-            set
-            {
-                _selectedRoute = value;
-                OnPropertyChanged();
-                fileHandlingPage.TargetLeft = value;     
-                adsRoutingPage._viewModel.Target = value;   // ToDo: Rework this
-            }
-        }
-
-        public event PropertyChangedEventHandler PropertyChanged;
-
-        protected void OnPropertyChanged([CallerMemberName] string propertyName = null)
-        {
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-        }  
     }
 }

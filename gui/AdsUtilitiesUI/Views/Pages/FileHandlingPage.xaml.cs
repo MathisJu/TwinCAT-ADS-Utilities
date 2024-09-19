@@ -25,75 +25,11 @@ namespace AdsUtilitiesUI
     /// <summary>
     /// Interaction logic for FileHandlingPage.xaml
     /// </summary>
-    public partial class FileHandlingPage : Page, INotifyPropertyChanged
+    public partial class FileHandlingPage : Page
     {
-        public event PropertyChangedEventHandler PropertyChanged;
-
-        private StaticRoutesInfo _targetLeft;
-
-        public StaticRoutesInfo TargetLeft
-        {
-            get => _targetLeft;
-            set
-            {
-                _targetLeft = value;
-                OnPropertyChanged();
-                ReloadSecondaryRoutes(value.NetId);           
-            }
-        }
-
-        private ObservableCollection<StaticRoutesInfo> _SecondaryRoutes;
-        public ObservableCollection<StaticRoutesInfo> SecondaryRoutes
-        {
-            get => _SecondaryRoutes;
-            set
-            {
-                _SecondaryRoutes = value;
-                OnPropertyChanged();                
-            }
-        }
-
-        private StaticRoutesInfo _targetRight;
-
-        public StaticRoutesInfo TargetRight
-        {
-            get => _targetRight;
-            set
-            {
-                _targetRight = value;
-                OnPropertyChanged();      
-            }
-        }
-
-        public async void ReloadSecondaryRoutes(string netId)
-        {
-            var routes = await AdsHelper.LoadOnlineRoutesAsync(netId);
-            SecondaryRoutes = new ObservableCollection<StaticRoutesInfo>();
-            foreach (var route in routes)
-            {
-                SecondaryRoutes.Add(route);
-            }
-            TargetRight = SecondaryRoutes.ElementAt(0);
-        }
-
         public FileHandlingPage()
         {
             InitializeComponent();
-            SecondaryRoutes = new();
-            DataContext = this;          
-        }
-
-        protected void OnPropertyChanged([CallerMemberName] string propertyName = null)
-        {
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-        }
-
-        private void CmbBx_SeondaryRoute_SelectionChanged(object sender, SelectionChangedEventArgs e)
-        {
-            if (CmbBx_SeondaryRoutes.SelectedItem is StaticRoutesInfo selectedRoute)
-            {
-                // maybe update something, maybe delete this method
-            }
         }
     }
 }

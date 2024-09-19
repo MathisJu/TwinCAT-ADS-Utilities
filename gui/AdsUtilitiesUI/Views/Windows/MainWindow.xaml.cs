@@ -30,34 +30,9 @@ public partial class MainWindow : Window
         InitializeComponent();
 
         DataContext = _viewModel;
-        Loaded += _viewModel.MainWindow_Initilaize;
+        //Loaded += _viewModel.MainWindow_Initilaize;
     }
 
-    private void TabControl_SelectionChanged(object sender, SelectionChangedEventArgs e)
-    {
-        if (e.Source is TabControl)
-        {
-            TabItem selectedTab = ((sender as TabControl).SelectedItem as TabItem);
-            if (selectedTab != null)
-            {
-                switch (selectedTab.Header.ToString())
-                {
-                    case "ADS Routing":
-                        if (AdsRoutingFrame.Content == null)
-                        {
-                            AdsRoutingFrame.Navigate(_viewModel.adsRoutingPage);
-                        }
-                        break;
-                    case "File Handling":
-                        if (FileHandlingFrame.Content == null)
-                        {
-                            FileHandlingFrame.Navigate(_viewModel.fileHandlingPage);
-                        }
-                        break;
-                }
-            }
-        }
-    }
 
     private void CmbBx_SelectRoute_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
@@ -70,12 +45,12 @@ public partial class MainWindow : Window
     }
     private void RefreshButton_Click(object sender, RoutedEventArgs e)
     {
-        _viewModel?.Reload_Routes();
+        //_viewModel?.Reload_Routes();
     }
 
     private void Bttn_RemoteControl_Click(object sender, RoutedEventArgs e)
     {
-        _viewModel?.SetupRemoteConnection();
+        //_viewModel?.SetupRemoteConnection();
     }
 }
 

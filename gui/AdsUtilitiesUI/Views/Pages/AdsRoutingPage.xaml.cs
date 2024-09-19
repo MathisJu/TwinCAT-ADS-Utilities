@@ -23,57 +23,50 @@ namespace AdsUtilitiesUI
     /// </summary>
     public partial class AdsRoutingPage : Page
     {
-        public AdsRoutingViewModel _viewModel = new();
 
         public AdsRoutingPage()
         {
             InitializeComponent();
-            DataContext = _viewModel;
-        }
-
-        private async void BroadcastBttn_Click(object sender, RoutedEventArgs e)
-        {
-            await _viewModel.Broadcast();
         }
 
         private void PasswordBox_PasswordChanged(object sender, RoutedEventArgs e)
         {
-            if (sender is PasswordBox passwordBox)
+            if (sender is PasswordBox passwordBox && this.DataContext != null)
             {
-                _viewModel.AddRouteSelection.Password = passwordBox.Password;
+                ((AdsRoutingViewModel)this.DataContext).AddRouteSelection.Password = ((PasswordBox)sender).Password;    // ToDo: Find a solution that does not violate MVVM
             }
         }
 
-        private async void AddRouteButton_Click(object sender, RoutedEventArgs e)
-        {
-            if (_viewModel.AddRouteSelection.AllParametersProvided())
-            {
-                await _viewModel.AddRoute();
-                return;
-            }
-            var textBoxes = new[] { InputName, InputNetid, InputIp, InputHostname, InputNameRemote, InputUsername };
-            var passwordBoxes = new[] { InputPassword };
+        //private async void AddRouteButton_Click(object sender, RoutedEventArgs e)
+        //{
+        //    if (_viewModel.AddRouteSelection.AllParametersProvided())
+        //    {
+        //        await _viewModel.AddRoute();
+        //        return;
+        //    }
+        //    var textBoxes = new[] { InputName, InputNetid, InputIp, InputHostname, InputNameRemote, InputUsername };
+        //    var passwordBoxes = new[] { InputPassword };
 
-            // Überprüfen, ob alle TextBoxen Eingaben haben
-            var missingTextInputs = textBoxes.Where(tb => string.IsNullOrWhiteSpace(tb.Text)).ToList();
+        //    // Überprüfen, ob alle TextBoxen Eingaben haben
+        //    var missingTextInputs = textBoxes.Where(tb => string.IsNullOrWhiteSpace(tb.Text)).ToList();
 
-            // Überprüfen, ob die PasswordBox Eingaben hat
-            var missingPasswordInputs = passwordBoxes.Where(pb => string.IsNullOrWhiteSpace(pb.Password)).ToList();
+        //    // Überprüfen, ob die PasswordBox Eingaben hat
+        //    var missingPasswordInputs = passwordBoxes.Where(pb => string.IsNullOrWhiteSpace(pb.Password)).ToList();
 
-            // Fehlende Eingaben hervorheben
-            if (missingTextInputs.Any() || missingPasswordInputs.Any())
-            {
-                foreach (var textBox in missingTextInputs)
-                {
-                    HighlightControl(textBox, Colors.Pink, 1);
-                }
+        //    // Fehlende Eingaben hervorheben
+        //    if (missingTextInputs.Any() || missingPasswordInputs.Any())
+        //    {
+        //        foreach (var textBox in missingTextInputs)
+        //        {
+        //            HighlightControl(textBox, Colors.Pink, 1);
+        //        }
 
-                foreach (var passwordBox in missingPasswordInputs)
-                {
-                    HighlightControl(passwordBox, Colors.Pink, 1);
-                }
-            }
-        }
+        //        foreach (var passwordBox in missingPasswordInputs)
+        //        {
+        //            HighlightControl(passwordBox, Colors.Pink, 1);
+        //        }
+        //    }
+        //}
         private static void HighlightControl(Control control, Color highlightBackgroundColor, int durationSeconds)
         {
             if (control.Tag is bool isAnimating && isAnimating)
@@ -110,20 +103,6 @@ namespace AdsUtilitiesUI
             }
         }
 
-        private async void SearchByIpOrNameButton_Click(object sender, RoutedEventArgs e)
-        {
-            if (string.IsNullOrEmpty(_viewModel.IpOrHostnameInput))
-            {
-                return;
-            }
-            if (IPAddress.TryParse(_viewModel.IpOrHostnameInput, out _))
-            {
-                await _viewModel.SearchByIp();
-            }
-            else
-            {
-                await _viewModel.SearchByName();
-            }
-        }
+        
     }
 }

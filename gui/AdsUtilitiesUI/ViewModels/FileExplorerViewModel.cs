@@ -26,8 +26,6 @@ namespace AdsUtilitiesUI
             
         }
 
-        public StatusViewModel? StatusLogger;
-
         public event PropertyChangedEventHandler? PropertyChanged;
 
         private StaticRoutesInfo _Target;

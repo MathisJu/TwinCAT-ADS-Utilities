@@ -4,7 +4,6 @@
       xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
       xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
       xmlns:local="clr-namespace:AdsUtilitiesUI"
-      d:DataContext="{d:DesignInstance IsDesignTimeCreatable=True}"
       mc:Ignorable="d" 
       d:DesignHeight="450" d:DesignWidth="800"
       Title="FileHandlingPage"
@@ -34,13 +33,13 @@
             Margin="5"
             TextAlignment="Left" 
             VerticalContentAlignment="Center"
-            Text="{Binding TargetLeft.Name, Mode=OneWay, UpdateSourceTrigger=PropertyChanged}"/>
+            Text="{Binding Target.Name, Mode=OneWay, UpdateSourceTrigger=PropertyChanged}"/>
 
         <Border Grid.Column="1" Margin="5" Background="LightGray" Width="1" Grid.RowSpan="2"/>
 
         <local:FileExplorerControl
             x:Name="FileExplorerLeft"
-            Target="{Binding ElementName=PageRoot, Path=TargetLeft}"
+            Target="{Binding DataContext.Target, RelativeSource={RelativeSource AncestorType={x:Type local:FileHandlingPage}}}"
             Grid.Row="1" Margin="5 0"/>
 
         <ComboBox 
@@ -51,12 +50,11 @@
             VerticalContentAlignment="Center"
             ItemsSource="{Binding SecondaryRoutes}" 
             DisplayMemberPath="Name"
-            SelectedItem="{Binding TargetRight}"                   
-            SelectionChanged="CmbBx_SeondaryRoute_SelectionChanged"/>
+            SelectedItem="{Binding TargetRight}"/>
 
         <local:FileExplorerControl
             x:Name="FileExplorerRight"
-            Target="{Binding ElementName=PageRoot, Path=TargetRight}"
+            Target="{Binding DataContext.TargetRight, RelativeSource={RelativeSource AncestorType={x:Type local:FileHandlingPage}}}"
             Grid.Row="1" Grid.Column="2" Margin="5 0"/>
 
     </Grid>
