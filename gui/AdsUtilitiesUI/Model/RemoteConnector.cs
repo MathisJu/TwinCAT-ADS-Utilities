@@ -1,141 +1,19 @@
-﻿using AdsUtilities;
-using AdsUtilitiesUI.ViewModels;
-using Microsoft.Win32;
+﻿using Microsoft.Win32;
 using System;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
-using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Net;
-using System.Net.NetworkInformation;
 using System.Net.Sockets;
-using System.Runtime.CompilerServices;
-using System.Runtime.Intrinsics.X86;
 using System.Text;
 using System.Text.Json;
-using System.Threading;
 using System.Threading.Tasks;
-using System.Windows;
-using System.Windows.Automation;
-using System.Windows.Input;
-using System.Xml.Linq;
-using TwinCAT.Ads;
-using TwinCAT.Ads.SumCommand;
 
-namespace AdsUtilitiesUI
+namespace AdsUtilitiesUI.Model
 {
-    class MainWindowViewModel : ViewModelBase
+    internal static class RemoteConnector
     {
-        public ObservableCollection<TabViewModel> Tabs { get; set; }
-        private TabViewModel _selectedTab;
-
-        private readonly TargetService _targetService;
-
-        private readonly LoggerService _loggerService;
-
-        public ObservableCollection<StaticRoutesInfo> AvailableTargets => _targetService.AvailableTargets;
-
-        public ObservableCollection<LogMessage> LogMessages { get; set; }
-
-        private StaticRoutesInfo _selectedTarget;
-        public StaticRoutesInfo SelectedTarget
-        {
-            get => _selectedTarget;
-            set
-            {
-                if (_selectedTarget.NetId != value.NetId)
-                {
-                    _selectedTarget = value;
-                    _targetService.CurrentTarget = value; // TargetService aktualisieren
-                    OnPropertyChanged(nameof(SelectedTarget));
-                }
-            }
-        }
-
-        public TabViewModel SelectedTab
-        {
-            get => _selectedTab;
-            set
-            {
-                _selectedTab = value;
-                OnPropertyChanged();
-            }
-        }
-
-        public MainWindowViewModel() 
-        {
-            _targetService = new TargetService();
-            _targetService.OnTargetChanged += TargetService_OnTargetChanged;
-
-            LogMessages = new();
-            _loggerService = new LoggerService(LogMessages, System.Windows.Threading.Dispatcher.CurrentDispatcher);
-
-            Tabs = new ObservableCollection<TabViewModel>
-            {
-                new TabViewModel("Ads Routing", new AdsRoutingViewModel(_targetService, _loggerService)),
-                new TabViewModel("File Access", new FileHandlingViewModel(_targetService, _loggerService)),
-            };
-            SelectedTab = Tabs[0];
-        }
-
-        private void TargetService_OnTargetChanged(object sender, StaticRoutesInfo newTarget)
-        {
-            // Synchronisieren des ausgewählten Targets
-            SelectedTarget = newTarget;
-        }
-      
-
-        public async Task SetupRemoteConnection()
-        {
-            // Cancel if route is local or invalid
-            if (IPAddress.TryParse(SelectedTarget.IpAddress, out IPAddress address))
-            {
-                if (address.AddressFamily == AddressFamily.InterNetwork)
-                {
-                    byte[] bytes = address.GetAddressBytes();
-
-                    if (bytes[0] == 0 && bytes[1] == 0 && bytes[2] == 0 && bytes[3] == 0)
-                        return;
-                }
-            }
-
-            if (string.IsNullOrEmpty(SelectedTarget.NetId))
-                return;
-
-            // Check OS
-            using AdsSystemClient systemClient = new AdsSystemClient();
-            systemClient.Connect(SelectedTarget.NetId);
-            SystemInfo sysInfo = await systemClient.GetSystemInfoAsync();
-            string os = sysInfo.OsName;
-
-            if (os.Contains("Windows"))
-            {
-                if (os.Contains("CE"))
-                {
-                    // Windows CE
-                    await cerhostConnect();
-                }
-                else
-                {
-                    // Big Windows
-                    await Task.Run(() => rdpConnect());
-                }
-            }
-            else if (os.Contains("BSD"))
-            {
-                // TC/BSD
-                sshPowershellConnect();
-            }
-            else
-            {
-                // For RTOS or unknown OS -> display error message
-                throw new ArgumentException("The selected system does not support remote control or there is no implementation currently. This error should be replaced with a message box."); // ToDo
-            }          
-        }
-
-        private void rdpConnect()
+        public static void RdpConnect(string ipAddress)
         {
             // For Big Windows -> Start RDP w/ IP
             // HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Terminal Server -- fDenyTSConnections > 0
@@ -146,7 +24,7 @@ namespace AdsUtilitiesUI
                 // Prozess starten, der den RDP-Client mit der angegebenen IP-Adresse öffnet
                 Process rdpProcess = new Process();
                 rdpProcess.StartInfo.FileName = "mstsc";
-                rdpProcess.StartInfo.Arguments = $"/v:{SelectedTarget.IpAddress}";
+                rdpProcess.StartInfo.Arguments = $"/v:{ipAddress}";
                 rdpProcess.StartInfo.UseShellExecute = true;
                 rdpProcess.StartInfo.WindowStyle = ProcessWindowStyle.Normal;
 
@@ -159,7 +37,7 @@ namespace AdsUtilitiesUI
             }
         }
 
-        private async Task cerhostConnect()
+        public static async Task CerhostConnect(string ipAddress)
         {
             string cerhostPath = await GetCerhostPathAsync();
 
@@ -168,7 +46,7 @@ namespace AdsUtilitiesUI
 
 
             using TcpClient tcpClient = new TcpClient();
-            var connectTask = tcpClient.ConnectAsync(SelectedTarget.IpAddress, 987);
+            var connectTask = tcpClient.ConnectAsync(ipAddress, 987);
 
             if (await Task.WhenAny(connectTask, Task.Delay(100)) == connectTask)
             {
@@ -182,12 +60,12 @@ namespace AdsUtilitiesUI
 
             Process cerhostProcess = new Process();
             cerhostProcess.StartInfo.FileName = cerhostPath;
-            cerhostProcess.StartInfo.Arguments = SelectedTarget.IpAddress;
+            cerhostProcess.StartInfo.Arguments = ipAddress;
             cerhostProcess.Start();
 
         }
 
-        private void sshPowershellConnect()
+        public static void SshPowershellConnect(string ipAddress, string targetName)
         {
             //ToDo: Add InputDialog for Username
             string username = string.Empty;// = "Administrator";
@@ -206,20 +84,19 @@ namespace AdsUtilitiesUI
 
             if (!addSshKey)
             {
-                SshConnectWithoutKey(username); 
+                SshConnectWithoutKey(username, ipAddress);
                 return;
-
             }
             else
             {
-                GenerateAndDeploySSHKeyAsync(username);
+                GenerateAndDeploySSHKeyAsync(username, targetName, ipAddress);
             }
         }
 
-        private void GenerateAndDeploySSHKeyAsync(string username)
+        private static void GenerateAndDeploySSHKeyAsync(string username, string targetName, string targetIp)
         {
             string localHostname = Environment.MachineName;
-            string sshKeyName = SelectedTarget.Name;
+            string sshKeyName = targetName;
             string keyPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".ssh", sshKeyName);    // ToDo: Test if exists
             string configPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".ssh", "config");
 
@@ -237,11 +114,11 @@ namespace AdsUtilitiesUI
             string publicKeyPath = $"{keyPath}.pub";
 
             // Kopiere den öffentlichen Schlüssel zum Zielgerät (füge ihn zu authorized_keys hinzu)
-            string scpCommand = $"scp -o StrictHostKeyChecking=no '{publicKeyPath}' {username}@{SelectedTarget.IpAddress}:~/.ssh ; ssh {username}@{SelectedTarget.IpAddress} -t 'cd ~/.ssh && cat {sshKeyName}.pub >> ./authorized_keys && rm ./{sshKeyName}.pub'";
+            string scpCommand = $"scp -o StrictHostKeyChecking=no '{publicKeyPath}' {username}@{targetIp}:~/.ssh ; ssh {username}@{targetIp} -t 'cd ~/.ssh && cat {sshKeyName}.pub >> ./authorized_keys && rm ./{sshKeyName}.pub'";
             ExecuteShellCommand(scpCommand);
 
-            string configEntry = $"Host {SelectedTarget.Name}\n\tUser {username}\n\tHostName {SelectedTarget.Name}\n\tIdentityFile \"{keyPath}\"\n"
-                + $"Host {SelectedTarget.IpAddress}\n\tUser {username}\n\tHostName {SelectedTarget.IpAddress}\n\tIdentityFile \"{keyPath}\"";
+            string configEntry = $"Host {targetName}\n\tUser {username}\n\tHostName {targetName}\n\tIdentityFile \"{keyPath}\"\n"
+                + $"Host {targetIp}\n\tUser {username}\n\tHostName {targetIp}\n\tIdentityFile \"{keyPath}\"";
 
             // Füge den Eintrag in die SSH-Konfigurationsdatei ein
             File.AppendAllText(configPath, configEntry);
@@ -303,15 +180,15 @@ namespace AdsUtilitiesUI
                 using var process = Process.Start(processStartInfo);
                 int numRead = 0;
                 char[] buffer = new char[2048];
-                while (( numRead = await process.StandardOutput.ReadAsync(buffer, 0, buffer.Length)) > 0)
+                while ((numRead = await process.StandardOutput.ReadAsync(buffer, 0, buffer.Length)) > 0)
                 {
                     string output = new string(buffer, 0, numRead);
                     if (output.Contains("(y/n)"))
                     {
-                        
+
                     }
                 }
-                
+
             }
             catch (Exception ex)
             {
@@ -319,9 +196,9 @@ namespace AdsUtilitiesUI
             }
         }
 
-        public void SshConnectWithoutKey(string username)
+        public static void SshConnectWithoutKey(string username, string ipAddress)
         {
-            string sshCommand = $"ssh {username}@{SelectedTarget.IpAddress}";
+            string sshCommand = $"ssh {username}@{ipAddress}";
 
             // PowerShell-Prozess konfigurieren
             var processStartInfo = new ProcessStartInfo
@@ -343,7 +220,7 @@ namespace AdsUtilitiesUI
             }
         }
 
-        private async Task<string> GetCerhostPathAsync()
+        private static async Task<string> GetCerhostPathAsync()
         {
             if (!Directory.Exists(GlobalVars.AppFolder))
             {
@@ -375,8 +252,9 @@ namespace AdsUtilitiesUI
                 await File.WriteAllTextAsync(GlobalVars.ConfigFilePath, json);
                 return openFileDialog.FileName;
             }
-            
+
             return string.Empty;
         }
+
     }
 }

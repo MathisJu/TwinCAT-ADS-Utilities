@@ -4,7 +4,6 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d"
-        xmlns:local="clr-namespace:AdsUtilitiesUI"
         Icon="/Images/icon.png"
         Title="ADS Utilities" Height="675" Width="830">
     <Grid>
@@ -49,7 +48,7 @@
             <Button Name="Bttn_RemoteControl"
                     Grid.Column="3"
                     Margin="5 5"
-                    Click="Bttn_RemoteControl_Click"
+                    Command="{Binding RemoteConnectCommand}"
                     Content="Remote Control">
             </Button>
 
@@ -75,13 +74,20 @@
         </TabControl>
 
         <!-- Logging Area -->
-        <StatusBar VerticalAlignment="Bottom" Grid.Row="2" Background="CornflowerBlue">
+        <!--<StatusBar VerticalAlignment="Bottom" Grid.Row="2" Background="CornflowerBlue">
             <StatusBarItem>
                 <StackPanel Orientation="Horizontal">
 
                 </StackPanel>
             </StatusBarItem>
-        </StatusBar>
+        </StatusBar>-->
+
+        <StackPanel Orientation="Horizontal" VerticalAlignment="Top" HorizontalAlignment="Right" Grid.Row="2" Margin="5">
+            <TextBlock Text="{Binding Icon}" VerticalAlignment="Center" Margin="0,0,10,0"/>
+            <TextBlock Text="{Binding Timestamp}" VerticalAlignment="Center" Margin="0,0,10,0"/>
+            <TextBlock Text="{Binding LogMessage}" VerticalAlignment="Center"/>
+        </StackPanel>
+
     </Grid>
     
     

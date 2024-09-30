@@ -47,10 +47,5 @@ public partial class MainWindow : Window
     {
         //_viewModel?.Reload_Routes();
     }
-
-    private void Bttn_RemoteControl_Click(object sender, RoutedEventArgs e)
-    {
-        //_viewModel?.SetupRemoteConnection();
-    }
 }
 

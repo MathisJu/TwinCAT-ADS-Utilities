@@ -16,6 +16,8 @@ public interface ILoggerService
     void LogError(string message);
     void LogInfo(string message);
     void LogWarning(string message);
+
+    event EventHandler<LogMessage> OnNewLogMessage;
 }
 
 public enum LogLevel
@@ -29,7 +31,6 @@ public enum LogLevel
 public class LogMessage
 {
     public string Message { get; set; }
-    public string IconPath { get; set; }
     public DateTime Timestamp { get; set; }
     public LogLevel LogLevel { get; set; } // LogLevel for filtering
 }
@@ -47,20 +48,21 @@ public class LoggerService : ILoggerService
         _dispatcher = dispatcher;
     }
 
-    public void LogSuccess(string message) => Log(message, "Images/success.png", LogLevel.Success);
+    public void LogSuccess(string message) => Log(message, LogLevel.Success);
 
-    public void LogError(string message) => Log(message, "Images/failure.png", LogLevel.Error);
+    public void LogError(string message) => Log(message, LogLevel.Error);
 
-    public void LogInfo(string message) => Log(message, "Images/info.png", LogLevel.Info);
+    public void LogInfo(string message) => Log(message, LogLevel.Info);
 
-    public void LogWarning(string message) => Log(message, "Images/warning.png", LogLevel.Warning);
+    public void LogWarning(string message) => Log(message, LogLevel.Warning);
 
-    private void Log(string message, string iconPath, LogLevel logLevel)
+    public event EventHandler<LogMessage> OnNewLogMessage;
+
+    private void Log(string message, LogLevel logLevel)
     {
         var logMessage = new LogMessage
         {
             Message = message,
-            IconPath = iconPath,
             Timestamp = DateTime.Now,
             LogLevel = logLevel
         };
@@ -71,6 +73,7 @@ public class LoggerService : ILoggerService
             lock (_lock)
             {
                 _logMessages.Add(logMessage);
+                OnNewLogMessage?.Invoke(this, logMessage);
             }
         });
     }

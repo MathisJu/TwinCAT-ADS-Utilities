@@ -9,15 +9,24 @@ namespace AdsUtilitiesUI;
 
 public class AsyncRelayCommand : ICommand
 {
-    private readonly Func<Task> _execute;
+    private readonly Func<object, Task> _executeWithParameter;
+    private readonly Func<Task> _executeWithoutParameter;
     private readonly Func<bool> _canExecute;
     private bool _isExecuting;
 
     public event EventHandler CanExecuteChanged;
 
-    public AsyncRelayCommand(Func<Task> execute, Func<bool> canExecute = null)
+    // Konstruktor für die Ausführung mit Parameter
+    public AsyncRelayCommand(Func<object, Task> executeWithParameter, Func<bool> canExecute = null)
     {
-        _execute = execute ?? throw new ArgumentNullException(nameof(execute));
+        _executeWithParameter = executeWithParameter;
+        _canExecute = canExecute;
+    }
+
+    // Konstruktor für die Ausführung ohne Parameter
+    public AsyncRelayCommand(Func<Task> executeWithoutParameter, Func<bool> canExecute = null)
+    {
+        _executeWithoutParameter = executeWithoutParameter;
         _canExecute = canExecute;
     }
 
@@ -32,7 +41,16 @@ public class AsyncRelayCommand : ICommand
         RaiseCanExecuteChanged();
         try
         {
-            await _execute();
+            if (_executeWithParameter != null)
+            {
+                // Ausführung mit Parameter
+                await _executeWithParameter(parameter);
+            }
+            else if (_executeWithoutParameter != null)
+            {
+                // Ausführung ohne Parameter
+                await _executeWithoutParameter();
+            }
         }
         finally
         {

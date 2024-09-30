@@ -6,6 +6,7 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
@@ -56,12 +57,16 @@ namespace AdsUtilitiesUI
             FileSystemItem rootFolder = new FileSystemItem(
                 DeviceNetID: Target.NetId,
                 Name: rootDirectory,
+                AlternativeName: string.Empty,
                 IsDirectory: true,
                 ParentDirectory: string.Empty,
                 FileSize: 0,
                 CreationTime: DateTime.Now,
+                LastModifyTime: DateTime.Now,
                 LastAccessTime: DateTime.Now,
                 IsSystemFile: true,
+                IsReadOnly : true,
+                IsEncrypted : false,
                 IsCompressed: false,
                 IsRoot: true);
 
@@ -78,10 +83,10 @@ namespace AdsUtilitiesUI
 
         public async Task CopyFile(FileSystemItem sourceFile, FileSystemItem targetFolder)
         {
-            AdsFileClient sourceFileClient = new AdsFileClient();
+            using AdsFileClient sourceFileClient = new AdsFileClient();
             if (!sourceFileClient.Connect(sourceFile.DeviceNetID)) { return; }
 
-            AdsFileClient destinationFileClient = new AdsFileClient();
+            using AdsFileClient destinationFileClient = new AdsFileClient();
             if (!destinationFileClient.Connect(targetFolder.DeviceNetID)) { return; }
 
             var progressWindow = new CopyProgressWindow(sourceFile, targetFolder);
@@ -115,27 +120,33 @@ namespace AdsUtilitiesUI
     {
         public string DeviceNetID { get; }
         public string Name { get; }
+        public string AlternativeName { get; }
         public bool IsDirectory { get; }
         public string ParentDirectory { get; }
         public bool IsHidden { get; }
         public long FileSize { get; }
         public DateTime CreationTime { get; }
+        public DateTime LastModifyTime { get; }
         public DateTime LastAccessTime { get; }
         public bool IsSystemFile { get; }
         public bool IsCompressed { get; }
+        public bool IsReadOnly { get; }
+        public bool IsEncrypted { get; }
 
         public BitmapImage Image { get; }
         public bool IsRoot { get; }
 
         public ObservableCollection<FileSystemItem> Children { get; set; } = new ObservableCollection<FileSystemItem>();
 
-        public FileSystemItem(string DeviceNetID, string Name, bool IsDirectory, string ParentDirectory, long FileSize, DateTime CreationTime, DateTime LastAccessTime, bool IsSystemFile, bool IsCompressed, bool IsRoot)
+        public FileSystemItem(string DeviceNetID, string Name, bool IsDirectory, string ParentDirectory, long FileSize, DateTime CreationTime, DateTime LastAccessTime, bool IsSystemFile, bool IsCompressed, bool IsRoot, bool IsReadOnly, bool IsEncrypted, string AlternativeName, DateTime LastModifyTime)
         {
             this.DeviceNetID = DeviceNetID;
             this.Name = Name;
+            this.AlternativeName = AlternativeName;
             this.ParentDirectory = ParentDirectory;
             this.FileSize = FileSize;
             this.CreationTime = CreationTime;
+            this.LastModifyTime = LastModifyTime;
             this.LastAccessTime = LastAccessTime;
             this.IsSystemFile = IsSystemFile;
             this.IsCompressed = IsCompressed;
@@ -187,15 +198,20 @@ namespace AdsUtilitiesUI
                 (
                     DeviceNetID: this.DeviceNetID,
                     Name: file.fileName,
+                    AlternativeName: file.alternativeFileName,
                     IsDirectory: file.isDirectory,
                     ParentDirectory: fullPath,
                     FileSize: file.fileSize,
                     CreationTime: file.creationTime,
+                    LastModifyTime: file.lastWriteTime,
                     LastAccessTime: file.lastAccessTime,
                     IsSystemFile: file.isSystemFile,
                     IsCompressed: file.isCompressed,
+                    IsReadOnly : file.isReadOnly,
+                    IsEncrypted: file.isEncrypted,
                     IsRoot: false
-                );
+
+                ) ;
                 if (item.IsDirectory)
                 {
                     item.Children.Add(null); // Placeholder for Lazy Loading

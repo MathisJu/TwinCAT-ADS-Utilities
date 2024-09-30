@@ -31,6 +31,9 @@ namespace AdsUtilitiesUI
                 case FileHandlingViewModel _:
                     page = new FileHandlingPage { DataContext = viewModel };
                     break;
+                case DeviceInfoViewModel _:
+                    page = new DeviceInfoPage { DataContext = viewModel };
+                    break;
                 default:
                     throw new ArgumentException("Unknown ViewModel type");
             }

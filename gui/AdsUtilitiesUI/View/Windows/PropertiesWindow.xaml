@@ -5,7 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:AdsUtilitiesUI"
         mc:Ignorable="d"
-        Height="200" Width="275"
+        Height="250" Width="275"
         WindowStyle="SingleBorderWindow"
         ResizeMode="NoResize"
         Background="WhiteSmoke">
@@ -20,7 +20,7 @@
                 VerticalScrollBarVisibility="Hidden"
                 HorizontalScrollBarVisibility="Hidden"
                 Background="White">
-        <!-- Passe diesen Wert je nach Bedarf an -->
+
             <DataGrid.Columns>
                 <DataGridTextColumn Header="Property" Binding="{Binding Property}" Width="2*"/>
                     <DataGridTextColumn Header="Value" Binding="{Binding Value}" Width="3*"/>

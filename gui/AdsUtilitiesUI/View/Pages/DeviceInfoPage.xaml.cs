@@ -24,5 +24,6 @@ namespace AdsUtilitiesUI.Views.Pages
         {
             InitializeComponent();
         }
+
     }
 }
