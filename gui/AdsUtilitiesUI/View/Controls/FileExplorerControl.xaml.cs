@@ -22,7 +22,7 @@ namespace AdsUtilitiesUI
     /// <summary>
     /// Interaction logic for FileExplorerControl.xaml
     /// </summary>
-    public partial class FileExplorerControl : UserControl
+    public partial class FileExplorerControl : UserControl  // ToDo: Make this a page to make logging easier
     {
         public FileExplorerControl()
         {
@@ -31,7 +31,7 @@ namespace AdsUtilitiesUI
             DataContext = _viewModel;
         }
 
-        public FileExplorerViewModel _viewModel;
+        public FileExplorerViewModel _viewModel;    // ToDo: This dependency should not be set within the control, clean this up
 
         public static readonly DependencyProperty TargetProperty =
             DependencyProperty.Register("Target", typeof(StaticRoutesInfo), typeof(FileExplorerControl),

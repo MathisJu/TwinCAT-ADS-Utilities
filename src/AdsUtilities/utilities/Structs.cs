@@ -223,9 +223,9 @@ namespace AdsUtilities
 
     public struct RouterStatusInfo
     {
-        public uint RouterMemoryBytesReserved;
-        public uint RouterMemoryBytesAvailable;
-        public uint registeredPorts;
-        public uint registeredDrivers;
+        public uint RouterMemoryBytesReserved { get; set; }
+        public uint RouterMemoryBytesAvailable { get; set; }
+        public uint registeredPorts { get; set; }
+        public uint registeredDrivers { get; set; }
     }
 }

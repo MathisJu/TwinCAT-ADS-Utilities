@@ -14,7 +14,7 @@ namespace AdsUtilitiesUI.ViewModels
 
         private void UpdateTarget(object sender, StaticRoutesInfo newTarget)
         {
-            Target = newTarget; // Aktualisiere das Target, wenn es geändert wird
+            Target = newTarget; // Update target on change
         }
 
         public void Dispose()

@@ -10,16 +10,13 @@ namespace AdsUtilitiesUI
 {
     public abstract class ViewModelBase : INotifyPropertyChanged
     {
-        // Event, das ausgelöst wird, wenn sich eine Property ändert
         public event PropertyChangedEventHandler PropertyChanged;
 
-        // Methode, um die PropertyChanged-Events auszulösen
         protected void OnPropertyChanged([CallerMemberName] string propertyName = null)
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
         }
 
-        // Methode, um den Wert einer Property zu setzen und das PropertyChanged-Event auszulösen
         protected bool SetProperty<T>(ref T field, T value, [CallerMemberName] string propertyName = null)
         {
             if (Equals(field, value))

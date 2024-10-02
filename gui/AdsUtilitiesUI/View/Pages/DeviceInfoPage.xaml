@@ -15,28 +15,204 @@
                     <Setter Property="Padding" Value="5" />
                 </Style>
             </TabControl.Resources>
-            
+
             <TabItem Header="General">
-                <DataGrid Margin="10" Height="Auto"
-                    ItemsSource="{Binding FileProperties}" 
-                    AutoGenerateColumns="False" 
-                    GridLinesVisibility="None" IsReadOnly="True"
-                    HeadersVisibility="Column"
-                    CanUserAddRows="False"
-                    ScrollViewer.CanContentScroll="True"
-                    VerticalScrollBarVisibility="Hidden"
-                    HorizontalScrollBarVisibility="Hidden"
-                    Background="White">
+                <ScrollViewer>
+                    <StackPanel Margin="15,10,0,10">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
 
-                    <DataGrid.Columns>
-                        <DataGridTextColumn Header="Property" Binding="{Binding Property}" Width="Auto"/>
-                        <DataGridTextColumn Header="Value" Binding="{Binding Value}" Width="*"/>
-                    </DataGrid.Columns>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
 
-                </DataGrid>
+                            <!-- Row 1 - Name -->
+                            <Border Grid.Row="0" Grid.Column="0" Background="#F0F0F0" BorderBrush="LightGray" BorderThickness="0,0,0,1">
+                                <TextBlock Text="Name:" Padding="5"/>
+                            </Border>
+                            <Border Grid.Row="0" Grid.Column="1" BorderBrush="LightGray" BorderThickness="0,0,0,1">
+                                <TextBlock Text="{Binding Target.Name}" Padding="5"/>
+                            </Border>
+
+                            <!-- Row 2 - OS -->
+                            <Border Grid.Row="1" Grid.Column="0" Background="#F0F0F0" BorderBrush="LightGray" BorderThickness="0,0,0,1">
+                                <TextBlock Text="Operating System:" Padding="5"/>
+                            </Border>
+                            <Border Grid.Row="1" Grid.Column="1" BorderBrush="LightGray" BorderThickness="0,0,0,1">
+                                <TextBlock Padding="5">
+                                    <TextBlock.Text>
+                                        <MultiBinding StringFormat="{}{0} ({1})">
+                                            <Binding Path="SystemInfo.OsName" />
+                                            <Binding Path="SystemInfo.OsVersion" />
+                                        </MultiBinding>
+                                    </TextBlock.Text>
+                                </TextBlock>
+                            </Border>
+
+                            <!-- Row 3 - Image -->
+                            <Border Grid.Row="2" Grid.Column="0" Background="#F0F0F0" BorderBrush="LightGray" BorderThickness="0,0,0,1">
+                                <TextBlock Text="Image Version:" Padding="5"/>
+                            </Border>
+                            <Border Grid.Row="2" Grid.Column="1" BorderBrush="LightGray" BorderThickness="0,0,0,1">
+                                <TextBlock Padding="5">
+                                    <TextBlock.Text>
+                                        <MultiBinding StringFormat="{}{0} {1}">
+                                            <Binding Path="SystemInfo.OsImageLevel" />
+                                            <Binding Path="SystemInfo.OsImageVersion" />
+                                        </MultiBinding>
+                                    </TextBlock.Text>
+                                </TextBlock>
+                            </Border>
+
+                            <!-- Row 4 - Hardware -->
+                            <Border Grid.Row="3" Grid.Column="0" Background="#F0F0F0" BorderBrush="LightGray" BorderThickness="0,0,0,1">
+                                <TextBlock Text="Hardware Version:" Padding="5"/>
+                            </Border>
+                            <Border Grid.Row="3" Grid.Column="1" BorderBrush="LightGray" BorderThickness="0,0,0,1">
+                                <TextBlock Padding="5">
+                                    <TextBlock.Text>
+                                        <MultiBinding StringFormat="{}{0} v{1} ({2})">
+                                            <Binding Path="SystemInfo.HardwareModel" />
+                                            <Binding Path="SystemInfo.HardwareCpuVersion" />
+                                            <Binding Path="SystemInfo.HardwareDate" />
+                                        </MultiBinding>
+                                    </TextBlock.Text>
+                                </TextBlock>
+                            </Border>
+                            
+                            <!-- Row 5 - Serial Number -->
+                            <Border Grid.Row="4" Grid.Column="0" Background="#F0F0F0" BorderBrush="LightGray" BorderThickness="0,0,0,1">
+                                <TextBlock Text="Serial Number:" Padding="5"/>
+                            </Border>
+                            <Border Grid.Row="4" Grid.Column="1" BorderBrush="LightGray" BorderThickness="0,0,0,1">
+                                <TextBlock Text="{Binding SystemInfo.HardwareSerialNumber}" Padding="5"/>
+                            </Border>
+
+                            <!-- Button to reboot -->
+                            <Button Content="Reboot"
+                                Grid.Row="5"
+                                Grid.Column="1"
+                                Width="125"
+                                Padding="5"
+                                Margin="10"
+                                HorizontalAlignment="Right"
+                                Command="{Binding DataContext.RebootCommand, RelativeSource={RelativeSource AncestorType=Page}}"
+                                CommandParameter="{Binding}" />
+                        </Grid>
+                    </StackPanel>
+                </ScrollViewer>
             </TabItem>
-            <TabItem Header="IPC Info">
+            <TabItem Header="TwinCAT">
+                <ScrollViewer>
+                    <StackPanel Margin="15,10,0,10">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
 
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+                            
+                            <!-- Row 1 - State -->
+                            <Border Grid.Row="0" Grid.Column="0" Background="#F0F0F0" BorderBrush="LightGray" BorderThickness="0,0,0,1">
+                                <TextBlock Text="State:" Padding="5"/>
+                            </Border>
+                            <Border Grid.Row="0" Grid.Column="1" BorderBrush="LightGray" BorderThickness="0,0,0,1">
+                                <TextBlock Text="{Binding TcState}" Padding="5"/>
+                            </Border>
+
+                            <!-- Row 2 - TC Version -->
+                            <Border Grid.Row="1" Grid.Column="0" Background="#F0F0F0" BorderBrush="LightGray" BorderThickness="0,0,0,1">
+                                <TextBlock Text="Version:" Padding="5"/>
+                            </Border>
+                            <Border Grid.Row="1" Grid.Column="1" BorderBrush="LightGray" BorderThickness="0,0,0,1">
+                                <TextBlock Text="{Binding SystemInfo.TargetVersion}" Padding="5"/>
+                            </Border>
+
+                            <!-- Row 3 - NetId -->
+                            <Border Grid.Row="2" Grid.Column="0" Background="#F0F0F0" BorderBrush="LightGray" BorderThickness="0,0,0,1">
+                                <TextBlock Text="AMS NetID:" Padding="5"/>
+                            </Border>
+
+                            <!-- Row 4 - System ID -->
+                            <Border Grid.Row="3" Grid.Column="0" Background="#F0F0F0" BorderBrush="LightGray" BorderThickness="0,0,0,1">
+                                <TextBlock Text="System ID:" Padding="5"/>
+                            </Border>
+
+                            <!-- Row 5 - Volume number -->
+                            <Border Grid.Row="4" Grid.Column="0" Background="#F0F0F0" BorderBrush="LightGray" BorderThickness="0,0,0,1">
+                                <TextBlock Text="Volume number:" Padding="5"/>
+                            </Border>
+
+                            <!-- Row 6 - Platform level -->
+                            <Border Grid.Row="5" Grid.Column="0" Background="#F0F0F0" BorderBrush="LightGray" BorderThickness="0,0,0,1">
+                                <TextBlock Text="Platform level:" Padding="5"/>
+                            </Border>
+
+                            <!-- Row 7 - Router memory -->
+                            <Border Grid.Row="6" Grid.Column="0" Background="#F0F0F0" BorderBrush="LightGray" BorderThickness="0,0,0,1">
+                                <TextBlock Text="Router memory:" Padding="5"/>
+                            </Border>
+                            <Border Grid.Row="6" Grid.Column="1" BorderBrush="LightGray" BorderThickness="0,0,0,1">
+                                <TextBlock Padding="5">
+                                    <TextBlock.Text>
+                                        <MultiBinding StringFormat="{}{0} available of {1}">
+                                            <Binding Path="RouterStatusInfo.RouterMemoryBytesAvailable" />
+                                            <Binding Path="RouterStatusInfo.RouterMemoryBytesReserved" />
+                                        </MultiBinding>
+                                    </TextBlock.Text>
+                                </TextBlock>
+                            </Border>
+
+                            <!-- Row 8 - Ports -->
+                            <Border Grid.Row="7" Grid.Column="0" Background="#F0F0F0" BorderBrush="LightGray" BorderThickness="0,0,0,1">
+                                <TextBlock Text="ADS ports in use:" Padding="5"/>
+                            </Border>
+                            <Border Grid.Row="7" Grid.Column="1" BorderBrush="LightGray" BorderThickness="0,0,0,1">
+                                <TextBlock Text="{Binding RouterStatusInfo.registeredPorts}" Padding="5"/>
+                            </Border>
+
+                            <!-- Row 9 - Drivers -->
+                            <Border Grid.Row="8" Grid.Column="0" Background="#F0F0F0" BorderBrush="LightGray" BorderThickness="0,0,0,1">
+                                <TextBlock Text="Drivers:" Padding="5"/>
+                            </Border>
+                            <Border Grid.Row="8" Grid.Column="1" BorderBrush="LightGray" BorderThickness="0,0,0,1">
+                                <TextBlock Text="{Binding RouterStatusInfo.registeredDrivers}" Padding="5"/>
+                            </Border>
+
+                            <!-- Button to set rt tick -->
+                            <Button Content="Set RT Tick"
+                                Grid.Row="9"
+                                Grid.Column="1"
+                                Width="125"
+                                Padding="5"
+                                Margin="10"
+                                HorizontalAlignment="Right"
+                                Command="{Binding DataContext.SetTickCommand, RelativeSource={RelativeSource AncestorType=Page}}"
+                                CommandParameter="{Binding}" />
+                        </Grid>
+                    </StackPanel>
+                </ScrollViewer>
             </TabItem>
             <TabItem Header="Networking">
                 <ScrollViewer>

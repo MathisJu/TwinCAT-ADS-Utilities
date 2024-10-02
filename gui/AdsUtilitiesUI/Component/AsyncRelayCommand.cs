@@ -16,14 +16,14 @@ public class AsyncRelayCommand : ICommand
 
     public event EventHandler CanExecuteChanged;
 
-    // Konstruktor für die Ausführung mit Parameter
+    // Constructor for execution with parameter
     public AsyncRelayCommand(Func<object, Task> executeWithParameter, Func<bool> canExecute = null)
     {
         _executeWithParameter = executeWithParameter;
         _canExecute = canExecute;
     }
 
-    // Konstruktor für die Ausführung ohne Parameter
+    // Constructor for execution without parameter
     public AsyncRelayCommand(Func<Task> executeWithoutParameter, Func<bool> canExecute = null)
     {
         _executeWithoutParameter = executeWithoutParameter;
@@ -43,12 +43,10 @@ public class AsyncRelayCommand : ICommand
         {
             if (_executeWithParameter != null)
             {
-                // Ausführung mit Parameter
                 await _executeWithParameter(parameter);
             }
             else if (_executeWithoutParameter != null)
             {
-                // Ausführung ohne Parameter
                 await _executeWithoutParameter();
             }
         }

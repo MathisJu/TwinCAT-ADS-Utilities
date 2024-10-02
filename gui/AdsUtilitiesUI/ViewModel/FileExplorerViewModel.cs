@@ -20,12 +20,14 @@ using System.Windows.Navigation;
 using System.Windows.Shapes;
 namespace AdsUtilitiesUI
 {
-    public class FileExplorerViewModel : INotifyPropertyChanged
+    public class FileExplorerViewModel : INotifyPropertyChanged // ToDo: ViewModelTargetAccessPage
     {
-        public FileExplorerViewModel()
+        public FileExplorerViewModel()  //ILoggerService loggerService
         {
-            
+            //_logger = loggerService;
         }
+
+        //private ILoggerService _logger { get; }
 
         public event PropertyChangedEventHandler? PropertyChanged;
 
@@ -106,7 +108,14 @@ namespace AdsUtilitiesUI
                 await sourceFileClient.FileCopyAsync($"{sourceFile.ParentDirectory}/{sourceFile.Name}", destinationFileClient, $"{targetFolder.ParentDirectory}/{targetFolder.Name}/{sourceFile.Name}", true, progress, 100, cts.Token);
                 await Task.Delay(1000, cts.Token);
             }
-            catch (OperationCanceledException){ }   // ToDo: Add Logger entry
+            catch (OperationCanceledException)
+            {
+                //_logger.LogInfo("Copying process aborted.");
+            }
+            catch (Exception ex)
+            {
+                ;
+            }
             finally
             {
                 progressWindow.Close();

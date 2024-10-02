@@ -11,7 +11,7 @@ namespace AdsUtilitiesUI
 {
     internal static class GlobalVars
     {
-        // Spezifischer Name und Pfad für die Konfigurationsdatei
+        // For config file in AppData
         public static readonly string AppFolder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "AdsUtilities");
         public static readonly string ConfigFileName = "cerhost_config.json";
         public static readonly string ConfigFilePath = Path.Combine(AppFolder, ConfigFileName);

@@ -51,7 +51,7 @@ namespace AdsUtilitiesUI
                 if (_selectedTarget.NetId != value.NetId)
                 {
                     _selectedTarget = value;
-                    _targetService.CurrentTarget = value; // TargetService aktualisieren
+                    _targetService.CurrentTarget = value;
                     OnPropertyChanged(nameof(SelectedTarget));
                 }
             }
