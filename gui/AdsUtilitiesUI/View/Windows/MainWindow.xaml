@@ -33,15 +33,25 @@
             <ComboBox Name="CmbBx_SelectRoute" 
                   Grid.Column="1"
                   ItemsSource="{Binding AvailableTargets}" 
-                  DisplayMemberPath="Name"
-                  SelectedItem="{Binding SelectedTarget}" 
+                  DisplayMemberPath="DisplayName"
+                  SelectedItem="{Binding CurrentTarget}" 
                   Margin="5 5" 
                   VerticalContentAlignment="Center">
+                <ComboBox.ItemContainerStyle>
+                    <Style TargetType="ComboBoxItem">
+                        <Style.Triggers>
+                            <!-- Falls die Route offline ist, deaktiviere den Eintrag -->
+                            <DataTrigger Binding="{Binding IsOnline}" Value="False">
+                                <Setter Property="IsEnabled" Value="False"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </ComboBox.ItemContainerStyle>
             </ComboBox>
             <Button Name="Bttn_Refresh"
                     Grid.Column="2"
                     Margin="5 5"
-                    Click="RefreshButton_Click"
+                    Command="{Binding ReloadRoutesCommand}"
                     Content="Refresh Routes">
             </Button>
             <Button Name="Bttn_RemoteControl"

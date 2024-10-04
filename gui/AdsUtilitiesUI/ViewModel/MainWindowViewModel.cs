@@ -34,28 +34,35 @@ namespace AdsUtilitiesUI
         public ObservableCollection<TabViewModel> Tabs { get; set; }
         private TabViewModel _selectedTab;
 
-        private readonly TargetService _targetService;
+        public TargetService _targetService { get; }
 
-        private readonly LoggerService _loggerService;
+        public LoggerService _loggerService { get; }
 
-        public ObservableCollection<StaticRoutesInfo> AvailableTargets => _targetService.AvailableTargets;
+        public ObservableCollection<StaticRouteStatus> AvailableTargets => _targetService.AvailableTargets;
 
-        public ObservableCollection<LogMessage> LogMessages { get; set; }
+        private StaticRouteStatus _currentTarget;
 
-        private StaticRoutesInfo _selectedTarget;
-        public StaticRoutesInfo SelectedTarget
+        // Property im ViewModel, das mit dem CurrentTarget des TargetService synchronisiert wird
+        public StaticRouteStatus CurrentTarget
         {
-            get => _selectedTarget;
+            get => _currentTarget;
             set
             {
-                if (_selectedTarget.NetId != value.NetId)
+                if (value != null && _currentTarget?.NetId != value.NetId)
                 {
-                    _selectedTarget = value;
-                    _targetService.CurrentTarget = value;
-                    OnPropertyChanged(nameof(SelectedTarget));
+                    _currentTarget = value;
+                    OnPropertyChanged(nameof(CurrentTarget));
+
+                    // Vermeide Endlosschleifen: Setze nur, wenn sich der Wert unterscheidet
+                    if (_targetService.CurrentTarget?.NetId != value.NetId)
+                    {
+                        _targetService.CurrentTarget = value; // Sync mit dem Service
+                    }
                 }
             }
         }
+
+        public ObservableCollection<LogMessage> LogMessages { get; set; }
 
         public TabViewModel SelectedTab
         {
@@ -73,6 +80,7 @@ namespace AdsUtilitiesUI
             _targetService.OnTargetChanged += TargetService_OnTargetChanged;
 
             RemoteConnectCommand = new(SetupRemoteConnection);
+            ReloadRoutesCommand = new(ReloadRoutes);
 
             LogMessages = new();
             _loggerService = new LoggerService(LogMessages, System.Windows.Threading.Dispatcher.CurrentDispatcher);
@@ -87,9 +95,13 @@ namespace AdsUtilitiesUI
             SelectedTab = Tabs[0];
         }
 
-        private void TargetService_OnTargetChanged(object sender, StaticRoutesInfo newTarget)
+        private void TargetService_OnTargetChanged(object sender, StaticRouteStatus newTarget)
         {
-            SelectedTarget = newTarget;
+            if (_currentTarget?.NetId != newTarget.NetId)
+            {
+                _currentTarget = newTarget;
+                OnPropertyChanged(nameof(CurrentTarget)); // Update ViewModel
+            }
         }
 
         private string _logMessage;
@@ -151,15 +163,25 @@ namespace AdsUtilitiesUI
             Icon = string.Empty;
         }
 
+        
+        public AsyncRelayCommand ReloadRoutesCommand { get; }
+
+        public async Task ReloadRoutes()
+        {
+            await _targetService.Reload_Routes();
+            
+            OnPropertyChanged(nameof(AvailableTargets));
+            OnPropertyChanged(nameof(_targetService.CurrentTarget));
+        }
 
         public AsyncRelayCommand RemoteConnectCommand { get; }
         public async Task SetupRemoteConnection()
         {
             // Cancel if route is local or invalid
-            if (string.IsNullOrEmpty(SelectedTarget.NetId))
+            if (string.IsNullOrEmpty(_targetService.CurrentTarget.NetId))
                 return;
 
-            if (IPAddress.TryParse(SelectedTarget.IpAddress, out IPAddress? address))
+            if (IPAddress.TryParse(_targetService.CurrentTarget.IpAddress, out IPAddress? address))
             {
                 if (address is not null && address.AddressFamily == AddressFamily.InterNetwork)
                 {
@@ -173,7 +195,7 @@ namespace AdsUtilitiesUI
 
             // Check OS
             using AdsSystemClient systemClient = new AdsSystemClient();
-            systemClient.Connect(SelectedTarget.NetId);
+            systemClient.Connect(_targetService.CurrentTarget.NetId);
             SystemInfo sysInfo = await systemClient.GetSystemInfoAsync();
             string os = sysInfo.OsName;
 
@@ -182,18 +204,18 @@ namespace AdsUtilitiesUI
                 if (os.Contains("CE"))
                 {
                     // Windows CE
-                    await RemoteConnector.CerhostConnect(SelectedTarget.IpAddress);
+                    await RemoteConnector.CerhostConnect(_targetService.CurrentTarget.IpAddress);
                 }
                 else
                 {
                     // Big Windows
-                    await Task.Run(() => RemoteConnector.RdpConnect(SelectedTarget.IpAddress));
+                    await Task.Run(() => RemoteConnector.RdpConnect(_targetService.CurrentTarget.IpAddress));
                 }
             }
             else if (os.Contains("BSD"))
             {
                 // TC/BSD
-                RemoteConnector.SshPowershellConnect(SelectedTarget.IpAddress, SelectedTarget.Name);
+                RemoteConnector.SshPowershellConnect(_targetService.CurrentTarget.IpAddress, _targetService.CurrentTarget.Name);
             }
             else
             {

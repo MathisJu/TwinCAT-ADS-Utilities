@@ -45,6 +45,9 @@ namespace AdsUtilitiesUI
 
         private static void OnTargetChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
         {
+            if (e.NewValue is null)
+                return;
+
             var control = (FileExplorerControl)d;
             if (control.DataContext is FileExplorerViewModel viewModel)
             {

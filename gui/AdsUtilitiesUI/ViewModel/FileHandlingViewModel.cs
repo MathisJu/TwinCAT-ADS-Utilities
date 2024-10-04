@@ -44,7 +44,7 @@ namespace AdsUtilitiesUI.ViewModels
             }
         }
 
-        public void ReloadSecondaryRoutes(object sender, StaticRoutesInfo newTarget)
+        public void ReloadSecondaryRoutes(object sender, StaticRouteStatus newTarget)
         {
             if (Target is not null)
                 _ = ReloadSecondaryRoutes(Target?.NetId);
