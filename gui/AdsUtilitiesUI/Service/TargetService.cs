@@ -11,6 +11,12 @@ using TwinCAT.Ads;
 
 namespace AdsUtilitiesUI
 {
+    public class StaticRouteStatus : StaticRoutesInfo
+    {
+        public string DisplayName { get; set; }
+        public bool IsOnline { get; set; }
+    }
+
     public class TargetService
     {
         public TargetService()

@@ -18,7 +18,7 @@
 
             <TabItem Header="General">
                 <ScrollViewer>
-                    <StackPanel Margin="15,10,0,10">
+                    <StackPanel Margin="15,10,15,10">
                         <Grid>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto" />
@@ -58,11 +58,19 @@
                                 </TextBlock>
                             </Border>
 
-                            <!-- Row 3 - Image -->
+                            <!-- Row 3 - Time -->
                             <Border Grid.Row="2" Grid.Column="0" Background="#F0F0F0" BorderBrush="LightGray" BorderThickness="0,0,0,1">
-                                <TextBlock Text="Image Version:" Padding="5"/>
+                                <TextBlock Text="System Time:" Padding="5"/>
                             </Border>
                             <Border Grid.Row="2" Grid.Column="1" BorderBrush="LightGray" BorderThickness="0,0,0,1">
+                                <TextBlock Text="{Binding TargetTimeDisplay}" Padding="5"/>
+                            </Border>
+
+                            <!-- Row 4 - Image -->
+                            <Border Grid.Row="3" Grid.Column="0" Background="#F0F0F0" BorderBrush="LightGray" BorderThickness="0,0,0,1">
+                                <TextBlock Text="Image Version:" Padding="5"/>
+                            </Border>
+                            <Border Grid.Row="3" Grid.Column="1" BorderBrush="LightGray" BorderThickness="0,0,0,1">
                                 <TextBlock Padding="5">
                                     <TextBlock.Text>
                                         <MultiBinding StringFormat="{}{0} {1}">
@@ -73,11 +81,11 @@
                                 </TextBlock>
                             </Border>
 
-                            <!-- Row 4 - Hardware -->
-                            <Border Grid.Row="3" Grid.Column="0" Background="#F0F0F0" BorderBrush="LightGray" BorderThickness="0,0,0,1">
+                            <!-- Row 5 - Hardware -->
+                            <Border Grid.Row="4" Grid.Column="0" Background="#F0F0F0" BorderBrush="LightGray" BorderThickness="0,0,0,1">
                                 <TextBlock Text="Hardware Version:" Padding="5"/>
                             </Border>
-                            <Border Grid.Row="3" Grid.Column="1" BorderBrush="LightGray" BorderThickness="0,0,0,1">
+                            <Border Grid.Row="4" Grid.Column="1" BorderBrush="LightGray" BorderThickness="0,0,0,1">
                                 <TextBlock Padding="5">
                                     <TextBlock.Text>
                                         <MultiBinding StringFormat="{}{0} v{1} ({2})">
@@ -89,17 +97,17 @@
                                 </TextBlock>
                             </Border>
                             
-                            <!-- Row 5 - Serial Number -->
-                            <Border Grid.Row="4" Grid.Column="0" Background="#F0F0F0" BorderBrush="LightGray" BorderThickness="0,0,0,1">
+                            <!-- Row 6 - Serial Number -->
+                            <Border Grid.Row="5" Grid.Column="0" Background="#F0F0F0" BorderBrush="LightGray" BorderThickness="0,0,0,1">
                                 <TextBlock Text="Serial Number:" Padding="5"/>
                             </Border>
-                            <Border Grid.Row="4" Grid.Column="1" BorderBrush="LightGray" BorderThickness="0,0,0,1">
+                            <Border Grid.Row="5" Grid.Column="1" BorderBrush="LightGray" BorderThickness="0,0,0,1">
                                 <TextBlock Text="{Binding SystemInfo.HardwareSerialNumber}" Padding="5"/>
                             </Border>
 
                             <!-- Button to reboot -->
                             <Button Content="Reboot"
-                                Grid.Row="5"
+                                Grid.Row="6"
                                 Grid.Column="1"
                                 Width="125"
                                 Padding="5"
@@ -113,7 +121,7 @@
             </TabItem>
             <TabItem Header="TwinCAT">
                 <ScrollViewer>
-                    <StackPanel Margin="15,10,0,10">
+                    <StackPanel Margin="15,10,15,10">
                         <Grid>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto" />
@@ -153,20 +161,32 @@
                             <Border Grid.Row="2" Grid.Column="0" Background="#F0F0F0" BorderBrush="LightGray" BorderThickness="0,0,0,1">
                                 <TextBlock Text="AMS NetID:" Padding="5"/>
                             </Border>
-
+                            <Border Grid.Row="2" Grid.Column="1" BorderBrush="LightGray" BorderThickness="0,0,0,1">
+                                <TextBlock Text="{Binding Target.NetId}" Padding="5"/>
+                            </Border>
+                            
                             <!-- Row 4 - System ID -->
                             <Border Grid.Row="3" Grid.Column="0" Background="#F0F0F0" BorderBrush="LightGray" BorderThickness="0,0,0,1">
                                 <TextBlock Text="System ID:" Padding="5"/>
+                            </Border>
+                            <Border Grid.Row="3" Grid.Column="1" BorderBrush="LightGray" BorderThickness="0,0,0,1">
+                                <TextBlock Text="{Binding SystemId}" Padding="5"/>
                             </Border>
 
                             <!-- Row 5 - Volume number -->
                             <Border Grid.Row="4" Grid.Column="0" Background="#F0F0F0" BorderBrush="LightGray" BorderThickness="0,0,0,1">
                                 <TextBlock Text="Volume number:" Padding="5"/>
                             </Border>
+                            <Border Grid.Row="4" Grid.Column="1" BorderBrush="LightGray" BorderThickness="0,0,0,1">
+                                <TextBlock Text="{Binding VolumeNumber}" Padding="5"/>
+                            </Border>
 
                             <!-- Row 6 - Platform level -->
                             <Border Grid.Row="5" Grid.Column="0" Background="#F0F0F0" BorderBrush="LightGray" BorderThickness="0,0,0,1">
                                 <TextBlock Text="Platform level:" Padding="5"/>
+                            </Border>
+                            <Border Grid.Row="5" Grid.Column="1" BorderBrush="LightGray" BorderThickness="0,0,0,1">
+                                <TextBlock Text="{Binding PlatformLevel}" Padding="5"/>
                             </Border>
 
                             <!-- Row 7 - Router memory -->
@@ -219,7 +239,7 @@
                     <ItemsControl ItemsSource="{Binding NetworkInterfaces}">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
-                                <StackPanel Margin="15,10,0,10">
+                                <StackPanel Margin="15,10,15,10">
                                     <Grid>
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="Auto" />

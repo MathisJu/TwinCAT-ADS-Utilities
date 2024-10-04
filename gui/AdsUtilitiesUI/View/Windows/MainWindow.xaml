@@ -36,7 +36,6 @@
                   DisplayMemberPath="Name"
                   SelectedItem="{Binding SelectedTarget}" 
                   Margin="5 5" 
-                  SelectionChanged="CmbBx_SelectRoute_SelectionChanged"
                   VerticalContentAlignment="Center">
             </ComboBox>
             <Button Name="Bttn_Refresh"

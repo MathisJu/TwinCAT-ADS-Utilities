@@ -28,7 +28,7 @@ namespace AdsUtilitiesUI
                 OnPropertyChanged(nameof(SystemInfo));
             }
         }
-
+        
         private readonly System.Timers.Timer _updateTimer;
 
         private string _TcState;
@@ -53,6 +53,57 @@ namespace AdsUtilitiesUI
             }
         }
 
+        private DateTime _targetTime;
+
+        public DateTime TargetTime
+        {
+            get => _targetTime;
+            set
+            {
+                _targetTime = value;
+                OnPropertyChanged(nameof(TargetTime));
+                OnPropertyChanged(nameof(TargetTimeDisplay));
+            }
+        }
+
+        public string TargetTimeDisplay
+        {
+            get => TargetTime.ToString("yyyy/MM/dd-HH:mm:ss");
+        }
+
+        private string _systemId;
+        public string SystemId
+        {
+            get => _systemId;
+            set
+            {
+                _systemId = value;
+                OnPropertyChanged(nameof(SystemId));
+            }
+        }
+
+        private uint _volumeNumber;
+        public uint VolumeNumber
+        {
+            get => _volumeNumber;
+            set
+            {
+                _volumeNumber = value;
+                OnPropertyChanged(nameof(VolumeNumber));
+            }
+        }
+
+        private short _platformLevel;
+        public short PlatformLevel
+        {
+            get => _platformLevel;
+            set
+            {
+                _platformLevel = value;
+                OnPropertyChanged(nameof(PlatformLevel));
+            }
+        }
+
         public ICommand InstallRteDriverCommand { get; }
 
         public ICommand SetTickCommand { get; }
@@ -70,13 +121,18 @@ namespace AdsUtilitiesUI
             _TargetService.OnTargetChanged += async (sender, args) => await LoadSystemInfoAsync();
             _TargetService.OnTargetChanged += async (sender, args) => await UpdateTcState();
             _TargetService.OnTargetChanged += async (sender, args) => await UpdateRouterUsage();
+            _TargetService.OnTargetChanged += async (sender, args) => await UpdateTime();
+            _TargetService.OnTargetChanged += async (sender, args) => await UpdateSystemId();
+            _TargetService.OnTargetChanged += async (sender, args) => await UpdateVolumeNumber();
+            _TargetService.OnTargetChanged += async (sender, args) => await UpdatePlatformLevel();
 
             _updateTimer = new System.Timers.Timer(1000);
-            _updateTimer.Elapsed += async (sender, e) => await UpdateTcState();        // Update Tc state every second
-            _updateTimer.Elapsed += async (sender, e) => await UpdateRouterUsage();    // Update router info every second
+            _updateTimer.Elapsed += async (sender, e) => await UpdateTcState();         // Update Tc state every second
+            _updateTimer.Elapsed += async (sender, e) => await UpdateRouterUsage();     // Update router info every second
+            _updateTimer.Elapsed += async (sender, e) => await UpdateTime();            // Update target and local time every second
             _updateTimer.AutoReset = true;
             _updateTimer.Start();
-
+            
             InstallRteDriverCommand = new AsyncRelayCommand(async (parameter) => await InstallRteDriver(parameter), CanInstallRteDriver);
             SetTickCommand = new AsyncRelayCommand(async async => await ExecuteSetTick());
             RebootCommand = new AsyncRelayCommand(async async => await RebootTarget());
@@ -91,6 +147,50 @@ namespace AdsUtilitiesUI
                 using AdsSystemClient systemClient = new();
                 systemClient.Connect(Target?.NetId);
                 SystemInfo = await systemClient.GetSystemInfoAsync(cancel);
+            }
+            catch (Exception ex) { }
+        }
+
+        public async Task UpdateTime(CancellationToken cancel = default)
+        {
+            try
+            {
+                using AdsSystemClient systemClient = new();
+                systemClient.Connect(Target?.NetId);
+                TargetTime = await systemClient.GetSystemTimeAsync(cancel);
+            }
+            catch (Exception ex) { }
+        }
+
+        public async Task UpdateSystemId(CancellationToken cancel = default)
+        {
+            try
+            {
+                using AdsSystemClient systemClient = new();
+                systemClient.Connect(Target?.NetId);
+                SystemId = await systemClient.GetSystemIdStringAsync(cancel);
+            }
+            catch (Exception ex) { }
+        }
+
+        public async Task UpdateVolumeNumber(CancellationToken cancel = default)
+        {
+            try
+            {
+                using AdsSystemClient systemClient = new();
+                systemClient.Connect(Target?.NetId);
+                VolumeNumber = await systemClient.GetVolumeNumberAsync(cancel);
+            }
+            catch (Exception ex) { }
+        }
+
+        public async Task UpdatePlatformLevel(CancellationToken cancel = default)
+        {
+            try
+            {
+                using AdsSystemClient systemClient = new();
+                systemClient.Connect(Target?.NetId);
+                PlatformLevel = await systemClient.GetPlatformLevelAsync(cancel);
             }
             catch (Exception ex) { }
         }

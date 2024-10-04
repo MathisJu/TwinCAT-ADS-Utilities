@@ -1,4 +1,5 @@
-﻿using System.Security;
+﻿using System;
+using System.Security;
 using System.Text;
 using System.Xml;
 using TwinCAT.Ads;
@@ -119,6 +120,33 @@ namespace AdsUtilities
                     return string.Empty;
                 }
             }
+        }
+
+        public async Task<DateTime> GetSystemTimeAsync(CancellationToken cancel = default)
+        {
+            byte[] rdBfr = new byte[16]; 
+
+            _adsClient.Connect(_netId, (int)Constants.AdsPortSystemService);
+            var readResult = await _adsClient.ReadAsync(Constants.AdsIGrpSysServTimeServices, 1, rdBfr, cancel);
+            _adsClient.Disconnect();
+            return ConvertByteArrayToDateTime(rdBfr);
+        }
+
+        private DateTime ConvertByteArrayToDateTime(byte[] byteArray)
+        {
+            if (byteArray == null || byteArray.Length < 16)
+                throw new ArgumentException("byte array has to contain 16 elements");
+
+            int year = byteArray[0] + (byteArray[1] << 8);
+
+            int month = byteArray[2];
+            int day = byteArray[4];
+
+            int hour = byteArray[8];
+            int minute = byteArray[10];
+            int second = byteArray[12];
+
+            return new DateTime(year, month, day, hour, minute, second);
         }
 
         public async Task<List<CpuUsage>> GetTcCpuUsageAsync(CancellationToken cancel = default)

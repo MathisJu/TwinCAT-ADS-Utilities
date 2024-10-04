@@ -148,7 +148,7 @@ namespace AdsUtilities
         //public string HostName;
     }
 
-    public struct StaticRoutesInfo
+    public class StaticRoutesInfo
     {
         public string NetId { get; set; }
         public string Name { get; set; }
@@ -205,13 +205,13 @@ namespace AdsUtilities
             nullBytes4 = new byte[4];
         }
     }
-    public struct IoDevice
+    public class IoDevice
     {
-        public string deviceName;
-        public uint deviceId;
-        public string netId;
-        public uint boxCount;
-        public List<IoBox> boxes;
+        public string deviceName { get; set; }
+        public uint deviceId { get; set; }
+        public string netId { get; set; }
+        public uint boxCount { get; set; }
+        public List<IoBox> boxes { get; set; }
     }
 
     public struct IoBox
