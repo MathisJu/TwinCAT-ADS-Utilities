@@ -117,19 +117,10 @@ namespace AdsUtilitiesUI
 
             _LoggerService = (LoggerService)loggerService;
 
-            _TargetService.OnTargetChanged += async (sender, args) => await LoadNetworkInterfacesAsync();
-            _TargetService.OnTargetChanged += async (sender, args) => await LoadSystemInfoAsync();
-            _TargetService.OnTargetChanged += async (sender, args) => await UpdateTcState();
-            _TargetService.OnTargetChanged += async (sender, args) => await UpdateRouterUsage();
-            _TargetService.OnTargetChanged += async (sender, args) => await UpdateTime();
-            _TargetService.OnTargetChanged += async (sender, args) => await UpdateSystemId();
-            _TargetService.OnTargetChanged += async (sender, args) => await UpdateVolumeNumber();
-            _TargetService.OnTargetChanged += async (sender, args) => await UpdatePlatformLevel();
+            _TargetService.OnTargetChanged += async (sender, args) => await UpdateDeviceInfo();
 
             _updateTimer = new System.Timers.Timer(1000);
-            _updateTimer.Elapsed += async (sender, e) => await UpdateTcState();         // Update Tc state every second
-            _updateTimer.Elapsed += async (sender, e) => await UpdateRouterUsage();     // Update router info every second
-            _updateTimer.Elapsed += async (sender, e) => await UpdateTime();            // Update target and local time every second
+            _updateTimer.Elapsed += async (sender, e) => await UpdateLiveValues();
             _updateTimer.AutoReset = true;
             _updateTimer.Start();
             
@@ -138,6 +129,25 @@ namespace AdsUtilitiesUI
             RebootCommand = new AsyncRelayCommand(async async => await RebootTarget());
 
             NetworkInterfaces = new ObservableCollection<NetworkInterfaceInfo>(); 
+        }
+
+        public async Task UpdateDeviceInfo()
+        {
+            await LoadNetworkInterfacesAsync();
+            await LoadSystemInfoAsync();
+            await UpdateTcState();
+            await UpdateRouterUsage();
+            await UpdateTime();
+            await UpdateSystemId();
+            await UpdateVolumeNumber();
+            await UpdatePlatformLevel();
+        }
+
+        public async Task UpdateLiveValues()
+        {
+            await UpdateTcState();         // Update Tc state every second
+            await UpdateRouterUsage();     // Update router info every second
+            await UpdateTime();            // Update target and local time every second
         }
 
         public async Task LoadSystemInfoAsync(CancellationToken cancel = default)

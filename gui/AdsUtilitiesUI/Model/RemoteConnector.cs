@@ -90,13 +90,14 @@ namespace AdsUtilitiesUI.Model
             else
             {
                 GenerateAndDeploySSHKeyAsync(username, targetName, ipAddress);
+                SshConnectWithoutKey(username, ipAddress);
             }
         }
 
         private static void GenerateAndDeploySSHKeyAsync(string username, string targetName, string targetIp)
         {
             string localHostname = Environment.MachineName;
-            string sshKeyName = targetName;
+            string sshKeyName = targetName + DateTime.Now.ToString("_yyyy-MM-dd_HH-mm-ss");
             string keyPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".ssh", sshKeyName);    // ToDo: Test if exists
             string configPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".ssh", "config");
 
@@ -105,7 +106,7 @@ namespace AdsUtilitiesUI.Model
             string comment = $"{localHostname}_{localUsername}";
 
             // Generiere den SSH-Schlüssel mit Kommentar
-            // string keyGenCommand = $"ssh-keygen -t ed25519 -f \"{keyPath}\" -C \"{comment}\" -N \"\"";
+            //string keyGenCommand = $"ssh-keygen -t ed25519 -f \"{keyPath}\" -C \"{comment}\" -N \"\"";
             string keyGenCommand = $"-t ed25519 -f \"{keyPath}\" -C \"{comment}\" -N \"\"";
             File.WriteAllText(Environment.GetFolderPath(Environment.SpecialFolder.Desktop) + "\\log.txt", keyGenCommand, Encoding.UTF8);
             ExecuteSshKeygenCommand(keyGenCommand);
@@ -117,7 +118,7 @@ namespace AdsUtilitiesUI.Model
             string scpCommand = $"scp -o StrictHostKeyChecking=no '{publicKeyPath}' {username}@{targetIp}:~/.ssh ; ssh {username}@{targetIp} -t 'cd ~/.ssh && cat {sshKeyName}.pub >> ./authorized_keys && rm ./{sshKeyName}.pub'";
             ExecuteShellCommand(scpCommand);
 
-            string configEntry = $"Host {targetName}\n\tUser {username}\n\tHostName {targetName}\n\tIdentityFile \"{keyPath}\"\n"
+            string configEntry = $"\nHost {targetName}\n\tUser {username}\n\tHostName {targetName}\n\tIdentityFile \"{keyPath}\"\n"
                 + $"Host {targetIp}\n\tUser {username}\n\tHostName {targetIp}\n\tIdentityFile \"{keyPath}\"";
 
             // Füge den Eintrag in die SSH-Konfigurationsdatei ein
@@ -178,17 +179,6 @@ namespace AdsUtilitiesUI.Model
             try
             {
                 using var process = Process.Start(processStartInfo);
-                int numRead = 0;
-                char[] buffer = new char[2048];
-                while ((numRead = await process.StandardOutput.ReadAsync(buffer, 0, buffer.Length)) > 0)
-                {
-                    string output = new string(buffer, 0, numRead);
-                    if (output.Contains("(y/n)"))
-                    {
-
-                    }
-                }
-
             }
             catch (Exception ex)
             {
