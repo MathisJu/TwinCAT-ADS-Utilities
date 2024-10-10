@@ -38,29 +38,29 @@ class MainWindowViewModel : ViewModelBase
 
     public LoggerService _loggerService { get; }
 
-    public ObservableCollection<StaticRouteStatus> AvailableTargets => _targetService.AvailableTargets;
+    //public ObservableCollection<StaticRouteStatus> AvailableTargets => _targetService.AvailableTargets;
 
-    private StaticRouteStatus _currentTarget;
 
-    // Property im ViewModel, das mit dem CurrentTarget des TargetService synchronisiert wird
-    public StaticRouteStatus CurrentTarget
-    {
-        get => _currentTarget;
-        set
-        {
-            if (value != null && _currentTarget?.NetId != value.NetId)
-            {
-                _currentTarget = value;
-                OnPropertyChanged(nameof(CurrentTarget));
 
-                // Vermeide Endlosschleifen: Setze nur, wenn sich der Wert unterscheidet
-                if (_targetService.CurrentTarget?.NetId != value.NetId)
-                {
-                    _targetService.CurrentTarget = value; // Sync mit dem Service
-                }
-            }
-        }
-    }
+    //private StaticRouteStatus _currentTarget;
+
+    //public StaticRouteStatus CurrentTarget
+    //{
+    //    get => _currentTarget;
+    //    set
+    //    {
+    //        if (value != null && _currentTarget?.NetId != value.NetId)
+    //        {
+    //            _currentTarget = value;
+    //            OnPropertyChanged(nameof(CurrentTarget));
+               
+    //            if (_targetService.CurrentTarget?.NetId != value.NetId)
+    //            {
+    //                _targetService.CurrentTarget = value; 
+    //            }
+    //        }
+    //    }
+    //}
 
     public ObservableCollection<LogMessage> LogMessages { get; set; }
 
@@ -88,7 +88,7 @@ class MainWindowViewModel : ViewModelBase
 
         Tabs = new ObservableCollection<TabViewModel>
         {
-            new TabViewModel("Ads Routing", new AdsRoutingViewModel(_targetService, _loggerService)),
+            new TabViewModel("ADS Routing", new AdsRoutingViewModel(_targetService, _loggerService)),
             new TabViewModel("File Access", new FileHandlingViewModel(_targetService, _loggerService)),
             new TabViewModel("Device Info", new DeviceInfoViewModel(_targetService, _loggerService)),
         };
@@ -97,11 +97,11 @@ class MainWindowViewModel : ViewModelBase
 
     private void TargetService_OnTargetChanged(object sender, StaticRouteStatus newTarget)
     {
-        if (_currentTarget?.NetId != newTarget.NetId)
-        {
-            _currentTarget = newTarget;
-            OnPropertyChanged(nameof(CurrentTarget)); // Update ViewModel
-        }
+        OnPropertyChanged(nameof(_targetService.CurrentTarget));
+        //if (CurrentTarget?.NetId != newTarget.NetId)
+        //{
+        //    CurrentTarget = newTarget;
+        //}
     }
 
     private string _logMessage;
@@ -169,9 +169,6 @@ class MainWindowViewModel : ViewModelBase
     public async Task ReloadRoutes()
     {
         await _targetService.Reload_Routes();
-        
-        OnPropertyChanged(nameof(AvailableTargets));
-        OnPropertyChanged(nameof(_targetService.CurrentTarget));
     }
 
     public AsyncRelayCommand RemoteConnectCommand { get; }

@@ -11,6 +11,8 @@ using System.Security;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Data;
+using TwinCAT.Ads;
+using TwinCAT.TypeSystem;
 
 namespace AdsUtilitiesUI;
 
@@ -18,9 +20,12 @@ public class AdsRoutingViewModel : ViewModelTargetAccessPage
 {
     public AdsRoutingViewModel(TargetService targetService, ILoggerService loggerService)
     {
+        AddRouteSelection = new();
+
         _TargetService = targetService;
         InitTargetAccess(_TargetService);
         _TargetService.OnTargetChanged += LoadNetworkAdapters;
+        _TargetService.OnTargetChanged += UpdateRemoteName;
 
         _LoggerService = (LoggerService)loggerService;
 
@@ -31,10 +36,7 @@ public class AdsRoutingViewModel : ViewModelTargetAccessPage
         NetworkAdapterPairs = new ObservableCollection<NetworkAdapterPair>();
         TargetInfoList = new ObservableCollection<TargetInfo>();
 
-        AddRouteSelection = new()
-        {
-            RemoteName = Environment.MachineName
-        };
+        
     }
 
 
@@ -62,6 +64,16 @@ public class AdsRoutingViewModel : ViewModelTargetAccessPage
                 OnPropertyChanged(nameof(AddRouteSelection));
             }
         }
+    }
+
+    public void UpdateRemoteName(object sender, StaticRoutesInfo newTarget)
+    {
+        if (Target.NetId == AmsNetId.Local.ToString())
+            AddRouteSelection.RemoteName = Environment.MachineName;
+        else
+            AddRouteSelection.RemoteName = newTarget.Name;
+
+        OnPropertyChanged(nameof(AddRouteSelection));
     }
 
     private AddRouteInfo _AddRouteSelection;
@@ -203,18 +215,19 @@ public class AdsRoutingViewModel : ViewModelTargetAccessPage
         }
         if (AddRouteSelection.TypeTempLocal)
         {
-            _LoggerService.LogError("Temporary routes not implemented yet."); // ToDo: Add temporary route option
+            _LoggerService.LogError("Local temporary routes not implemented yet."); // ToDo: Add temporary route option
         }
 
 
         if (AddRouteSelection.TypeStaticRemote)
         {
-            await routingClient.AddRemoteRouteEntryAsync(AddRouteSelection.IpAddress, AddRouteSelection.Username, AddRouteSelection.Password, AddRouteSelection.RemoteName);
-            _LoggerService.LogSuccess("Route added remotely.");
+            await routingClient.AddRemoteRouteEntryAsync(AddRouteSelection.IpAddress, AddRouteSelection.Username, AddRouteSelection.Password, AddRouteSelection.RemoteName, false);
+            _LoggerService.LogSuccess("Static route added remotely.");
         }
         if (AddRouteSelection.TypeTempRemote)
         {
-            _LoggerService.LogError("Temporary routes not implemented yet."); // ToDo: Add temporary route option
+            await routingClient.AddRemoteRouteEntryAsync(AddRouteSelection.IpAddress, AddRouteSelection.Username, AddRouteSelection.Password, AddRouteSelection.RemoteName, true);
+            _LoggerService.LogSuccess("Temporary route added remotely.");
         }
     }
 

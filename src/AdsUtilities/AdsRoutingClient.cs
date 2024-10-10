@@ -56,7 +56,7 @@ namespace AdsUtilities
         public async Task AddRouteAsync(string netIdTarget, string ipAddressTarget, string routeName, string usernameTarget, string passwordTarget, string remoteRouteName, CancellationToken cancel = default)
         {
             await AddLocalRouteEntryAsync(netIdTarget, ipAddressTarget, routeName, cancel);
-            await AddRemoteRouteEntryAsync(ipAddressTarget, usernameTarget, passwordTarget, remoteRouteName, cancel);
+            await AddRemoteRouteEntryAsync(ipAddressTarget, usernameTarget, passwordTarget, remoteRouteName, false, cancel);
         }
 
         public async Task RemoveLocalRouteEntryAsync(string routeName)
@@ -87,19 +87,19 @@ namespace AdsUtilities
             _adsClient.Disconnect();
         }
 
-        public async Task AddRemoteRouteEntryAsync(string ipAddressRemote, string usernameRemote, string passwordRemote, string remoteRouteName, CancellationToken cancel = default)
+        public async Task AddRemoteRouteEntryAsync(string ipAddressRemote, string usernameRemote, string passwordRemote, string remoteRouteName, bool temporary = false, CancellationToken cancel = default)
         {
-            await AddRemoteRouteEntryInternalAsync(ipAddressRemote, usernameRemote, passwordRemote, remoteRouteName, cancel);
+            await AddRemoteRouteEntryInternalAsync(ipAddressRemote, usernameRemote, passwordRemote, remoteRouteName, cancel, temporary);
         }
 
-        public async Task AddRemoteRouteEntryAsync(string ipAddressRemote, string usernameRemote, SecureString passwordRemote, string remoteRouteName, CancellationToken cancel = default)
+        public async Task AddRemoteRouteEntryAsync(string ipAddressRemote, string usernameRemote, SecureString passwordRemote, string remoteRouteName, bool temporary = false, CancellationToken cancel = default)
         {
             IntPtr passwordBinStrPtr = IntPtr.Zero;
             try
             {
                 passwordBinStrPtr = Marshal.SecureStringToBSTR(passwordRemote);
                 string plainPassword = Marshal.PtrToStringBSTR(passwordBinStrPtr);
-                await AddRemoteRouteEntryInternalAsync(ipAddressRemote, usernameRemote, plainPassword, remoteRouteName, cancel);
+                await AddRemoteRouteEntryInternalAsync(ipAddressRemote, usernameRemote, plainPassword, remoteRouteName, cancel, temporary);
             }
             finally
             {
@@ -110,7 +110,7 @@ namespace AdsUtilities
             }
         }
 
-        private async Task AddRemoteRouteEntryInternalAsync(string ipAddressRemote, string usernameRemote, string passwordRemote, string remoteRouteName, CancellationToken cancel)
+        private async Task AddRemoteRouteEntryInternalAsync(string ipAddressRemote, string usernameRemote, string passwordRemote, string remoteRouteName, CancellationToken cancel, bool temporary = false)
         {
             if (!IPAddress.TryParse(ipAddressRemote, out IPAddress? ipBytes))
             {
@@ -134,7 +134,7 @@ namespace AdsUtilities
                 .Add(Segments.REQUEST_ADDROUTE)
                 .Add(_netId.ToBytes())
                 .Add(Segments.PORT)
-                .Add(Segments.ROUTETYPE_STATIC)
+                .Add(temporary? Segments.ROUTETYPE_TEMP : Segments.ROUTETYPE_STATIC)
                 .Add(Segment_ROUTENAME_LENGTH)
                 .AddStringUTF8(remoteRouteName)
                 .Add(Segments.AMSNETID_L)

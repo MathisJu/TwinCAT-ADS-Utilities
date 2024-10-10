@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
@@ -18,15 +19,25 @@ public class StaticRouteStatus : StaticRoutesInfo
 {
     public string DisplayName { get; set; }
     public bool IsOnline { get; set; }
+
+    public override bool Equals(object? obj)
+    {
+        if (obj == null || GetType() != obj.GetType())
+            return false;
+
+        var other = (StaticRouteStatus)obj;
+        return NetId == other.NetId && Name == other.Name;
+    }
+
+    public override int GetHashCode()
+    {
+        return NetId?.GetHashCode() ?? 0;
+    }
 }
 
 public class TargetService : INotifyPropertyChanged
 {
-    public event PropertyChangedEventHandler PropertyChanged;
-    protected void OnPropertyChanged(string propertyName)
-    {
-        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-    }
+
 
     public TargetService()
     {
@@ -42,12 +53,11 @@ public class TargetService : INotifyPropertyChanged
         {
             if (value is null)
                 return;
-            if (_currentTarget is null || _currentTarget.NetId != value.NetId)
-            {
-                _currentTarget = value;
-                OnTargetChanged?.Invoke(this, _currentTarget);
-                OnPropertyChanged(nameof(CurrentTarget));
-            }
+
+            _currentTarget = value;
+            OnPropertyChanged(nameof(CurrentTarget));
+            OnTargetChanged?.Invoke(this, _currentTarget);
+            
         }
     }
 
@@ -57,10 +67,18 @@ public class TargetService : INotifyPropertyChanged
     // Event, das ausgelöst wird, wenn sich das Target ändert
     public event EventHandler<StaticRouteStatus> OnTargetChanged;
 
+    public event PropertyChangedEventHandler PropertyChanged;
+
+    protected void OnPropertyChanged([CallerMemberName] string propertyName = null)
+    {
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+    }
 
     // Methode zum Neuladen aller lokal verfügbaren Targets
     public async Task Reload_Routes()
     {
+        StaticRouteStatus? previousTarget = CurrentTarget;
+
         List<StaticRouteStatus> routes = new();
         StaticRouteStatus localSystem = new()
         {
@@ -85,7 +103,12 @@ public class TargetService : INotifyPropertyChanged
                 AvailableTargets.Add(route);
             }
 
-            if (AvailableTargets.Count > 0)
+            int idx = routes.IndexOf(previousTarget);
+            if (idx >= 0)
+            {
+                CurrentTarget = AvailableTargets[idx];
+            }
+            else if (AvailableTargets.Count > 0)
             {
                 CurrentTarget = AvailableTargets[0];
             }

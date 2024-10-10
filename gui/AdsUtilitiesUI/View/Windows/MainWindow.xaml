@@ -32,9 +32,9 @@
             <TextBlock Text="Target:" Margin="10" VerticalAlignment="Center"/>
             <ComboBox Name="CmbBx_SelectRoute" 
                   Grid.Column="1"
-                  ItemsSource="{Binding AvailableTargets}" 
+                  ItemsSource="{Binding _targetService.AvailableTargets}" 
                   DisplayMemberPath="DisplayName"
-                  SelectedItem="{Binding CurrentTarget}" 
+                  SelectedItem="{Binding _targetService.CurrentTarget, Mode=TwoWay}" 
                   Margin="5 5" 
                   VerticalContentAlignment="Center">
                 <ComboBox.ItemContainerStyle>
