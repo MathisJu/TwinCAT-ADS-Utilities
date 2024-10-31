@@ -40,7 +40,7 @@ public class LoggerService : ILoggerService
     private readonly ObservableCollection<LogMessage> _logMessages;
     private readonly Dispatcher _dispatcher;
 
-    private static readonly object _lock = new object();
+    private static readonly object _lock = new ();
 
     public LoggerService(ObservableCollection<LogMessage> logMessages, Dispatcher dispatcher)
     {
@@ -67,7 +67,6 @@ public class LoggerService : ILoggerService
             LogLevel = logLevel
         };
 
-        // Thread-Sicherheit durch Dispatcher gewährleisten
         _dispatcher.Invoke(() =>
         {
             lock (_lock)

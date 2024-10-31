@@ -10,6 +10,7 @@ using System.Runtime.CompilerServices;
 using System.Security;
 using System.Text;
 using System.Threading.Tasks;
+using System.Windows;
 using System.Windows.Data;
 using TwinCAT.Ads;
 using TwinCAT.TypeSystem;
@@ -101,7 +102,7 @@ public class AdsRoutingViewModel : ViewModelTargetAccessPage
     {
         if (Target is null) return;
 
-        using AdsRoutingClient client = new AdsRoutingClient();
+        using AdsRoutingClient client = new ();
         client.Connect(Target?.NetId);
         var adapters = await client.GetNetworkInterfacesAsync();
         var adapterItems = adapters.Select(adapter => new NetworkAdapterItem { AdapterInfo = adapter, IsSelected = true }).ToList();
@@ -210,21 +211,46 @@ public class AdsRoutingViewModel : ViewModelTargetAccessPage
 
         if (AddRouteSelection.TypeStaticLocal)
         {
-            await routingClient.AddLocalRouteEntryAsync(AddRouteSelection.NetId, AddRouteSelection.IpAddress, AddRouteSelection.Name); // ToDo: Add option for route via Hostname
-            _LoggerService.LogSuccess("Route added locally.");
+            if (AddRouteSelection.AddByIpAddress)
+            {
+                await routingClient.AddLocalRouteEntryAsync(AddRouteSelection.NetId, AddRouteSelection.IpAddress, AddRouteSelection.Name); 
+                _LoggerService.LogSuccess("Route added locally.");
+            }
+            else
+            {
+                try
+                {
+                    var hostIPs = Dns.GetHostAddresses(AddRouteSelection.Name);
+                }
+                catch
+                {
+                    var result = MessageBox.Show("Could not resolve Hostname. This might be due to the network structure. You might want to add by IP instead.\nProceed anyway?",
+                                         "Hostname Resolution Failed",
+                                         MessageBoxButton.YesNo,
+                                         MessageBoxImage.Warning);
+
+                    if (result == MessageBoxResult.No)
+                    {
+                        _LoggerService.LogInfo("Action canceled");
+                        return;
+                    }
+                }
+                _LoggerService.LogError("Add by Name not implemented"); // ToDo
+            }
+            
         }
         if (AddRouteSelection.TypeTempLocal)
         {
-            _LoggerService.LogError("Local temporary routes not implemented yet."); // ToDo: Add temporary route option
+            _LoggerService.LogError("Local temporary routes not implemented yet."); // ToDo: Add temporary route option, add hostname option
         }
 
 
-        if (AddRouteSelection.TypeStaticRemote)
+        if (AddRouteSelection.TypeStaticRemote) // ToDo: Add hostname option
         {
             await routingClient.AddRemoteRouteEntryAsync(AddRouteSelection.IpAddress, AddRouteSelection.Username, AddRouteSelection.Password, AddRouteSelection.RemoteName, false);
             _LoggerService.LogSuccess("Static route added remotely.");
         }
-        if (AddRouteSelection.TypeTempRemote)
+        if (AddRouteSelection.TypeTempRemote)   // ToDo: Add hostname option
         {
             await routingClient.AddRemoteRouteEntryAsync(AddRouteSelection.IpAddress, AddRouteSelection.Username, AddRouteSelection.Password, AddRouteSelection.RemoteName, true);
             _LoggerService.LogSuccess("Temporary route added remotely.");

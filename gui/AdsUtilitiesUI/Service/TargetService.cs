@@ -37,8 +37,6 @@ public class StaticRouteStatus : StaticRoutesInfo
 
 public class TargetService : INotifyPropertyChanged
 {
-
-
     public TargetService()
     {
         Task.Run(async () => await Reload_Routes());
@@ -61,10 +59,8 @@ public class TargetService : INotifyPropertyChanged
         }
     }
 
-    // Verfügbare Targets als ObservableCollection, damit die UI Änderungen automatisch bemerkt
     public ObservableCollection<StaticRouteStatus> AvailableTargets { get; private set; } = new ObservableCollection<StaticRouteStatus>();
 
-    // Event, das ausgelöst wird, wenn sich das Target ändert
     public event EventHandler<StaticRouteStatus> OnTargetChanged;
 
     public event PropertyChangedEventHandler PropertyChanged;
@@ -74,7 +70,6 @@ public class TargetService : INotifyPropertyChanged
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
     }
 
-    // Methode zum Neuladen aller lokal verfügbaren Targets
     public async Task Reload_Routes()
     {
         StaticRouteStatus? previousTarget = CurrentTarget;
@@ -90,7 +85,6 @@ public class TargetService : INotifyPropertyChanged
             
         };
         routes.Add(localSystem);
-
 
         routes.AddRange( await LoadAllRoutesAsync(AmsNetId.Local.ToString()));
 
@@ -113,7 +107,6 @@ public class TargetService : INotifyPropertyChanged
                 CurrentTarget = AvailableTargets[0];
             }
         });
-        
     }
 
     public async Task<List<StaticRouteStatus>> LoadAllRoutesAsync(string netId)
@@ -121,9 +114,8 @@ public class TargetService : INotifyPropertyChanged
         using AdsRoutingClient adsRoutingClient = new();
         adsRoutingClient.Connect(netId);
         List<StaticRoutesInfo> routes = await adsRoutingClient.GetRoutesListAsync();
-        ConcurrentBag<StaticRouteStatus> routesStatus = new(); // threadsichere Collection
+        ConcurrentBag<StaticRouteStatus> routesStatus = new();
 
-        // Parallel ausgeführte Schleife
         await Task.WhenAll(routes.Select(async route =>
         {
             bool isOnline = await IsTargetOnline(route.NetId);
@@ -135,10 +127,8 @@ public class TargetService : INotifyPropertyChanged
                 IsOnline = isOnline,
                 DisplayName = isOnline ? route.Name : route.Name + " (offline)"
             };
-
-            routesStatus.Add(routeStatus); // Thread-sicheres Hinzufügen
+            routesStatus.Add(routeStatus);
         }));
-
         return routesStatus.ToList();
     }
 
@@ -165,7 +155,6 @@ public class TargetService : INotifyPropertyChanged
                 routesOnline.Add(route);
             }
         }
-
         return routesOnline;
     }
 

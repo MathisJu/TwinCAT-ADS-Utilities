@@ -21,14 +21,12 @@ namespace AdsUtilitiesUI.Model
 
             try
             {
-                // Prozess starten, der den RDP-Client mit der angegebenen IP-Adresse öffnet
-                Process rdpProcess = new Process();
+                // start RDP client with given IP address
+                Process rdpProcess = new();
                 rdpProcess.StartInfo.FileName = "mstsc";
                 rdpProcess.StartInfo.Arguments = $"/v:{ipAddress}";
                 rdpProcess.StartInfo.UseShellExecute = true;
                 rdpProcess.StartInfo.WindowStyle = ProcessWindowStyle.Normal;
-
-                // Startet den Prozess
                 rdpProcess.Start();
             }
             catch (Exception ex)
@@ -45,12 +43,12 @@ namespace AdsUtilitiesUI.Model
                 return;
 
 
-            using TcpClient tcpClient = new TcpClient();
+            using TcpClient tcpClient = new ();
             var connectTask = tcpClient.ConnectAsync(ipAddress, 987);
 
             if (await Task.WhenAny(connectTask, Task.Delay(100)) == connectTask)
             {
-                // Connection successfull
+                // Connection successful
                 bool cerhostEnabled = tcpClient.Connected;
             }
             else
@@ -58,17 +56,16 @@ namespace AdsUtilitiesUI.Model
                 // Timeout --> ToDo: Dialog "Enable CerHost and reboot?"
             }
 
-            Process cerhostProcess = new Process();
+            Process cerhostProcess = new();
             cerhostProcess.StartInfo.FileName = cerhostPath;
             cerhostProcess.StartInfo.Arguments = ipAddress;
             cerhostProcess.Start();
 
         }
 
-        public static void SshPowershellConnect(string ipAddress, string targetName)
+        public static void SshPowerShellConnect(string ipAddress, string targetName)
         {
-            //ToDo: Add InputDialog for Username
-            string username = string.Empty;// = "Administrator";
+            string username = string.Empty;
 
             SshDialog sshDialog = new("Enter Username", "Enter Username:", "Administrator");
 
@@ -96,32 +93,27 @@ namespace AdsUtilitiesUI.Model
 
         private static void GenerateAndDeploySSHKeyAsync(string username, string targetName, string targetIp)
         {
-            string localHostname = Environment.MachineName;
+            // Create a key in .ssh
             string sshKeyName = targetName + DateTime.Now.ToString("_yyyy-MM-dd_HH-mm-ss");
-            string keyPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".ssh", sshKeyName);    // ToDo: Test if exists
+            string keyPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".ssh", sshKeyName);
             string configPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".ssh", "config");
 
-            // Kommentar für den Schlüssel: Hostname + Username des aktuellen Rechners
-            string localUsername = Environment.UserName;
-            string comment = $"{localHostname}_{localUsername}";
+            // Comment for key: local Hostname + Username 
+            string comment = $"{Environment.MachineName}_{Environment.UserName}";
 
-            // Generiere den SSH-Schlüssel mit Kommentar
-            //string keyGenCommand = $"ssh-keygen -t ed25519 -f \"{keyPath}\" -C \"{comment}\" -N \"\"";
+            // Generate SSH key
             string keyGenCommand = $"-t ed25519 -f \"{keyPath}\" -C \"{comment}\" -N \"\"";
             File.WriteAllText(Environment.GetFolderPath(Environment.SpecialFolder.Desktop) + "\\log.txt", keyGenCommand, Encoding.UTF8);
             ExecuteSshKeygenCommand(keyGenCommand);
 
-            // Pfad des öffentlichen Schlüssels
+            // Copy public key to target (add to authorized_keys)
             string publicKeyPath = $"{keyPath}.pub";
-
-            // Kopiere den öffentlichen Schlüssel zum Zielgerät (füge ihn zu authorized_keys hinzu)
             string scpCommand = $"scp -o StrictHostKeyChecking=no '{publicKeyPath}' {username}@{targetIp}:~/.ssh ; ssh {username}@{targetIp} -t 'cd ~/.ssh && cat {sshKeyName}.pub >> ./authorized_keys && rm ./{sshKeyName}.pub'";
             ExecuteShellCommand(scpCommand);
 
+            // Add entry to SSH config file
             string configEntry = $"\nHost {targetName}\n\tUser {username}\n\tHostName {targetName}\n\tIdentityFile \"{keyPath}\"\n"
                 + $"Host {targetIp}\n\tUser {username}\n\tHostName {targetIp}\n\tIdentityFile \"{keyPath}\"";
-
-            // Füge den Eintrag in die SSH-Konfigurationsdatei ein
             File.AppendAllText(configPath, configEntry);
         }
 
@@ -139,42 +131,40 @@ namespace AdsUtilitiesUI.Model
 
             try
             {
-                using (var process = Process.Start(processStartInfo))
+                using var process = Process.Start(processStartInfo) ;
+                
+                string output = process.StandardOutput.ReadToEnd();
+                string error = process.StandardError.ReadToEnd();
+
+                process.WaitForExit();
+
+                if (!string.IsNullOrEmpty(error))
                 {
-                    string output = process.StandardOutput.ReadToEnd();
-                    string error = process.StandardError.ReadToEnd();
-
-                    process.WaitForExit();
-
-                    if (!string.IsNullOrEmpty(error))
-                    {
-                        Console.WriteLine($"Fehler: {error}");
-                    }
-                    else
-                    {
-                        Console.WriteLine($"Ausgabe: {output}");
-                    }
+                    Console.WriteLine($"Error: {error}");
                 }
+                else
+                {
+                    Console.WriteLine($"Output: {output}");
+                }
+                
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Fehler beim Ausführen des Befehls: {ex.Message}");
+                Console.WriteLine($"Error executing a command: {ex.Message}");
             }
         }
 
-        static async Task ExecuteSshKeygenCommand(string command)
+        static void ExecuteSshKeygenCommand(string command)
         {
-
-            // This is a tricky one. If there is no existing key with the same name, this works fine. If there is, user input is required.
-            // ToDo: Execute this in a minimized window. If there is an existing key, open up the window to let the user know and decide himself
-
-            System.Diagnostics.ProcessStartInfo processStartInfo = new System.Diagnostics.ProcessStartInfo();
-            processStartInfo.WindowStyle = System.Diagnostics.ProcessWindowStyle.Hidden;
-            processStartInfo.FileName = "ssh-keygen";
-            processStartInfo.Arguments = command;
-            processStartInfo.RedirectStandardOutput = true;
-            processStartInfo.RedirectStandardError = true;
-            processStartInfo.RedirectStandardInput = true;
+            ProcessStartInfo processStartInfo = new()
+            {
+                WindowStyle = ProcessWindowStyle.Hidden,
+                FileName = "ssh-keygen",
+                Arguments = command,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                RedirectStandardInput = true
+            };
 
             try
             {
@@ -182,7 +172,7 @@ namespace AdsUtilitiesUI.Model
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Fehler beim Ausführen des Befehls: {ex.Message}");
+                Console.WriteLine($"Error executing a command: {ex.Message}");
             }
         }
 
@@ -190,18 +180,16 @@ namespace AdsUtilitiesUI.Model
         {
             string sshCommand = $"ssh {username}@{ipAddress}";
 
-            // PowerShell-Prozess konfigurieren
             var processStartInfo = new ProcessStartInfo
             {
                 FileName = "powershell.exe",
                 Arguments = $"-NoExit -Command \"{sshCommand}\"",
-                UseShellExecute = true,   // Verwende die Shell-Ausführung, damit das PowerShell-Fenster sichtbar ist
-                CreateNoWindow = false    // Fenster erstellen, damit der Benutzer die SSH-Verbindung sehen kann
+                UseShellExecute = true,   // --> PowerShell window visible
+                CreateNoWindow = false    
             };
 
             try
             {
-                // start PowerShell 
                 Process.Start(processStartInfo);
             }
             catch (Exception ex)
@@ -237,7 +225,7 @@ namespace AdsUtilitiesUI.Model
 
             if (openFileDialog.ShowDialog() == true)
             {
-                // Speichere den Pfad in der Konfigurationsdatei
+                // Save path in config file
                 string json = JsonSerializer.Serialize(openFileDialog.FileName);
                 await File.WriteAllTextAsync(GlobalVars.ConfigFilePath, json);
                 return openFileDialog.FileName;

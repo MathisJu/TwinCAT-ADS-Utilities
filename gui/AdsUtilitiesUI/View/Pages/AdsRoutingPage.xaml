@@ -23,7 +23,7 @@
             <!-- Search Buttons -->
             <StackPanel Orientation="Horizontal" Grid.Row="0" Grid.ColumnSpan="2" Margin="0,0,0,10">
                 <Button Content="Broadcast Search" Command="{Binding BroadcastCommand}" Width="170" Margin="0,0,10,0"/>
-                <Button Content="Search by IP / Hostname:" Width="170"/>
+                <Button Content="Search by IP / Hostname:" Command="{Binding SearchByIpOrNameCommand}" Width="170"/>
                 <TextBox Width="200" Height="23" Margin="0,0,10,0" VerticalContentAlignment="Center" Text="{Binding IpOrHostnameInput}"/>
             </StackPanel>
 
@@ -103,9 +103,9 @@
                 <DataGrid.Columns>
                     <DataGridTextColumn Header="Hostname" Binding="{Binding Name}" Width="3*"/>
                     <DataGridTextColumn Header="IP Address" Binding="{Binding IpAddress}" Width="3*"/>
-                    <DataGridTextColumn Header="AMS NetID" Binding="{Binding NetId}" Width="3*"/>
+                    <DataGridTextColumn Header="AMS Net-ID" Binding="{Binding NetId}" Width="3*"/>
                     <DataGridTextColumn Header="TwinCAT" Binding="{Binding TcVersion}" Width="2*"/>
-                    <DataGridTextColumn Header="OS" Binding="{Binding OsVersion}" Width="4*"/>
+                    <DataGridTextColumn Header="Operating System" Binding="{Binding OsVersion}" Width="4*"/>
                 </DataGrid.Columns>
             </DataGrid>
 
@@ -122,11 +122,11 @@
                     <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="4*"/>
-                    <ColumnDefinition Width="4*"/>
                     <ColumnDefinition Width="2*"/>
-                    <ColumnDefinition Width="4*"/>
-                    <ColumnDefinition Width="4*"/>
+                    <ColumnDefinition Width="3*"/>
+                    <ColumnDefinition Width="2*"/>
+                    <ColumnDefinition Width="2*"/>
+                    <ColumnDefinition Width="3*"/>
                 </Grid.ColumnDefinitions>
 
                 <!-- Route Name -->
@@ -162,7 +162,7 @@
                 <TextBox x:Name="InputUsername" Grid.Row="5" Grid.Column="1" Margin="2" Text="{Binding AddRouteSelection.Username}"/>
                 
                 <!-- Target Route Settings -->
-                <GroupBox Header="Target Route"  Grid.Column="3" Grid.Row="1"  Margin="5" Grid.RowSpan="3">
+                <GroupBox Header="Target Route"  Grid.Column="3" Grid.Row="1" Margin="0 5" Padding="5 5 30 5" Grid.RowSpan="4" VerticalAlignment="Top" HorizontalAlignment="Left">
                     <StackPanel>
                         <RadioButton IsChecked="{Binding AddRouteSelection.TypeNoneLocal}" Content="None" GroupName="TargetRoute"/>
                         <RadioButton IsChecked="{Binding AddRouteSelection.TypeStaticLocal}" Content="Static" GroupName="TargetRoute"/>
@@ -171,7 +171,7 @@
                 </GroupBox>
 
                 <!-- Remote Route Settings -->
-                <GroupBox Header="Remote Route"  Grid.Column="4" Grid.Row="1" Margin="5" Grid.RowSpan="3">
+                <GroupBox Header="Remote Route"  Grid.Column="4" Grid.Row="1" Margin="0 5" Padding="5 5 30 5" Grid.RowSpan="4" VerticalAlignment="Top" HorizontalAlignment="Left">
                     <StackPanel>
                         <RadioButton IsChecked="{Binding AddRouteSelection.TypeNoneRemote}"  Content="None" GroupName="RemoteRoute" />
                         <RadioButton IsChecked="{Binding AddRouteSelection.TypeStaticRemote}" Content="Static" GroupName="RemoteRoute"/>

@@ -92,8 +92,7 @@ namespace AdsUtilitiesUI
         private void FileTreeView_Drop(object sender, DragEventArgs e)
         {
             // Get the TreeView and the target TreeViewItem
-            TreeView treeView = sender as TreeView;
-            if (treeView == null) return;
+            if (sender is not TreeView) return;
 
             TreeViewItem treeViewItem = FindAncestor<TreeViewItem>((DependencyObject)e.OriginalSource);
 
@@ -102,9 +101,8 @@ namespace AdsUtilitiesUI
                 if (treeViewItem.DataContext is FileSystemItem targetFolder)
                 {
                     // Get the source FileExplorerControl
-                    FileExplorerControl sourceControl = e.Data.GetData(typeof(FileExplorerControl)) as FileExplorerControl;
 
-                    if (sourceControl != null && sourceControl != this)
+                    if (e.Data.GetData(typeof(FileExplorerControl)) is FileExplorerControl sourceControl && sourceControl != this)
                     {
                         // Handle the drop operation
                         if (e.Data.GetData(typeof(FileSystemItem)) is FileSystemItem sourceFile)
@@ -140,9 +138,9 @@ namespace AdsUtilitiesUI
         {
             while (current != null)
             {
-                if (current is T)
+                if (current is T t)
                 {
-                    return (T)current;
+                    return t;
                 }
                 current = VisualTreeHelper.GetParent(current);
             }
@@ -175,19 +173,15 @@ namespace AdsUtilitiesUI
                 if (fileItem.IsSystemFile || fileItem.IsRoot)   // ToDo: Add log event that system files cannot be renamed
                     return;
 
-                // Create a simple input dialog to get the new name
-                InputDialog inputDialog = new InputDialog("Rename File", "Enter new name:", fileItem.Name) { Owner = Application.Current.MainWindow };
+                InputDialog inputDialog = new ("Rename File", "Enter new name:", fileItem.Name) { Owner = Application.Current.MainWindow };
                 
 
                 if (sender is FrameworkElement element)
                 {
-                    // Berechne die Position des Elements in Bildschirmkoordinaten
                     Point elementScreenPosition = element.PointToScreen(new Point(0, 0));
 
-
-                    // Setze die Position des neuen Fensters basierend auf der Position des Elements
-                    inputDialog.Left = elementScreenPosition.X; // Rechts vom Element
-                    inputDialog.Top = elementScreenPosition.Y; // Gleiche Höhe wie das Element
+                    inputDialog.Left = elementScreenPosition.X;
+                    inputDialog.Top = elementScreenPosition.Y; 
                 }
 
                 if (inputDialog.ShowDialog() == true)
@@ -222,30 +216,29 @@ namespace AdsUtilitiesUI
 
                 if (sender is FrameworkElement element)
                 {
-                    // Berechne die Position des Elements in Bildschirmkoordinaten
                     Point elementScreenPosition = element.PointToScreen(new Point(0, 0));
-
-
-                    // Setze die Position des neuen Fensters basierend auf der Position des Elements
-                    propertiesWindow.Left = elementScreenPosition.X; // Rechts vom Element
-                    propertiesWindow.Top = elementScreenPosition.Y; // Gleiche Höhe wie das Element
+                    propertiesWindow.Left = elementScreenPosition.X; 
+                    propertiesWindow.Top = elementScreenPosition.Y; 
 
 
                 }
-
 
                 propertiesWindow.Show();
             }
         }
 
-        private void RenameFile(FileSystemItem fileItem, string newName)
+        private async Task RenameFile(FileSystemItem fileItem, string newName)
         {
-            ;// Implement your rename logic here
+            using AdsFileClient fileClient = new();
+            fileClient.Connect(fileItem.DeviceNetID);
+            await fileClient.RenameFileAsync($"{fileItem.ParentDirectory}/{fileItem.Name}", $"{fileItem.ParentDirectory}/{newName}"); 
         }
 
-        private void DeleteFile(FileSystemItem fileItem)
+        private async Task DeleteFile(FileSystemItem fileItem)
         {
-            ;// Implement your delete logic here
+            using AdsFileClient fileClient = new();
+            fileClient.Connect(fileItem.DeviceNetID);
+            await fileClient.DeleteFileAsync($"{fileItem.ParentDirectory}/{fileItem.Name}");
         }
     }
 

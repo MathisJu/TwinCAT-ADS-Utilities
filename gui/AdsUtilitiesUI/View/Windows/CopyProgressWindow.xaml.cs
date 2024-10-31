@@ -47,7 +47,7 @@ namespace AdsUtilitiesUI.Views.Windows
             DataContext = this;
         }
 
-        // Methode zum Setzen des Fortschritts der ProgressBar
+        // Set progress in ProgressBar
         public void SetProgress(double value)
         {
             progressBar.Value = value;
@@ -55,10 +55,10 @@ namespace AdsUtilitiesUI.Views.Windows
             OnPropertyChanged(nameof(ProgressMessage));
         }
 
-        // Event-Handler für den "Cancel" Button
+        // Event-Handler for "Cancel" button
         private void CancelButton_Click(object sender, RoutedEventArgs e)
         {
-            CancellationRequested?.Invoke(); // Löst das Abbruch-Event aus
+            CancellationRequested?.Invoke();
         }
 
         public event PropertyChangedEventHandler PropertyChanged;

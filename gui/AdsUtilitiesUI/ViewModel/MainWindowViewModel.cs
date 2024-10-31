@@ -1,31 +1,10 @@
 ﻿using AdsUtilities;
 using AdsUtilitiesUI.Model;
 using AdsUtilitiesUI.ViewModels;
-using Microsoft.Win32;
-using System;
-using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.ComponentModel;
-using System.Diagnostics;
-using System.Drawing;
-using System.IO;
-using System.Linq;
 using System.Net;
-using System.Net.NetworkInformation;
 using System.Net.Sockets;
-using System.Reactive;
-using System.Runtime.CompilerServices;
-using System.Runtime.Intrinsics.X86;
-using System.Text;
-using System.Text.Json;
-using System.Threading;
-using System.Threading.Tasks;
-using System.Windows;
-using System.Windows.Automation;
-using System.Windows.Input;
-using System.Xml.Linq;
-using TwinCAT.Ads;
-using TwinCAT.Ads.SumCommand;
+
 
 namespace AdsUtilitiesUI;
 
@@ -37,30 +16,6 @@ class MainWindowViewModel : ViewModelBase
     public TargetService _targetService { get; }
 
     public LoggerService _loggerService { get; }
-
-    //public ObservableCollection<StaticRouteStatus> AvailableTargets => _targetService.AvailableTargets;
-
-
-
-    //private StaticRouteStatus _currentTarget;
-
-    //public StaticRouteStatus CurrentTarget
-    //{
-    //    get => _currentTarget;
-    //    set
-    //    {
-    //        if (value != null && _currentTarget?.NetId != value.NetId)
-    //        {
-    //            _currentTarget = value;
-    //            OnPropertyChanged(nameof(CurrentTarget));
-               
-    //            if (_targetService.CurrentTarget?.NetId != value.NetId)
-    //            {
-    //                _targetService.CurrentTarget = value; 
-    //            }
-    //        }
-    //    }
-    //}
 
     public ObservableCollection<LogMessage> LogMessages { get; set; }
 
@@ -88,9 +43,9 @@ class MainWindowViewModel : ViewModelBase
 
         Tabs = new ObservableCollection<TabViewModel>
         {
-            new TabViewModel("ADS Routing", new AdsRoutingViewModel(_targetService, _loggerService)),
-            new TabViewModel("File Access", new FileHandlingViewModel(_targetService, _loggerService)),
-            new TabViewModel("Device Info", new DeviceInfoViewModel(_targetService, _loggerService)),
+            new ("ADS Routing", new AdsRoutingViewModel(_targetService, _loggerService)),
+            new ("File Access", new FileHandlingViewModel(_targetService, _loggerService)),
+            new ("Device Info", new DeviceInfoViewModel(_targetService, _loggerService)),
         };
         SelectedTab = Tabs[0];
     }
@@ -191,7 +146,7 @@ class MainWindowViewModel : ViewModelBase
         
 
         // Check OS
-        using AdsSystemClient systemClient = new AdsSystemClient();
+        using AdsSystemClient systemClient = new ();
         systemClient.Connect(_targetService.CurrentTarget.NetId);
         SystemInfo sysInfo = await systemClient.GetSystemInfoAsync();
         string os = sysInfo.OsName;
@@ -212,7 +167,7 @@ class MainWindowViewModel : ViewModelBase
         else if (os.Contains("BSD"))
         {
             // TC/BSD
-            RemoteConnector.SshPowershellConnect(_targetService.CurrentTarget.IpAddress, _targetService.CurrentTarget.Name);
+            RemoteConnector.SshPowerShellConnect(_targetService.CurrentTarget.IpAddress, _targetService.CurrentTarget.Name);
         }
         else
         {

@@ -1,6 +1,4 @@
-﻿using System;
-using System.Security;
-using System.Text;
+﻿using System.Text;
 using System.Xml;
 using TwinCAT.Ads;
 

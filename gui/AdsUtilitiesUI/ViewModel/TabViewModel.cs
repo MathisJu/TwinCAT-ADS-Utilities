@@ -7,37 +7,29 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Controls;
 
-namespace AdsUtilitiesUI
+namespace AdsUtilitiesUI;
+
+public class TabViewModel : ViewModelBase
 {
-    public class TabViewModel : ViewModelBase
+    public string Title { get; }
+    public Page Page { get; }
+
+    public TabViewModel(string title, ViewModelBase viewModel)
     {
-        public string Title { get; }
-        public Page Page { get; }
+        Title = title;
+        Page = CreatePage(viewModel);
+    }
 
-        public TabViewModel(string title, ViewModelBase viewModel)
+    private Page CreatePage(ViewModelBase viewModel)
+    {
+        Page page = viewModel switch
         {
-            Title = title;
-            Page = CreatePage(viewModel);
-        }
+            AdsRoutingViewModel _ => new AdsRoutingPage { DataContext = viewModel },
+            FileHandlingViewModel _ => new FileHandlingPage { DataContext = viewModel },
+            DeviceInfoViewModel _ => new DeviceInfoPage { DataContext = viewModel },
 
-        private Page CreatePage(ViewModelBase viewModel)
-        {
-            Page page;
-            switch (viewModel)
-            {
-                case AdsRoutingViewModel _:
-                    page = new AdsRoutingPage { DataContext = viewModel };
-                    break;
-                case FileHandlingViewModel _:
-                    page = new FileHandlingPage { DataContext = viewModel };
-                    break;
-                case DeviceInfoViewModel _:
-                    page = new DeviceInfoPage { DataContext = viewModel };
-                    break;
-                default:
-                    throw new ArgumentException("Unknown ViewModel type");
-            }
-            return page;
-        }
+            _ => throw new ArgumentException("Unknown ViewModel type"),
+        };
+        return page;
     }
 }

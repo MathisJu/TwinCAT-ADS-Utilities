@@ -1,0 +1,52 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<CommandTable xmlns="http://schemas.microsoft.com/VisualStudio/2005-10-18/CommandTable">
+
+  <!-- Externe Header für Standard- und Shell-Kommandos -->
+  <Extern href="stdidcmd.h" />
+  <Extern href="vsshlids.h" />
+
+  <!-- Commands-Sektion: Definition der Gruppen und Befehle -->
+  <Commands package="guidAdsUtilitiesVsIntegrationPackage">
+
+    <!-- Definieren der Menügruppe im "Tools"-Menü -->
+    <Groups>
+      <Group guid="guidAdsUtilitiesVsIntegrationPackageCmdSet" id="AdsUtilitiesMenuGroup" priority="0x0600">
+        <Parent guid="guidSHLMainMenu" id="IDM_VS_MENU_TOOLS" />
+      </Group>
+    </Groups>
+
+    <!-- Definieren des Buttons in der Menügruppe -->
+    <Buttons>
+      <Button guid="guidAdsUtilitiesVsIntegrationPackageCmdSet" id="cmdidOpenAdsUtilitiesWindow" priority="0x0100" type="Button">
+        <Parent guid="guidAdsUtilitiesVsIntegrationPackageCmdSet" id="AdsUtilitiesMenuGroup" />
+        <Icon guid="guidImages" id="bmpPic1" />
+        <Strings>
+          <ButtonText>ADS Utilities</ButtonText>
+        </Strings>
+      </Button>
+    </Buttons>
+
+    <!-- Bitmaps-Sektion für die Icons -->
+    <Bitmaps>
+      <Bitmap guid="guidImages" href="Resources\AdsUtilToolbarIcon.png" usedList="bmpPic1" />
+    </Bitmaps>
+
+  </Commands>
+
+  <!-- Symbols-Sektion: Definition der GUIDs und IDs -->
+  <Symbols>
+    <!-- Package GUID -->
+    <GuidSymbol name="guidAdsUtilitiesVsIntegrationPackage" value="{b87481e4-7568-4381-8902-25775e7bc58e}" />
+
+    <!-- Command Set GUID -->
+    <GuidSymbol name="guidAdsUtilitiesVsIntegrationPackageCmdSet" value="{5061690a-b002-407f-ba09-afee52d551a7}">
+      <IDSymbol name="AdsUtilitiesMenuGroup" value="0x1020" />
+      <IDSymbol name="cmdidOpenAdsUtilitiesWindow" value="0x0100" />
+    </GuidSymbol>
+
+    <!-- Icon GUID -->
+    <GuidSymbol name="guidImages" value="{f024bbad-1ac4-47f0-a7b6-7b81d1219b93}">
+      <IDSymbol name="bmpPic1" value="1" />
+    </GuidSymbol>
+  </Symbols>
+</CommandTable>

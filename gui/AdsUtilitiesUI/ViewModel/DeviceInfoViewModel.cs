@@ -11,343 +11,342 @@ using System.Windows.Input;
 using System.Xml.Linq;
 using TwinCAT.Ads;
 
-namespace AdsUtilitiesUI
+namespace AdsUtilitiesUI;
+
+public class DeviceInfoViewModel : ViewModelTargetAccessPage
 {
-    public class DeviceInfoViewModel : ViewModelTargetAccessPage
+
+    public ObservableCollection<NetworkInterfaceInfo> NetworkInterfaces { get; set; }
+
+    private SystemInfo _systemInfo;
+    public SystemInfo SystemInfo
     {
-
-        public ObservableCollection<NetworkInterfaceInfo> NetworkInterfaces { get; set; }
-
-        private SystemInfo _systemInfo;
-        public SystemInfo SystemInfo
+        get => _systemInfo;
+        set
         {
-            get => _systemInfo;
-            set
-            {
-                _systemInfo = value;
-                OnPropertyChanged(nameof(SystemInfo));
-            }
+            _systemInfo = value;
+            OnPropertyChanged(nameof(SystemInfo));
         }
+    }
+    
+    private readonly System.Timers.Timer _updateTimer;
+
+    private string _TcState;
+    public string TcState
+    {
+        get => _TcState;
+        set
+        {
+            _TcState = value;
+            OnPropertyChanged(nameof(TcState));
+        }
+    }
+
+    private RouterStatusInfo _routerStatusInfo;
+    public RouterStatusInfo RouterStatusInfo
+    {
+        get => _routerStatusInfo;
+        set
+        {
+            _routerStatusInfo = value;
+            OnPropertyChanged(nameof(RouterStatusInfo));
+        }
+    }
+
+    private DateTime _targetTime;
+
+    public DateTime TargetTime
+    {
+        get => _targetTime;
+        set
+        {
+            _targetTime = value;
+            OnPropertyChanged(nameof(TargetTime));
+            OnPropertyChanged(nameof(TargetTimeDisplay));
+        }
+    }
+
+    public string TargetTimeDisplay
+    {
+        get => TargetTime.ToString("yyyy/MM/dd-HH:mm:ss");
+    }
+
+    private string _systemId;
+    public string SystemId
+    {
+        get => _systemId;
+        set
+        {
+            _systemId = value;
+            OnPropertyChanged(nameof(SystemId));
+        }
+    }
+
+    private uint _volumeNumber;
+    public uint VolumeNumber
+    {
+        get => _volumeNumber;
+        set
+        {
+            _volumeNumber = value;
+            OnPropertyChanged(nameof(VolumeNumber));
+        }
+    }
+
+    private short _platformLevel;
+    public short PlatformLevel
+    {
+        get => _platformLevel;
+        set
+        {
+            _platformLevel = value;
+            OnPropertyChanged(nameof(PlatformLevel));
+        }
+    }
+
+    public ICommand InstallRteDriverCommand { get; }
+
+    public ICommand SetTickCommand { get; }
+
+    public ICommand RebootCommand { get; }
+
+    public DeviceInfoViewModel(TargetService targetService, ILoggerService loggerService)
+    {
+        _TargetService = targetService;
+        InitTargetAccess(_TargetService);
+
+        _LoggerService = (LoggerService)loggerService;
+
+        _TargetService.OnTargetChanged += async (sender, args) => await UpdateDeviceInfo();
+
+        _updateTimer = new System.Timers.Timer(1000);
+        _updateTimer.Elapsed += async (sender, e) => await UpdateLiveValues();
+        _updateTimer.AutoReset = true;
+        _updateTimer.Start();
         
-        private readonly System.Timers.Timer _updateTimer;
+        InstallRteDriverCommand = new AsyncRelayCommand(async (parameter) => await InstallRteDriver(parameter), CanInstallRteDriver);
+        SetTickCommand = new AsyncRelayCommand(async async => await ExecuteSetTick());
+        RebootCommand = new AsyncRelayCommand(async async => await RebootTarget());
 
-        private string _TcState;
-        public string TcState
+        NetworkInterfaces = new ObservableCollection<NetworkInterfaceInfo>(); 
+    }
+
+    public async Task UpdateDeviceInfo()
+    {
+        await LoadNetworkInterfacesAsync();
+        await LoadSystemInfoAsync();
+        await UpdateTcState();
+        await UpdateRouterUsage();
+        await UpdateTime();
+        await UpdateSystemId();
+        await UpdateVolumeNumber();
+        await UpdatePlatformLevel();
+    }
+
+    public async Task UpdateLiveValues()
+    {
+        await UpdateTcState();         // Update Tc state every second
+        await UpdateRouterUsage();     // Update router info every second
+        await UpdateTime();            // Update target and local time every second
+    }
+
+    public async Task LoadSystemInfoAsync(CancellationToken cancel = default)
+    {
+        try
         {
-            get => _TcState;
-            set
-            {
-                _TcState = value;
-                OnPropertyChanged(nameof(TcState));
-            }
+            using AdsSystemClient systemClient = new();
+            systemClient.Connect(Target?.NetId);
+            SystemInfo = await systemClient.GetSystemInfoAsync(cancel);
         }
+        catch (Exception ex) { }
+    }
 
-        private RouterStatusInfo _routerStatusInfo;
-        public RouterStatusInfo RouterStatusInfo
+    public async Task UpdateTime(CancellationToken cancel = default)
+    {
+        try
         {
-            get => _routerStatusInfo;
-            set
-            {
-                _routerStatusInfo = value;
-                OnPropertyChanged(nameof(RouterStatusInfo));
-            }
+            using AdsSystemClient systemClient = new();
+            systemClient.Connect(Target?.NetId);
+            TargetTime = await systemClient.GetSystemTimeAsync(cancel);
         }
+        catch (Exception ex) { }
+    }
 
-        private DateTime _targetTime;
-
-        public DateTime TargetTime
+    public async Task UpdateSystemId(CancellationToken cancel = default)
+    {
+        try
         {
-            get => _targetTime;
-            set
-            {
-                _targetTime = value;
-                OnPropertyChanged(nameof(TargetTime));
-                OnPropertyChanged(nameof(TargetTimeDisplay));
-            }
+            using AdsSystemClient systemClient = new();
+            systemClient.Connect(Target?.NetId);
+            SystemId = await systemClient.GetSystemIdStringAsync(cancel);
         }
+        catch (Exception ex) { }
+    }
 
-        public string TargetTimeDisplay
+    public async Task UpdateVolumeNumber(CancellationToken cancel = default)
+    {
+        try
         {
-            get => TargetTime.ToString("yyyy/MM/dd-HH:mm:ss");
+            using AdsSystemClient systemClient = new();
+            systemClient.Connect(Target?.NetId);
+            VolumeNumber = await systemClient.GetVolumeNumberAsync(cancel);
         }
+        catch (Exception ex) { }
+    }
 
-        private string _systemId;
-        public string SystemId
+    public async Task UpdatePlatformLevel(CancellationToken cancel = default)
+    {
+        try
         {
-            get => _systemId;
-            set
-            {
-                _systemId = value;
-                OnPropertyChanged(nameof(SystemId));
-            }
+            using AdsSystemClient systemClient = new();
+            systemClient.Connect(Target?.NetId);
+            PlatformLevel = await systemClient.GetPlatformLevelAsync(cancel);
         }
+        catch (Exception ex) { }
+    }
 
-        private uint _volumeNumber;
-        public uint VolumeNumber
+    public async Task UpdateTcState(CancellationToken cancel = default)
+    {
+        try
         {
-            get => _volumeNumber;
-            set
-            {
-                _volumeNumber = value;
-                OnPropertyChanged(nameof(VolumeNumber));
-            }
+            using AdsClient adsClient = new();
+            adsClient.Connect(Target?.NetId, 10_000);
+            ResultReadDeviceState state = await adsClient.ReadStateAsync(cancel);
+            TcState = state.State.AdsState.ToString();
         }
-
-        private short _platformLevel;
-        public short PlatformLevel
+        catch (Exception ex) 
         {
-            get => _platformLevel;
-            set
-            {
-                _platformLevel = value;
-                OnPropertyChanged(nameof(PlatformLevel));
-            }
+            TcState = ex.Message;
         }
+    }
 
-        public ICommand InstallRteDriverCommand { get; }
-
-        public ICommand SetTickCommand { get; }
-
-        public ICommand RebootCommand { get; }
-
-        public DeviceInfoViewModel(TargetService targetService, ILoggerService loggerService)
+    public async Task UpdateRouterUsage(CancellationToken cancel = default)
+    {
+        try
         {
-            _TargetService = targetService;
-            InitTargetAccess(_TargetService);
+            using AdsSystemClient systemClient = new();
+            systemClient.Connect(Target?.NetId);
+            var routerInfo = await systemClient.GetRouterStatusInfoAsync(cancel);
+            RouterStatusInfo = routerInfo;
+        }
+        catch (Exception ex) { }
+    }
 
-            _LoggerService = (LoggerService)loggerService;
 
-            _TargetService.OnTargetChanged += async (sender, args) => await UpdateDeviceInfo();
-
-            _updateTimer = new System.Timers.Timer(1000);
-            _updateTimer.Elapsed += async (sender, e) => await UpdateLiveValues();
-            _updateTimer.AutoReset = true;
-            _updateTimer.Start();
+    public bool CanInstallRteDriver()
+    {
+        // RTE drivers are preinstalled on WinCE, BSD and RTOS
+        if (!SystemInfo.OsName.Contains("Win") || SystemInfo.OsName.Contains("CE"))
+        {
+            _LoggerService.LogInfo("Drivers are preinstalled on the selected target");
+            return false;
+        }
             
-            InstallRteDriverCommand = new AsyncRelayCommand(async (parameter) => await InstallRteDriver(parameter), CanInstallRteDriver);
-            SetTickCommand = new AsyncRelayCommand(async async => await ExecuteSetTick());
-            RebootCommand = new AsyncRelayCommand(async async => await RebootTarget());
-
-            NetworkInterfaces = new ObservableCollection<NetworkInterfaceInfo>(); 
-        }
-
-        public async Task UpdateDeviceInfo()
+        // There is no cli to install drivers remotely on TC2 systems
+        if (SystemInfo.TargetVersion.StartsWith("2."))
         {
-            await LoadNetworkInterfacesAsync();
-            await LoadSystemInfoAsync();
-            await UpdateTcState();
-            await UpdateRouterUsage();
-            await UpdateTime();
-            await UpdateSystemId();
-            await UpdateVolumeNumber();
-            await UpdatePlatformLevel();
+            _LoggerService.LogWarning("Cannot install drivers on TC2 systems remotely");
+            return false;
         }
 
-        public async Task UpdateLiveValues()
+        // ToDo: Check if driver is installed already
+
+        return true;
+    }
+
+    public async Task LoadNetworkInterfacesAsync(CancellationToken cancel = default)
+    {
+        try
         {
-            await UpdateTcState();         // Update Tc state every second
-            await UpdateRouterUsage();     // Update router info every second
-            await UpdateTime();            // Update target and local time every second
-        }
+            using AdsRoutingClient routingClient = new();
+            routingClient.Connect(Target?.NetId);
+            var interfaces = await routingClient.GetNetworkInterfacesAsync(cancel);
 
-        public async Task LoadSystemInfoAsync(CancellationToken cancel = default)
+            NetworkInterfaces.Clear();
+            foreach (var nic in interfaces)
+            {
+                NetworkInterfaces.Add(nic);
+            }
+        }
+        catch (Exception ex)
         {
-            try
-            {
-                using AdsSystemClient systemClient = new();
-                systemClient.Connect(Target?.NetId);
-                SystemInfo = await systemClient.GetSystemInfoAsync(cancel);
-            }
-            catch (Exception ex) { }
+            // Error handling
         }
+    }
 
-        public async Task UpdateTime(CancellationToken cancel = default)
+    private async Task InstallRteDriver(object networkInterface)
+    {
+        if (networkInterface is NetworkInterfaceInfo nic)
         {
-            try
-            {
-                using AdsSystemClient systemClient = new();
-                systemClient.Connect(Target?.NetId);
-                TargetTime = await systemClient.GetSystemTimeAsync(cancel);
-            }
-            catch (Exception ex) { }
-        }
+            var rteInstallerPath = @"C:\TwinCAT\3.1\System\TcRteInstall.exe";   // ToDo: Get path and dir at runtime
+            var directory = @"C:\TwinCAT\3.1\System";
 
-        public async Task UpdateSystemId(CancellationToken cancel = default)
+            var installCommand = $"-r installnic \"{nic.Name}\"";
+
+            using AdsFileClient fileClient = new ();
+            fileClient.Connect(Target?.NetId);
+            await fileClient.StartProcessAsync(rteInstallerPath, directory, installCommand);
+            return;
+        }
+        _LoggerService.LogError("Unexpected Error occured");
+    }
+
+    private async Task ExecuteSetTick()
+    {
+        // No need to set tick on WinCE, BSD and RTOS, ToDo: move to CanSetTick() method and reference it in relay command
+        if (!SystemInfo.OsName.Contains("Win") || SystemInfo.OsName.Contains("CE"))
         {
-            try
-            {
-                using AdsSystemClient systemClient = new();
-                systemClient.Connect(Target?.NetId);
-                SystemId = await systemClient.GetSystemIdStringAsync(cancel);
-            }
-            catch (Exception ex) { }
+            _LoggerService.LogInfo("No need to set tick on selected target");
+            return;
         }
 
-        public async Task UpdateVolumeNumber(CancellationToken cancel = default)
+        string path = "";
+        string dir = "";
+
+        // There is no cli to install drivers remotely on TC2 systems
+        if (SystemInfo.TargetVersion.StartsWith("2."))
         {
-            try
-            {
-                using AdsSystemClient systemClient = new();
-                systemClient.Connect(Target?.NetId);
-                VolumeNumber = await systemClient.GetVolumeNumberAsync(cancel);
-            }
-            catch (Exception ex) { }
+            path = @"C:\TwinCAT\Io\win8settick.bat";  // ToDo: Get path and dir at runtime
+            dir = @"C:\TwinCAT\Io";
         }
-
-        public async Task UpdatePlatformLevel(CancellationToken cancel = default)
+        else
         {
-            try
-            {
-                using AdsSystemClient systemClient = new();
-                systemClient.Connect(Target?.NetId);
-                PlatformLevel = await systemClient.GetPlatformLevelAsync(cancel);
-            }
-            catch (Exception ex) { }
+            path = @"C:\TwinCAT\3.1\System\win8settick.bat";    // ToDo: Get path and dir at runtime
+            dir = @"C:\TwinCAT\3.1\System";
         }
 
-        public async Task UpdateTcState(CancellationToken cancel = default)
+        try
         {
-            try
-            {
-                using AdsClient adsClient = new();
-                adsClient.Connect(Target?.NetId, 10_000);
-                ResultReadDeviceState state = await adsClient.ReadStateAsync(cancel);
-                TcState = state.State.AdsState.ToString();
-            }
-            catch (Exception ex) 
-            {
-                TcState = ex.Message;
-            }
+            using AdsFileClient fileClient = new();
+            fileClient.Connect(Target?.NetId);
+            await fileClient.StartProcessAsync(path, dir, string.Empty);
         }
-
-        public async Task UpdateRouterUsage(CancellationToken cancel = default)
+        catch (Exception ex)
         {
-            try
-            {
-                using AdsSystemClient systemClient = new();
-                systemClient.Connect(Target?.NetId);
-                var routerInfo = await systemClient.GetRouterStatusInfoAsync(cancel);
-                RouterStatusInfo = routerInfo;
-            }
-            catch (Exception ex) { }
+            _LoggerService.LogError("Execution of win8settick.bat failed");
+            return;
         }
+        _LoggerService.LogSuccess("Set tick successfully. Please reboot target");
+    }
 
-
-        public bool CanInstallRteDriver()
+    private async Task RebootTarget()
+    {
+        if (Target?.NetId == AmsNetId.Local.ToString())
         {
-            // RTE drivers are preinstalled on WinCE, BSD and RTOS
-            if (!SystemInfo.OsName.Contains("Win") || SystemInfo.OsName.Contains("CE"))
-            {
-                _LoggerService.LogInfo("Drivers are preinstalled on the selected target");
-                return false;
-            }
-                
-            // There is no cli to install drivers remotely on TC2 systems
-            if (SystemInfo.TargetVersion.StartsWith("2."))
-            {
-                _LoggerService.LogWarning("Cannot install drivers on TC2 systems remotely");
-                return false;
-            }
-
-            // ToDo: Check if driver is installed already
-
-            return true;
+            _LoggerService.LogInfo("Reboot of local system blocked");
+            return;
         }
 
-        public async Task LoadNetworkInterfacesAsync(CancellationToken cancel = default)
+        try
         {
-            try
-            {
-                using AdsRoutingClient routingClient = new();
-                routingClient.Connect(Target?.NetId);
-                var interfaces = await routingClient.GetNetworkInterfacesAsync(cancel);
-
-                NetworkInterfaces.Clear();
-                foreach (var nic in interfaces)
-                {
-                    NetworkInterfaces.Add(nic);
-                }
-            }
-            catch (Exception ex)
-            {
-                // Error handling
-            }
+            using AdsSystemClient systemClient = new();
+            systemClient.Connect(Target?.NetId);
+            await systemClient.RebootAsync();
         }
-
-        private async Task InstallRteDriver(object networkInterface)
+        catch
         {
-            if (networkInterface is NetworkInterfaceInfo nic)
-            {
-                var rteInstallerPath = @"C:\TwinCAT\3.1\System\TcRteInstall.exe";   // ToDo: Get path and dir at runtime
-                var directory = @"C:\TwinCAT\3.1\System";
-
-                var installCommand = $"-r installnic \"{nic.Name}\"";
-
-                using AdsFileClient fileClient = new ();
-                fileClient.Connect(Target?.NetId);
-                await fileClient.StartProcessAsync(rteInstallerPath, directory, installCommand);
-                return;
-            }
-            _LoggerService.LogError("Unexpected Error occured");
+            _LoggerService.LogError("Could not reboot target");
         }
-
-        private async Task ExecuteSetTick()
-        {
-            // No need to set tick on WinCE, BSD and RTOS, ToDo: move to CanSetTick() method and reference it in relay command
-            if (!SystemInfo.OsName.Contains("Win") || SystemInfo.OsName.Contains("CE"))
-            {
-                _LoggerService.LogInfo("No need to set tick on selected target");
-                return;
-            }
-
-            string path = "";
-            string dir = "";
-
-            // There is no cli to install drivers remotely on TC2 systems
-            if (SystemInfo.TargetVersion.StartsWith("2."))
-            {
-                path = @"C:\TwinCAT\Io\win8settick.bat";  // ToDo: Get path and dir at runtime
-                dir = @"C:\TwinCAT\Io";
-            }
-            else
-            {
-                path = @"C:\TwinCAT\3.1\System\win8settick.bat";    // ToDo: Get path and dir at runtime
-                dir = @"C:\TwinCAT\3.1\System";
-            }
-
-            try
-            {
-                using AdsFileClient fileClient = new();
-                fileClient.Connect(Target?.NetId);
-                await fileClient.StartProcessAsync(path, dir, string.Empty);
-            }
-            catch (Exception ex)
-            {
-                _LoggerService.LogError("Execution of win8settick.bat failed");
-                return;
-            }
-            _LoggerService.LogSuccess("Set tick successfully. Please reboot target");
-        }
-
-        private async Task RebootTarget()
-        {
-            if (Target?.NetId == AmsNetId.Local.ToString())
-            {
-                _LoggerService.LogInfo("Reboot of local system blocked");
-                return;
-            }
-
-            try
-            {
-                using AdsSystemClient systemClient = new();
-                systemClient.Connect(Target?.NetId);
-                await systemClient.RebootAsync();
-            }
-            catch
-            {
-                _LoggerService.LogError("Could not reboot target");
-            }
-            _LoggerService.LogSuccess("Rebooting now...");
-        }
+        _LoggerService.LogSuccess("Rebooting now...");
     }
 }
