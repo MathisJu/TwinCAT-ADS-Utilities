@@ -9,8 +9,15 @@ namespace AdsUtilitiesUI.ViewModels
 {
     public abstract class ViewModelTargetAccessPage : ViewModelBase
     {
-        protected TargetService _TargetService;
-        protected LoggerService _LoggerService;
+        public TargetService _TargetService
+        {
+            get; set;
+        }
+
+        public LoggerService _LoggerService
+        {
+            get; set;
+        }
 
         private void UpdateTarget(object sender, StaticRoutesInfo newTarget)
         {

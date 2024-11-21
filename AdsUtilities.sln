@@ -9,7 +9,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AdsUtilitiesTests", "test\A
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AdsUtilitiesUI", "gui\AdsUtilitiesUI\AdsUtilitiesUI.csproj", "{AA7D3C60-2B9E-4E8C-B195-8D23E8114383}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AdsUtilitiesVsIntegration", "gui\VsExtension\AdsUtilitiesVsIntegration\AdsUtilitiesVsIntegration.csproj", "{C16244E3-4580-4EC2-B721-5593DACEDC71}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AdsUtilitiesVsIntegration", "gui\AdsUtilitiesVsIntegration\AdsUtilitiesVsIntegration.csproj", "{C16244E3-4580-4EC2-B721-5593DACEDC71}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

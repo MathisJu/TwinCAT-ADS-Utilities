@@ -13,52 +13,41 @@ class FileHandlingViewModel : ViewModelTargetAccessPage
 
     public FileHandlingViewModel(TargetService targetService, ILoggerService loggerService)
     {
-        _TargetService = targetService;
+        _TargetService = targetService;    
         InitTargetAccess(_TargetService);
-        _TargetService.OnTargetChanged += ReloadSecondaryRoutes;
 
+        // Set secondary route to local as soon as target service has loaded all routes
+        _TargetService.OnTargetChanged += (sender, e) =>
+        {
+            if (SecondaryTarget is null)
+            {
+                SecondaryTarget = _TargetService.CurrentTarget;
+            }
+            _TargetService.OnTargetChanged -= InitSecondaryRoute;
+        };
+        
         _LoggerService = (LoggerService)loggerService;
 
     }
 
-    private StaticRoutesInfo _targetRight;
-
-    public StaticRoutesInfo TargetRight
+    private void InitSecondaryRoute(object? sender, StaticRouteStatus e)
     {
-        get => _targetRight;
+        if(SecondaryTarget is null)
+        {
+            SecondaryTarget = _TargetService.CurrentTarget;
+        }
+    }
+
+    private StaticRoutesInfo _SecondaryTarget;
+
+    public StaticRoutesInfo SecondaryTarget
+    {
+        get => _SecondaryTarget;
         set
         {
-            _targetRight = value;
+            _SecondaryTarget = value;
             OnPropertyChanged();
         }
-    }
-
-    private ObservableCollection<StaticRoutesInfo> _SecondaryRoutes = new();
-    public ObservableCollection<StaticRoutesInfo> SecondaryRoutes
-    {
-        get => _SecondaryRoutes;
-        set
-        {
-            _SecondaryRoutes = value;
-            OnPropertyChanged();
-        }
-    }
-
-    public void ReloadSecondaryRoutes(object sender, StaticRouteStatus newTarget)
-    {
-        if (Target is not null)
-            _ = ReloadSecondaryRoutes(Target?.NetId);
-    }
-
-    public async Task ReloadSecondaryRoutes(string netId)
-    {
-        var routes = await _TargetService.LoadOnlineRoutesAsync(netId);
-        SecondaryRoutes = new ObservableCollection<StaticRoutesInfo>();
-        foreach (var route in routes)
-        {
-            SecondaryRoutes.Add(route);
-        }
-        TargetRight = SecondaryRoutes.ElementAt(0);
     }
 
 }
