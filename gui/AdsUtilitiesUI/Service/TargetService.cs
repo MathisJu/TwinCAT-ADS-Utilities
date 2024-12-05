@@ -112,7 +112,7 @@ public class TargetService : INotifyPropertyChanged
     public async Task<List<StaticRouteStatus>> LoadAllRoutesAsync(string netId)
     {
         using AdsRoutingClient adsRoutingClient = new();
-        adsRoutingClient.Connect(netId);
+        await adsRoutingClient.Connect(netId);
         List<StaticRoutesInfo> routes = await adsRoutingClient.GetRoutesListAsync();
         ConcurrentBag<StaticRouteStatus> routesStatus = new();
 
@@ -135,7 +135,7 @@ public class TargetService : INotifyPropertyChanged
     public async Task<List<StaticRoutesInfo>> LoadOnlineRoutesAsync(string netId)
     {
         using AdsRoutingClient adsRoutingClient = new();
-        adsRoutingClient.Connect(netId);
+        await adsRoutingClient.Connect(netId);
         List<StaticRoutesInfo> routes = await adsRoutingClient.GetRoutesListAsync();
         List<StaticRoutesInfo> routesOnline = new();
         if (netId == AmsNetId.Local.ToString())

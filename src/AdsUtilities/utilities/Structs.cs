@@ -153,6 +153,42 @@ public class StaticRoutesInfo
     public string NetId { get; set; }
     public string Name { get; set; }
     public string IpAddress { get; set; }
+
+    public static bool operator ==(StaticRoutesInfo left, StaticRoutesInfo right)
+    {
+        if (ReferenceEquals(left, right))
+        {
+            return true;
+        }
+
+        if (left is null || right is null)
+        {
+            return false;
+        }
+
+        return left.NetId == right.NetId &&
+               left.Name == right.Name &&
+               left.IpAddress == right.IpAddress;
+    }
+
+    public static bool operator !=(StaticRoutesInfo left, StaticRoutesInfo right)
+    {
+        return !(left == right);
+    }
+
+    public override bool Equals(object obj)
+    {
+        if (obj is StaticRoutesInfo other)
+        {
+            return this == other;
+        }
+        return false;
+    }
+
+    public override int GetHashCode()
+    {
+        return HashCode.Combine(NetId, Name, IpAddress);
+    }
 }
 
 public struct NetworkInterfaceInfo

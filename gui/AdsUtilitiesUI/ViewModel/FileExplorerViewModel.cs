@@ -38,8 +38,12 @@ public class FileExplorerViewModel : INotifyPropertyChanged // ToDo: ViewModelTa
         get => _Target;
         set
         {
-            _Target = value;
-            LoadRootDirectories();
+            if(_Target != value)
+            {
+                _Target = value;
+                LoadRootDirectories();              
+            }
+            
         }
     }
 
@@ -55,7 +59,7 @@ public class FileExplorerViewModel : INotifyPropertyChanged // ToDo: ViewModelTa
 
     private void LoadRootDirectories()
     {
-        string rootDirectory = "/";
+        string rootDirectory = "/";   // ToDo: Make compatible with different OS's. Could for example simply add multiple rootFolders to ObservableCollection. Just using "/" is not possible because writing does not work
 
         FileSystemItem rootFolder = new(
             DeviceNetID: Target.NetId,
@@ -74,7 +78,7 @@ public class FileExplorerViewModel : INotifyPropertyChanged // ToDo: ViewModelTa
             IsRoot: true);
 
         rootFolder.LoadChildren();
-        
+
         RootItems = new ObservableCollection<FileSystemItem> { rootFolder };
         OnPropertyChanged(nameof(RootItems));
     }
@@ -87,10 +91,10 @@ public class FileExplorerViewModel : INotifyPropertyChanged // ToDo: ViewModelTa
     public async Task CopyFile(FileSystemItem sourceFile, FileSystemItem targetFolder)
     {
         using AdsFileClient sourceFileClient = new();
-        if (!sourceFileClient.Connect(sourceFile.DeviceNetID)) { return; }
+        if (!await sourceFileClient.Connect(sourceFile.DeviceNetID)) { return; }
 
         using AdsFileClient destinationFileClient = new();
-        if (!destinationFileClient.Connect(targetFolder.DeviceNetID)) { return; }
+        if (!await destinationFileClient.Connect(targetFolder.DeviceNetID)) { return; }
 
         var progressWindow = new CopyProgressWindow(sourceFile, targetFolder);
         var cts = new CancellationTokenSource(); 
@@ -106,7 +110,11 @@ public class FileExplorerViewModel : INotifyPropertyChanged // ToDo: ViewModelTa
 
         try
         {
-            await sourceFileClient.FileCopyAsync($"{sourceFile.ParentDirectory}/{sourceFile.Name}", destinationFileClient, $"{targetFolder.ParentDirectory}/{targetFolder.Name}/{sourceFile.Name}", true, progress, 100, cts.Token);
+            await sourceFileClient.FileCopyAsync(
+                    $"{sourceFile.ParentDirectory.TrimEnd('/')}/{sourceFile.Name}",
+                    destinationFileClient,
+                    $"{targetFolder.ParentDirectory.TrimEnd('/')}/{targetFolder.Name}/{sourceFile.Name}",
+                    true, progress, 100, cts.Token);
             await Task.Delay(1000, cts.Token);
         }
         catch (OperationCanceledException)
@@ -128,23 +136,23 @@ public class FileExplorerViewModel : INotifyPropertyChanged // ToDo: ViewModelTa
 
 public class FileSystemItem
 {
-    public string DeviceNetID { get; }
-    public string Name { get; }
-    public string AlternativeName { get; }
-    public bool IsDirectory { get; }
-    public string ParentDirectory { get; }
-    public bool IsHidden { get; }
-    public long FileSize { get; }
-    public DateTime CreationTime { get; }
-    public DateTime LastModifyTime { get; }
-    public DateTime LastAccessTime { get; }
-    public bool IsSystemFile { get; }
-    public bool IsCompressed { get; }
-    public bool IsReadOnly { get; }
-    public bool IsEncrypted { get; }
+    public string DeviceNetID { get; set; }
+    public string Name { get; set; }
+    public string AlternativeName { get; set; }
+    public bool IsDirectory { get; set; }
+    public string ParentDirectory { get; set; }
+    public bool IsHidden { get; set; }
+    public long FileSize { get; set; }
+    public DateTime CreationTime { get; set; }
+    public DateTime LastModifyTime { get; set; }
+    public DateTime LastAccessTime { get; set; }
+    public bool IsSystemFile { get; set; }
+    public bool IsCompressed { get; set; }
+    public bool IsReadOnly { get; set; }
+    public bool IsEncrypted { get; set; }
 
-    public BitmapImage Image { get; }
-    public bool IsRoot { get; }
+    public BitmapImage Image { get; set; }
+    public bool IsRoot { get; set; }
 
     public ObservableCollection<FileSystemItem> Children { get; set; } = new ObservableCollection<FileSystemItem>();
 
@@ -200,7 +208,7 @@ public class FileSystemItem
     public async Task LoadChildren()
     {
         using AdsFileClient fileClient = new();
-        fileClient.Connect(DeviceNetID);
+        await fileClient.Connect(DeviceNetID);
         string fullPath = System.IO.Path.Combine(ParentDirectory, Name);
         await foreach (var file in fileClient.GetFolderContentStreamAsync(fullPath))   // ToDo: Use async version
         {

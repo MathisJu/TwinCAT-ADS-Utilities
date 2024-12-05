@@ -23,11 +23,10 @@ class FileHandlingViewModel : ViewModelTargetAccessPage
             {
                 SecondaryTarget = _TargetService.CurrentTarget;
             }
-            _TargetService.OnTargetChanged -= InitSecondaryRoute;
+            _TargetService.OnTargetChanged -= InitSecondaryRoute;   // Remove this event after initial execution
         };
         
         _LoggerService = (LoggerService)loggerService;
-
     }
 
     private void InitSecondaryRoute(object? sender, StaticRouteStatus e)

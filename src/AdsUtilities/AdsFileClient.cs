@@ -27,31 +27,32 @@ public class AdsFileClient : IDisposable
         
     }
 
-    public bool Connect(string netId)
+    public async Task<bool> Connect(string netId, CancellationToken cancel = default)
     {
         _netId = new AmsNetId(netId);
         _adsClient.Connect(_netId, AmsPort.SystemService);
-        AdsErrorCode readStateError = _adsClient.TryReadState(out _);
+        var readState = await _adsClient.ReadStateAsync(cancel);
         _adsClient.Disconnect();
-        return readStateError == AdsErrorCode.NoError;
+        return readState.Succeeded;
     }
 
-    public bool Connect()
+    public async Task<bool> Connect()
     {
-        return Connect(AmsNetId.Local.ToString());
+        return await Connect(AmsNetId.Local.ToString());
     }
 
     private async Task<uint> FileOpenAsync(string path, uint openFlags, CancellationToken cancel = default)
     {
-        byte[] wrBfr = Encoding.UTF8.GetBytes(path);
+        byte[] wrBfr = Encoding.ASCII.GetBytes(path + '\0');
+        
         byte[] rdBfr = new byte[sizeof(UInt32)];
-
+    
         _adsClient.Connect(_netId, (int)Constants.AdsPortSystemService);
         var rwResult = await _adsClient.ReadWriteAsync(
-            Constants.AdsIGrpSysServFOpen, 
-            openFlags, 
-            rdBfr, 
-            wrBfr, 
+            Constants.AdsIGrpSysServFOpen,
+            openFlags,
+            rdBfr,
+            wrBfr,
             cancel);
         _adsClient.Disconnect();
 

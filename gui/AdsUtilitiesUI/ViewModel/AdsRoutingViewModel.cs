@@ -103,7 +103,7 @@ public class AdsRoutingViewModel : ViewModelTargetAccessPage
         if (Target is null) return;
 
         using AdsRoutingClient client = new ();
-        client.Connect(Target?.NetId);
+        await client.Connect(Target?.NetId);
         var adapters = await client.GetNetworkInterfacesAsync();
         var adapterItems = adapters.Select(adapter => new NetworkAdapterItem { AdapterInfo = adapter, IsSelected = true }).ToList();
         NetworkAdapters = adapterItems;
@@ -140,7 +140,7 @@ public class AdsRoutingViewModel : ViewModelTargetAccessPage
                 return;
 
             using AdsRoutingClient client = new();
-            _ = client.Connect(Target?.NetId);
+            await client.Connect(Target?.NetId);
             TargetInfoList.Clear();
             await foreach (var target in client.AdsBroadcastSearchStreamAsync(nicsToBroadcastOn))
             {
@@ -172,7 +172,7 @@ public class AdsRoutingViewModel : ViewModelTargetAccessPage
         if (Target is null) return;
 
         using AdsRoutingClient client = new();
-        client.Connect(Target?.NetId);
+        await client.Connect(Target?.NetId);
         TargetInfoList.Clear();
         await foreach (var target in client.AdsSearchByIpAsync(ipAddress))
         {
@@ -207,7 +207,7 @@ public class AdsRoutingViewModel : ViewModelTargetAccessPage
         if (Target is null) return;
 
         using AdsRoutingClient routingClient = new();
-        routingClient.Connect(Target?.NetId);
+        await routingClient.Connect(Target?.NetId);
 
         if (AddRouteSelection.TypeStaticLocal)
         {

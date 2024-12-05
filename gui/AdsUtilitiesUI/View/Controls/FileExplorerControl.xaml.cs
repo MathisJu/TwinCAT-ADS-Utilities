@@ -230,14 +230,14 @@ namespace AdsUtilitiesUI
         private async Task RenameFile(FileSystemItem fileItem, string newName)
         {
             using AdsFileClient fileClient = new();
-            fileClient.Connect(fileItem.DeviceNetID);
+            await fileClient.Connect(fileItem.DeviceNetID);
             await fileClient.RenameFileAsync($"{fileItem.ParentDirectory}/{fileItem.Name}", $"{fileItem.ParentDirectory}/{newName}"); 
         }
 
         private async Task DeleteFile(FileSystemItem fileItem)
         {
             using AdsFileClient fileClient = new();
-            fileClient.Connect(fileItem.DeviceNetID);
+            await fileClient.Connect(fileItem.DeviceNetID);
             await fileClient.DeleteFileAsync($"{fileItem.ParentDirectory}/{fileItem.Name}");
         }
     }

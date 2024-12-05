@@ -32,18 +32,18 @@ public class AdsRoutingClient : IDisposable
         
     }
 
-    public bool Connect(string netId)
+    public async Task<bool> Connect(string netId, CancellationToken cancel = default)
     {
         _netId = new AmsNetId(netId);
         _adsClient.Connect(_netId, AmsPort.SystemService);
-        AdsErrorCode readStateError = _adsClient.TryReadState(out _);
+        var readState = await _adsClient.ReadStateAsync(cancel);
         _adsClient.Disconnect();
-        return readStateError == AdsErrorCode.NoError;
+        return readState.Succeeded;
     }
 
-    public bool Connect()
+    public async Task<bool> Connect()
     {
-        return Connect(AmsNetId.Local.ToString());
+        return await Connect(AmsNetId.Local.ToString());
     }
 
     public async Task AddRouteAsync(string netIdTarget, string ipAddressTarget, string routeName, string usernameTarget, string passwordTarget, string remoteRouteName, CancellationToken cancel = default)
@@ -230,7 +230,7 @@ public class AdsRoutingClient : IDisposable
     public async Task AddSubRouteAsync(string netIdGateway, string netIdSubRoute, string nameSubRoute, CancellationToken cancel= default)
     {
         using AdsRoutingClient routesReader = new();
-        routesReader.Connect(netIdGateway);
+        await routesReader.Connect(netIdGateway);
         var routesGateway = await routesReader.GetRoutesListAsync(cancel);     // Check if there is a route between gateway and sub-route-system - mandatory for sub-route to work
         if (!routesGateway.Where(r => r.NetId == netIdSubRoute).Any())
         {
@@ -240,7 +240,7 @@ public class AdsRoutingClient : IDisposable
 
         string staticRoutesPath = "/TwinCAT/3.1/Target/StaticRoutes.xml";
         using AdsFileClient routesEditor = new();
-        routesEditor.Connect(_netId.ToString());
+        await routesEditor.Connect(_netId.ToString());
         byte[] staticRoutesContent = await routesEditor.FileReadFullAsync(staticRoutesPath, false, cancel);
         string staticRoutesString = Encoding.UTF8.GetString(staticRoutesContent.Where(c => c is not 0).ToArray());
         XDocument routesXml = XDocument.Parse(staticRoutesString);
@@ -270,7 +270,7 @@ public class AdsRoutingClient : IDisposable
         string staticRoutesPath = "/TwinCAT/3.1/Target/StaticRoutes.xml";
 
         using AdsFileClient routesEditor = new();
-        routesEditor.Connect(_netId.ToString());
+        await routesEditor.Connect(_netId.ToString());
         byte[] staticRoutesContent = await routesEditor.FileReadFullAsync(staticRoutesPath, false, cancel);
         string staticRoutesString = Encoding.UTF8.GetString(staticRoutesContent.Where(c => c is not 0).ToArray());
         XDocument routesXml = XDocument.Parse(staticRoutesString);
@@ -824,7 +824,7 @@ public class AdsRoutingClient : IDisposable
             }
         }
         using AdsSystemClient systemClient = new();
-        systemClient.Connect(_netId.ToString());
+        await systemClient.Connect(_netId.ToString());
         await systemClient.SetRegEntryAsync(@"Software\Beckhoff\TwinCAT3\System", "RequestedAmsNetId", RegEditTypeCode.REG_BINARY, bytesNetId, cancel);            
         if (rebootNow)
         {

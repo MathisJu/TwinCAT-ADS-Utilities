@@ -155,7 +155,7 @@ public class DeviceInfoViewModel : ViewModelTargetAccessPage
         try
         {
             using AdsSystemClient systemClient = new();
-            systemClient.Connect(Target?.NetId);
+            await systemClient.Connect(Target?.NetId);
             SystemInfo = await systemClient.GetSystemInfoAsync(cancel);
         }
         catch (Exception ex) { }
@@ -166,7 +166,7 @@ public class DeviceInfoViewModel : ViewModelTargetAccessPage
         try
         {
             using AdsSystemClient systemClient = new();
-            systemClient.Connect(Target?.NetId);
+            await systemClient.Connect(Target?.NetId);
             TargetTime = await systemClient.GetSystemTimeAsync(cancel);
         }
         catch (Exception ex) { }
@@ -177,7 +177,7 @@ public class DeviceInfoViewModel : ViewModelTargetAccessPage
         try
         {
             using AdsSystemClient systemClient = new();
-            systemClient.Connect(Target?.NetId);
+            await systemClient.Connect(Target?.NetId);
             SystemId = await systemClient.GetSystemIdStringAsync(cancel);
         }
         catch (Exception ex) { }
@@ -188,7 +188,7 @@ public class DeviceInfoViewModel : ViewModelTargetAccessPage
         try
         {
             using AdsSystemClient systemClient = new();
-            systemClient.Connect(Target?.NetId);
+            await systemClient.Connect(Target?.NetId);
             VolumeNumber = await systemClient.GetVolumeNumberAsync(cancel);
         }
         catch (Exception ex) { }
@@ -199,7 +199,7 @@ public class DeviceInfoViewModel : ViewModelTargetAccessPage
         try
         {
             using AdsSystemClient systemClient = new();
-            systemClient.Connect(Target?.NetId);
+            await systemClient.Connect(Target?.NetId);
             PlatformLevel = await systemClient.GetPlatformLevelAsync(cancel);
         }
         catch (Exception ex) { }
@@ -225,7 +225,7 @@ public class DeviceInfoViewModel : ViewModelTargetAccessPage
         try
         {
             using AdsSystemClient systemClient = new();
-            systemClient.Connect(Target?.NetId);
+            await systemClient.Connect(Target?.NetId);
             var routerInfo = await systemClient.GetRouterStatusInfoAsync(cancel);
             RouterStatusInfo = routerInfo;
         }
@@ -259,7 +259,7 @@ public class DeviceInfoViewModel : ViewModelTargetAccessPage
         try
         {
             using AdsRoutingClient routingClient = new();
-            routingClient.Connect(Target?.NetId);
+            await routingClient.Connect(Target?.NetId);
             var interfaces = await routingClient.GetNetworkInterfacesAsync(cancel);
 
             NetworkInterfaces.Clear();
@@ -284,7 +284,7 @@ public class DeviceInfoViewModel : ViewModelTargetAccessPage
             var installCommand = $"-r installnic \"{nic.Name}\"";
 
             using AdsFileClient fileClient = new ();
-            fileClient.Connect(Target?.NetId);
+            await fileClient.Connect(Target?.NetId);
             await fileClient.StartProcessAsync(rteInstallerPath, directory, installCommand);
             return;
         }
@@ -318,7 +318,7 @@ public class DeviceInfoViewModel : ViewModelTargetAccessPage
         try
         {
             using AdsFileClient fileClient = new();
-            fileClient.Connect(Target?.NetId);
+            await fileClient.Connect(Target?.NetId);
             await fileClient.StartProcessAsync(path, dir, string.Empty);
         }
         catch (Exception ex)
@@ -340,7 +340,7 @@ public class DeviceInfoViewModel : ViewModelTargetAccessPage
         try
         {
             using AdsSystemClient systemClient = new();
-            systemClient.Connect(Target?.NetId);
+            await systemClient.Connect(Target?.NetId);
             await systemClient.RebootAsync();
         }
         catch

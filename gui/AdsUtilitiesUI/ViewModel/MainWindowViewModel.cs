@@ -147,7 +147,7 @@ class MainWindowViewModel : ViewModelBase
 
         // Check OS
         using AdsSystemClient systemClient = new ();
-        systemClient.Connect(_targetService.CurrentTarget.NetId);
+        await systemClient.Connect(_targetService.CurrentTarget.NetId);
         SystemInfo sysInfo = await systemClient.GetSystemInfoAsync();
         string os = sysInfo.OsName;
 
