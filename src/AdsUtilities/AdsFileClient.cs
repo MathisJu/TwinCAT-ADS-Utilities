@@ -169,7 +169,7 @@ public class AdsFileClient : IDisposable
     {
         byte[] rdBfr = new byte[chunkSize];
 
-        _adsClient.Connect((int)Constants.AdsPortSystemService);
+        _adsClient.Connect(_netId, (int)Constants.AdsPortSystemService);
         var readWriteResult = await _adsClient.ReadWriteAsync(Constants.AdsIGrpSysServFRead, hFile, rdBfr, new byte[4], cancel);
         _adsClient.Disconnect();
 

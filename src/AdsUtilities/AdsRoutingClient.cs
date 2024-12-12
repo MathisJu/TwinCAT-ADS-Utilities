@@ -707,9 +707,7 @@ public class AdsRoutingClient : IDisposable
         };
 
 
-        int index = 0;
-
-        while (index < data.Length)
+        for (int index = 0; index < data.Length;)
         {
             // Check for IP Address Header: 2-0-191-3
             if (MatchHeader(data, index, new byte[] { 2, 0, 191, 3 }))
@@ -764,6 +762,8 @@ public class AdsRoutingClient : IDisposable
                         targetInfo.OsVersion = $"TwinCAT/BSD ({osVer[0]}.{osVer[4]})";
                     else if (os.Contains("Windows")) //Windows 10 has BulidKey
                         targetInfo.OsVersion = os + " " + (OsBuildDictionary.ContainsKey(osBuildKey) ? OsBuildDictionary[osBuildKey] : osBuildKey.ToString("X2"));
+                    else if (osKey > 0x0601 && osKey < 0x0700) //Linux
+                        targetInfo.OsVersion = $"Linux {osVer[0]}.{osVer[4]}";
                     else if (osKey < 0x0500) //TCRTOS
                         targetInfo.OsVersion = $"TC/RTOS ({osVer[0]}.{osVer[4]})";
                     else
@@ -819,7 +819,7 @@ public class AdsRoutingClient : IDisposable
         {
             if (!byte.TryParse(partsNetId[i], out bytesNetId[i]))
             {
-                _logger?.LogError("One of the segments in the netId is not a valid byte.");
+                _logger?.LogError("NetId contains invalid value.");
                 return;
             }
         }

@@ -196,35 +196,34 @@ namespace AdsUtilitiesUI
         {
             FileSystemItem? fileItem = GetSelectedFileSystemItem(sender);
             {
-                if (fileItem != null)
-                {
-                    if (MessageBox.Show("Are you sure you want to delete this file?", "Delete Confirmation", MessageBoxButton.YesNo) == MessageBoxResult.Yes)
-                    {
-                        DeleteFile(fileItem);
-                    }
-                }
+                if (fileItem == null)
+                    return;
                 
+                if (MessageBox.Show("Are you sure you want to delete this file?", "Delete Confirmation", MessageBoxButton.YesNo) == MessageBoxResult.Yes)
+                {
+                    DeleteFile(fileItem);
+                }
             }
         }
 
         private void Properties_Click(object sender, RoutedEventArgs e)
         {
             FileSystemItem? fileItem = GetSelectedFileSystemItem(sender);
-            if (fileItem != null)
+            if (fileItem == null)
+                return;
+
+            PropertiesWindow propertiesWindow = new(fileItem);
+
+            if (sender is FrameworkElement element)
             {
-                PropertiesWindow propertiesWindow = new(fileItem);
-
-                if (sender is FrameworkElement element)
-                {
-                    Point elementScreenPosition = element.PointToScreen(new Point(0, 0));
-                    propertiesWindow.Left = elementScreenPosition.X; 
-                    propertiesWindow.Top = elementScreenPosition.Y; 
+                Point elementScreenPosition = element.PointToScreen(new Point(0, 0));
+                propertiesWindow.Left = elementScreenPosition.X; 
+                propertiesWindow.Top = elementScreenPosition.Y; 
 
 
-                }
-
-                propertiesWindow.Show();
             }
+
+            propertiesWindow.Show();
         }
 
         private async Task RenameFile(FileSystemItem fileItem, string newName)

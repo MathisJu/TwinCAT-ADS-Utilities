@@ -91,10 +91,12 @@ public class FileExplorerViewModel : INotifyPropertyChanged // ToDo: ViewModelTa
     public async Task CopyFile(FileSystemItem sourceFile, FileSystemItem targetFolder)
     {
         using AdsFileClient sourceFileClient = new();
-        if (!await sourceFileClient.Connect(sourceFile.DeviceNetID)) { return; }
+        if (!await sourceFileClient.Connect(sourceFile.DeviceNetID))
+            return; 
 
         using AdsFileClient destinationFileClient = new();
-        if (!await destinationFileClient.Connect(targetFolder.DeviceNetID)) { return; }
+        if (!await destinationFileClient.Connect(targetFolder.DeviceNetID))
+            return; 
 
         var progressWindow = new CopyProgressWindow(sourceFile, targetFolder);
         var cts = new CancellationTokenSource(); 
@@ -110,12 +112,12 @@ public class FileExplorerViewModel : INotifyPropertyChanged // ToDo: ViewModelTa
 
         try
         {
-            await sourceFileClient.FileCopyAsync(
+            await sourceFileClient.FileCopyAsync(   
                     $"{sourceFile.ParentDirectory.TrimEnd('/')}/{sourceFile.Name}",
                     destinationFileClient,
                     $"{targetFolder.ParentDirectory.TrimEnd('/')}/{targetFolder.Name}/{sourceFile.Name}",
                     true, progress, 100, cts.Token);
-            await Task.Delay(1000, cts.Token);
+            await Task.Delay(500, cts.Token);
         }
         catch (OperationCanceledException)
         {

@@ -96,7 +96,7 @@
                                     </TextBlock.Text>
                                 </TextBlock>
                             </Border>
-                            
+
                             <!-- Row 6 - Serial Number -->
                             <Border Grid.Row="5" Grid.Column="0" Background="#F0F0F0" BorderBrush="LightGray" BorderThickness="0,0,0,1">
                                 <TextBlock Text="Serial Number:" Padding="5"/>
@@ -140,7 +140,7 @@
                                 <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="Auto"/>
                             </Grid.RowDefinitions>
-                            
+
                             <!-- Row 1 - State -->
                             <Border Grid.Row="0" Grid.Column="0" Background="#F0F0F0" BorderBrush="LightGray" BorderThickness="0,0,0,1">
                                 <TextBlock Text="State:" Padding="5"/>
@@ -164,7 +164,7 @@
                             <Border Grid.Row="2" Grid.Column="1" BorderBrush="LightGray" BorderThickness="0,0,0,1">
                                 <TextBlock Text="{Binding Target.NetId}" Padding="5"/>
                             </Border>
-                            
+
                             <!-- Row 4 - System ID -->
                             <Border Grid.Row="3" Grid.Column="0" Background="#F0F0F0" BorderBrush="LightGray" BorderThickness="0,0,0,1">
                                 <TextBlock Text="System ID:" Padding="5"/>
@@ -319,6 +319,5 @@
                 </ScrollViewer>
             </TabItem>
         </TabControl>
-        
     </Grid>
 </Page>
