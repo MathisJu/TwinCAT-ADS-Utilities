@@ -180,7 +180,7 @@
                 </GroupBox>
 
                 <!-- Add Route Button -->
-                <Button Grid.Column="4" Grid.Row="6" Content="Add Route" Command="{Binding AddRouteCommand}" Margin="2"></Button>
+                <Button Grid.Column="4" Grid.Row="6" Content="Add Route" Command="{Binding AddRouteCommand}" Click="AddRouteButton_Click" Margin="2"></Button>
 
             </Grid>
 

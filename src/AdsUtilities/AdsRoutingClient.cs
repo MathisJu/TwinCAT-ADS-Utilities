@@ -7,6 +7,7 @@ using System.Xml.Linq;
 using TwinCAT.Ads;
 using System.Security;
 using System.Runtime.InteropServices;
+using System.Threading.Channels;
 
 
 
@@ -46,10 +47,16 @@ public class AdsRoutingClient : IDisposable
         return await Connect(AmsNetId.Local.ToString());
     }
 
-    public async Task AddRouteAsync(string netIdTarget, string ipAddressTarget, string routeName, string usernameTarget, string passwordTarget, string remoteRouteName, CancellationToken cancel = default)
+    public async Task AddRouteByIpAsync(string netIdTarget, string ipAddressTarget, string routeName, string usernameTarget, string passwordTarget, string remoteRouteName, CancellationToken cancel = default)
     {
-        await AddLocalRouteEntryAsync(netIdTarget, ipAddressTarget, routeName, cancel);
-        await AddRemoteRouteEntryAsync(ipAddressTarget, usernameTarget, passwordTarget, remoteRouteName, false, cancel);
+        await AddLocalRouteEntryByIpAsync(netIdTarget, ipAddressTarget, routeName, cancel);
+        await AddRemoteRouteEntryByIpAsync(ipAddressTarget, usernameTarget, passwordTarget, remoteRouteName, false, cancel);
+    }
+
+    public async Task AddRouteByNameAsync(string netIdTarget, string hostnameTarget, string routeName, string usernameTarget, string passwordTarget, string remoteRouteName, CancellationToken cancel = default)
+    {
+        await AddLocalRouteEntryByNameAsync(netIdTarget, hostnameTarget, routeName, cancel);
+        await AddRemoteRouteEntryByNameAsync(hostnameTarget, usernameTarget, passwordTarget, remoteRouteName, false, cancel);
     }
 
     public async Task RemoveLocalRouteEntryAsync(string routeName)
@@ -62,11 +69,11 @@ public class AdsRoutingClient : IDisposable
         _adsClient.Disconnect();
     }
 
-    public async Task AddLocalRouteEntryAsync(string netIdEntry, string ipAddressEntry, string routeNameEntry, CancellationToken cancel = default) 
+    public async Task AddLocalRouteEntryByIpAsync(string netIdEntry, string ipAddressEntry, string routeNameEntry, CancellationToken cancel = default, bool temporary = false) 
     {
         WriteRequestHelper addRouteRequest = new WriteRequestHelper()
             .Add(netIdEntry.Split('.').Select(byte.Parse).ToArray())
-            .Add(new byte[] { 1, 0, 32 })   // ToDo: Add to Segments List
+            .Add(temporary? Segments.ROUTETYPE_TEMP_LOCAL : Segments.ROUTETYPE_STATIC_LOCAL)
             .Add(new byte[23])
             .Add((byte)(ipAddressEntry.Length + 1))
             .Add(new byte[3])
@@ -80,19 +87,48 @@ public class AdsRoutingClient : IDisposable
         _adsClient.Disconnect();
     }
 
-    public async Task AddRemoteRouteEntryAsync(string ipAddressRemote, string usernameRemote, string passwordRemote, string remoteRouteName, bool temporary = false, CancellationToken cancel = default)
+    public async Task AddLocalRouteEntryByNameAsync(string netIdEntry, string hostnameEntry, string routeNameEntry, CancellationToken cancel = default, bool temporary = false)
     {
-        await AddRemoteRouteEntryInternalAsync(ipAddressRemote, usernameRemote, passwordRemote, remoteRouteName, cancel, temporary);
+        WriteRequestHelper addRouteRequest = new WriteRequestHelper()
+            .Add(netIdEntry.Split('.').Select(byte.Parse).ToArray())
+            .Add(temporary ? Segments.ROUTETYPE_TEMP_LOCAL : Segments.ROUTETYPE_STATIC_LOCAL)
+            .Add(new byte[23])
+            .Add((byte)(hostnameEntry.Length + 1))
+            .Add(new byte[3])
+            .Add((byte)(routeNameEntry.Length + 1))
+            .Add(new byte[7])
+            .AddStringUTF8(hostnameEntry)
+            .AddStringUTF8(routeNameEntry);
+
+        _adsClient.Connect(_netId, (int)Constants.AdsPortSystemService);
+        await _adsClient.WriteAsync(Constants.AdsIGrpSysServAddRemote, 0, addRouteRequest, cancel);
+        _adsClient.Disconnect();
     }
 
-    public async Task AddRemoteRouteEntryAsync(string ipAddressRemote, string usernameRemote, SecureString passwordRemote, string remoteRouteName, bool temporary = false, CancellationToken cancel = default)
+    public async Task AddRemoteRouteEntryByIpAsync(string ipAddressRemote, string usernameRemote, string passwordRemote, string remoteRouteName, bool temporary = false, CancellationToken cancel = default)
+    {
+        await AddRemoteRouteEntryInternalAsync(ipAddressRemote, usernameRemote, passwordRemote, remoteRouteName, cancel, null, temporary);
+    }
+
+    public async Task AddRemoteRouteEntryByNameAsync(string hostnameRemote, string usernameRemote, string passwordRemote, string remoteRouteName, bool temporary = false, CancellationToken cancel = default)
+    {
+        string? ipAddressRemote = await GetIpFromHostname(hostnameRemote, cancel);
+
+        if (ipAddressRemote is null)
+            return;
+
+        await AddRemoteRouteEntryInternalAsync(ipAddressRemote, usernameRemote, passwordRemote, remoteRouteName, cancel, hostnameRemote, temporary);
+    }
+
+
+    public async Task AddRemoteRouteEntryByIpAsync(string ipAddressRemote, string usernameRemote, SecureString passwordRemote, string remoteRouteName, bool temporary = false, CancellationToken cancel = default)
     {
         IntPtr passwordBinStrPtr = IntPtr.Zero;
         try
         {
             passwordBinStrPtr = Marshal.SecureStringToBSTR(passwordRemote);
             string plainPassword = Marshal.PtrToStringBSTR(passwordBinStrPtr);
-            await AddRemoteRouteEntryInternalAsync(ipAddressRemote, usernameRemote, plainPassword, remoteRouteName, cancel, temporary);
+            await AddRemoteRouteEntryInternalAsync(ipAddressRemote, usernameRemote, plainPassword, remoteRouteName, cancel, null, temporary);
         }
         finally
         {
@@ -103,7 +139,30 @@ public class AdsRoutingClient : IDisposable
         }
     }
 
-    private async Task AddRemoteRouteEntryInternalAsync(string ipAddressRemote, string usernameRemote, string passwordRemote, string remoteRouteName, CancellationToken cancel, bool temporary = false)
+    public async Task AddRemoteRouteEntryByNameAsync(string hostnameRemote, string usernameRemote, SecureString passwordRemote, string remoteRouteName, bool temporary = false, CancellationToken cancel = default)
+    {
+        string? ipAddressRemote = await GetIpFromHostname(hostnameRemote, cancel);
+
+        if (ipAddressRemote is null)
+            return;
+
+        IntPtr passwordBinStrPtr = IntPtr.Zero;
+        try
+        {
+            passwordBinStrPtr = Marshal.SecureStringToBSTR(passwordRemote);
+            string plainPassword = Marshal.PtrToStringBSTR(passwordBinStrPtr);
+            await AddRemoteRouteEntryInternalAsync(ipAddressRemote, usernameRemote, plainPassword, remoteRouteName, cancel, null, temporary);
+        }
+        finally
+        {
+            if (passwordBinStrPtr != IntPtr.Zero)
+            {
+                Marshal.ZeroFreeBSTR(passwordBinStrPtr);
+            }
+        }
+    }
+
+    private async Task AddRemoteRouteEntryInternalAsync(string ipAddressRemote, string usernameRemote, string passwordRemote, string remoteRouteName, CancellationToken cancel, string? hostNameRemote = null, bool temporary = false)
     {
         if (!IPAddress.TryParse(ipAddressRemote, out IPAddress? ipBytes))
         {
@@ -141,15 +200,13 @@ public class AdsRoutingClient : IDisposable
         bool foundNwAdapterInRange = false;
         bool rwSuccessAny = false;
 
-        foreach (var nic in nicsInfo)
+        if (hostNameRemote is not null) // Add route by hostname or ip address
         {
-            if (!IsIpAddressInRange(nic.IpAddress, nic.SubnetMask))   // look for a NIC with an IP that's in the same address range as the remote system and use this IP for the remote route entry
-                continue;
-
-            byte[] Segment_IPADDRESS_LENGTH = Segments.LOCALHOST_L;
-            Segment_IPADDRESS_LENGTH[2] = (byte)(nic.IpAddress.Length + 1);
-            addRouteRequest.Add(Segment_IPADDRESS_LENGTH);
-            addRouteRequest.AddStringUTF8(nic.IpAddress);
+            string localHostName = Environment.MachineName;
+            byte[] Segment_HOSTNAME_LENGTH = Segments.LOCALHOST_L;
+            Segment_HOSTNAME_LENGTH[2] = (byte)(localHostName.Length + 1);
+            addRouteRequest.Add(Segment_HOSTNAME_LENGTH);
+            addRouteRequest.AddStringUTF8(localHostName);
 
             byte[] rdBfr = new byte[2048];
 
@@ -159,17 +216,51 @@ public class AdsRoutingClient : IDisposable
 
             if (rwResult.ErrorCode == AdsErrorCode.NoError)
                 rwSuccessAny = true;
+        }
+        else
+        {
+            foreach (var nic in nicsInfo)
+            {
+                if (!IsIpAddressInRange(nic.IpAddress, nic.SubnetMask))   // look for a NIC with an IP that's in the same address range as the remote system and use this IP for the remote route entry
+                    continue;
 
-            foundNwAdapterInRange = true;
-            break;
+                byte[] Segment_IPADDRESS_LENGTH = Segments.LOCALHOST_L;
+                Segment_IPADDRESS_LENGTH[2] = (byte)(nic.IpAddress.Length + 1);
+                addRouteRequest.Add(Segment_IPADDRESS_LENGTH);
+                addRouteRequest.AddStringUTF8(nic.IpAddress);
+
+                byte[] rdBfr = new byte[2048];
+
+                _adsClient.Connect(_netId, (int)Constants.AdsPortSystemService);
+                var rwResult = await _adsClient.ReadWriteAsync(Constants.AdsIGrpSysServBroadcast, 0, rdBfr, addRouteRequest.GetBytes(), cancel);
+                _adsClient.Disconnect();
+
+                if (rwResult.ErrorCode == AdsErrorCode.NoError)
+                    rwSuccessAny = true;
+
+                foundNwAdapterInRange = true;
+                break;
+            }
         }
 
-        addRouteRequest.Clear();
-
-        if (!foundNwAdapterInRange)
+        if (!foundNwAdapterInRange && hostNameRemote is not null)
             _logger?.LogError("Error occurred when trying to add a remote route entry. No network adapter on the local system matched address range of the provided IP address. Please check the provided IP or the DHCP settings / the static IP on the remote system");
         if (!rwSuccessAny)
-            _logger?.LogError("ADS call to add remote route entry failed on all network adapters");
+            _logger?.LogError("ADS call to add remote route entry failed");
+    }
+
+    public async Task<string?> GetIpFromHostname(string hostname, CancellationToken cancel= default)
+    {
+        WriteRequestHelper getIpRequest = new WriteRequestHelper()
+            .AddStringUTF8(hostname);
+
+        byte[] ipAddressBuffer = new byte[4];
+
+        _adsClient.Connect(_netId, (int)Constants.AdsPortSystemService);
+        var rwResult = await _adsClient.ReadWriteAsync(Constants.AdsIGrpSysServIpHelperApi, Constants.AdsIOffsIpHelperApiIpAddrByHostName, ipAddressBuffer, getIpRequest.GetBytes(), cancel);
+        _adsClient.Disconnect();
+
+        return ipAddressBuffer.All(b => b == 0) ? null : new IPAddress(ipAddressBuffer).ToString();
     }
 
     private static bool IsIpAddressInRange(string ipAddressStr, string subnetMaskStr)
@@ -195,9 +286,7 @@ public class AdsRoutingClient : IDisposable
 
         for (int i = 0; i < networkAddressBytes.Length; i++)
         {
-            networkAddressBytes[i] = (byte)(ipAdressBytes[i] & subnetMaskBytes[
-                
-                i]);
+            networkAddressBytes[i] = (byte)(ipAdressBytes[i] & subnetMaskBytes[i]);
         }
 
         return new IPAddress(networkAddressBytes);

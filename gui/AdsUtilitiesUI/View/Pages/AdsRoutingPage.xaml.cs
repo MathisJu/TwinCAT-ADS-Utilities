@@ -37,37 +37,8 @@ namespace AdsUtilitiesUI
             }
         }
 
-        //private async void AddRouteButton_Click(object sender, RoutedEventArgs e)
-        //{
-        //    if (_viewModel.AddRouteSelection.AllParametersProvided())
-        //    {
-        //        await _viewModel.AddRoute();
-        //        return;
-        //    }
-        //    var textBoxes = new[] { InputName, InputNetid, InputIp, InputHostname, InputNameRemote, InputUsername };
-        //    var passwordBoxes = new[] { InputPassword };
-
-        //    // Überprüfen, ob alle TextBoxen Eingaben haben
-        //    var missingTextInputs = textBoxes.Where(tb => string.IsNullOrWhiteSpace(tb.Text)).ToList();
-
-        //    // Überprüfen, ob die PasswordBox Eingaben hat
-        //    var missingPasswordInputs = passwordBoxes.Where(pb => string.IsNullOrWhiteSpace(pb.Password)).ToList();
-
-        //    // Fehlende Eingaben hervorheben
-        //    if (missingTextInputs.Any() || missingPasswordInputs.Any())
-        //    {
-        //        foreach (var textBox in missingTextInputs)
-        //        {
-        //            HighlightControl(textBox, Colors.Pink, 1);
-        //        }
-
-        //        foreach (var passwordBox in missingPasswordInputs)
-        //        {
-        //            HighlightControl(passwordBox, Colors.Pink, 1);
-        //        }
-        //    }
-        //}
-        private static void HighlightControl(Control control, Color highlightBackgroundColor, int durationSeconds)
+        // This is meant to highlight a textbox / passwordbox if input is missing
+        private static void HighlightControl(Control control, Color highlightBackgroundColor, int durationMilliseconds)
         {
             if (control.Tag is bool isAnimating && isAnimating)
             {
@@ -89,7 +60,7 @@ namespace AdsUtilitiesUI
                 var animation = new ColorAnimation
                 {
                     To = originalColor,
-                    Duration = new Duration(TimeSpan.FromSeconds(durationSeconds)),
+                    Duration = new Duration(TimeSpan.FromMilliseconds(durationMilliseconds)),
                     AutoReverse = false
                 };
 
@@ -103,6 +74,18 @@ namespace AdsUtilitiesUI
             }
         }
 
-        
+        private void AddRouteButton_Click(object sender, RoutedEventArgs e)
+        {
+            Span<Control> inputControls = [InputName, InputNetid, InputIp, InputHostname, InputNameRemote, InputUsername, InputPassword];
+            foreach (Control inputControl in inputControls)
+            {
+                if ((inputControl is TextBox inputTextBox && inputTextBox.Text == string.Empty)
+                    || (inputControl is PasswordBox inputPassword && string.IsNullOrEmpty(inputPassword.Password)))
+                {
+                    HighlightControl(inputControl, Colors.LightPink, 750);
+                }
+            }
+        }
+
     }
 }

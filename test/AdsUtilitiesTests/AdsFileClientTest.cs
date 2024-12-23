@@ -8,7 +8,7 @@ public class AdsFileClientTests : IDisposable
     public AdsFileClientTests()
     {
         _client = new AdsFileClient();
-        _client.Connect();
+        _client.Connect().Wait();
 
         // Create a temporary directory for the tests
         _testDirectory = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());

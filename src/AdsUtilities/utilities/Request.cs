@@ -239,7 +239,9 @@ internal static class Segments
 
     public static readonly byte[] REQUEST_ADDROUTE = { 6, 0, 0, 0 };
     public static readonly byte[] REQUEST_DISCOVER = { 1, 0, 0, 0 };
+    public static readonly byte[] ROUTETYPE_TEMP_LOCAL = { 1, 0, 33 };
     public static readonly byte[] ROUTETYPE_TEMP = { 6, 0, 0, 0 };
+    public static readonly byte[] ROUTETYPE_STATIC_LOCAL = { 1, 0, 32 };
     public static readonly byte[] ROUTETYPE_STATIC = { 5, 0, 0, 0 };
     public static readonly byte[] TEMPROUTE_TAIL = { 9, 0, 4, 0, 1, 0, 0, 0 };
     public static readonly byte[] ROUTENAME_L = { 0x0c, 0, 0, 0 };

@@ -68,7 +68,7 @@ public class DeviceInfoViewModel : ViewModelTargetAccessPage
 
     public string TargetTimeDisplay
     {
-        get => TargetTime.ToString("yyyy/MM/dd-HH:mm:ss");
+        get => TargetTime.ToString("yyyy/MM/dd-HH:mm");
     }
 
     private string _systemId;
@@ -119,7 +119,7 @@ public class DeviceInfoViewModel : ViewModelTargetAccessPage
 
         _TargetService.OnTargetChanged += async (sender, args) => await UpdateDeviceInfo();
 
-        _updateTimer = new System.Timers.Timer(1000);
+        _updateTimer = new System.Timers.Timer(10_000);
         _updateTimer.Elapsed += async (sender, e) => await UpdateLiveValues();
         _updateTimer.AutoReset = true;
         _updateTimer.Start();
@@ -143,11 +143,17 @@ public class DeviceInfoViewModel : ViewModelTargetAccessPage
         await UpdatePlatformLevel();
     }
 
+    private bool _isUpdating = false;
+
     public async Task UpdateLiveValues()
     {
-        await UpdateTcState();         // Update Tc state every second
-        await UpdateRouterUsage();     // Update router info every second
-        await UpdateTime();            // Update target and local time every second
+        if (_isUpdating) return;
+
+        _isUpdating = true;
+        await UpdateTcState();         
+        await UpdateRouterUsage();     
+        await UpdateTime();            
+        _isUpdating = false;
     }
 
     public async Task LoadSystemInfoAsync(CancellationToken cancel = default)

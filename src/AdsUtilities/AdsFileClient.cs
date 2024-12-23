@@ -238,7 +238,7 @@ public class AdsFileClient : IDisposable
 
         byte[] nextFileBuffer = new WriteRequestHelper().AddStringUTF8(path).GetBytes();               // for first file
 
-        byte[] fileInfoBuffer = new byte[Marshal.SizeOf(typeof(FileInfoByteMapped))];      // Allocate memory buffer the size of the byte stream returned by a file info request
+        byte[] fileInfoBuffer = new byte[Marshal.SizeOf(typeof(FileInfoByteMapped))];
 
         _adsClient.Connect(_netId, (int)Constants.AdsPortSystemService);
 
@@ -257,7 +257,9 @@ public class AdsFileClient : IDisposable
             );
 
             if (rwResult.ErrorCode == AdsErrorCode.DeviceNotFound)
+            {
                 yield break;    // Reached end of folder content
+            }
             else if (rwResult.ErrorCode != AdsErrorCode.NoError)
             {
                 _logger?.LogError("Unexpected exception '{eMessage}' while getting folder content of '{path}' from '{netId}'. Results may be incomplete.", rwResult.ErrorCode.ToString(), path, _netId);

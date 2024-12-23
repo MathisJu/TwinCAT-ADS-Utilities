@@ -36,8 +36,6 @@ public class AdsRoutingViewModel : ViewModelTargetAccessPage
 
         NetworkAdapterPairs = new ObservableCollection<NetworkAdapterPair>();
         TargetInfoList = new ObservableCollection<TargetInfo>();
-
-        
     }
 
 
@@ -182,20 +180,16 @@ public class AdsRoutingViewModel : ViewModelTargetAccessPage
 
     public async Task SearchByName()
     {
-        try
-        {
-            IPHostEntry hostEntry = Dns.GetHostEntry(IpOrHostnameInput);
+        using AdsRoutingClient routingClient = new();
+        await routingClient.Connect(Target?.NetId);
 
-            if (hostEntry.AddressList.Length > 0)
-            {
-                await SearchByIp(hostEntry.AddressList[0].ToString());  
-            }
-            else
-            {
-                return;
-            }
+        string? ip = await routingClient.GetIpFromHostname(IpOrHostnameInput);
+            
+        if (ip is not null)
+        {
+            await SearchByIp(ip);  
         }
-        catch (Exception ex)
+        else
         {
             return;
         }
@@ -206,6 +200,30 @@ public class AdsRoutingViewModel : ViewModelTargetAccessPage
     {
         if (Target is null) return;
 
+        if (!AddRouteSelection.AllParametersProvided()) return;
+
+        // Check if adding route via hostname makes sense if that option is selected
+        if (AddRouteSelection.AddByHostname)
+        {
+            try
+            {
+                var hostIPs = Dns.GetHostAddresses(AddRouteSelection.Name);
+            }
+            catch
+            {
+                var result = MessageBox.Show("Could not resolve Hostname. This might be due to the network structure. You might want to add by IP instead.\nProceed anyway?",
+                                     "Hostname Resolution Failed",
+                                     MessageBoxButton.YesNo,
+                                     MessageBoxImage.Warning);
+
+                if (result == MessageBoxResult.No)
+                {
+                    _LoggerService.LogInfo("Action canceled");
+                    return;
+                }
+            }
+        }
+
         using AdsRoutingClient routingClient = new();
         await routingClient.Connect(Target?.NetId);
 
@@ -213,47 +231,46 @@ public class AdsRoutingViewModel : ViewModelTargetAccessPage
         {
             if (AddRouteSelection.AddByIpAddress)
             {
-                await routingClient.AddLocalRouteEntryAsync(AddRouteSelection.NetId, AddRouteSelection.IpAddress, AddRouteSelection.Name); 
-                _LoggerService.LogSuccess("Route added locally.");
+                await routingClient.AddLocalRouteEntryByIpAsync(AddRouteSelection.NetId, AddRouteSelection.IpAddress, AddRouteSelection.Name); 
             }
             else
             {
-                try
-                {
-                    var hostIPs = Dns.GetHostAddresses(AddRouteSelection.Name);
-                }
-                catch
-                {
-                    var result = MessageBox.Show("Could not resolve Hostname. This might be due to the network structure. You might want to add by IP instead.\nProceed anyway?",
-                                         "Hostname Resolution Failed",
-                                         MessageBoxButton.YesNo,
-                                         MessageBoxImage.Warning);
-
-                    if (result == MessageBoxResult.No)
-                    {
-                        _LoggerService.LogInfo("Action canceled");
-                        return;
-                    }
-                }
-                _LoggerService.LogError("Add by Name not implemented"); // ToDo
+                await routingClient.AddLocalRouteEntryByNameAsync(AddRouteSelection.NetId, AddRouteSelection.HostName, AddRouteSelection.Name);
             }
-            
         }
         if (AddRouteSelection.TypeTempLocal)
         {
-            _LoggerService.LogError("Local temporary routes not implemented yet."); // ToDo: Add temporary route option, add hostname option
+            if (AddRouteSelection.AddByIpAddress)
+            {
+                await routingClient.AddLocalRouteEntryByIpAsync(AddRouteSelection.NetId, AddRouteSelection.IpAddress, AddRouteSelection.Name, temporary: true);
+            }
+            else
+            {
+                await routingClient.AddLocalRouteEntryByNameAsync(AddRouteSelection.NetId, AddRouteSelection.HostName, AddRouteSelection.Name, temporary: true);
+            }
         }
 
-
-        if (AddRouteSelection.TypeStaticRemote) // ToDo: Add hostname option
+        if (AddRouteSelection.TypeStaticRemote)
         {
-            await routingClient.AddRemoteRouteEntryAsync(AddRouteSelection.IpAddress, AddRouteSelection.Username, AddRouteSelection.Password, AddRouteSelection.RemoteName, false);
-            _LoggerService.LogSuccess("Static route added remotely.");
+            if (AddRouteSelection.AddByIpAddress)
+            {
+                await routingClient.AddRemoteRouteEntryByIpAsync(AddRouteSelection.IpAddress, AddRouteSelection.Username, AddRouteSelection.Password, AddRouteSelection.RemoteName, false);
+            }
+            else
+            {
+                await routingClient.AddRemoteRouteEntryByNameAsync(AddRouteSelection.HostName, AddRouteSelection.Username, AddRouteSelection.Password, AddRouteSelection.RemoteName, false);
+            }
         }
-        if (AddRouteSelection.TypeTempRemote)   // ToDo: Add hostname option
+        if (AddRouteSelection.TypeTempRemote)
         {
-            await routingClient.AddRemoteRouteEntryAsync(AddRouteSelection.IpAddress, AddRouteSelection.Username, AddRouteSelection.Password, AddRouteSelection.RemoteName, true);
-            _LoggerService.LogSuccess("Temporary route added remotely.");
+            if (AddRouteSelection.AddByIpAddress)
+            {
+                await routingClient.AddRemoteRouteEntryByIpAsync(AddRouteSelection.IpAddress, AddRouteSelection.Username, AddRouteSelection.Password, AddRouteSelection.RemoteName, true);
+            }
+            else
+            {
+                await routingClient.AddRemoteRouteEntryByIpAsync(AddRouteSelection.HostName, AddRouteSelection.Username, AddRouteSelection.Password, AddRouteSelection.RemoteName, true);
+            }
         }
     }
 
