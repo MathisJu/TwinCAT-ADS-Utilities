@@ -306,8 +306,8 @@ public class DeviceInfoViewModel : ViewModelTargetAccessPage
             return;
         }
 
-        string path = "";
-        string dir = "";
+        string path;
+        string dir;
 
         // There is no cli to install drivers remotely on TC2 systems
         if (SystemInfo.TargetVersion.StartsWith("2."))

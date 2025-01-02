@@ -53,7 +53,19 @@ public class AdsRoutingClient : IDisposable
         await AddRemoteRouteEntryByIpAsync(ipAddressTarget, usernameTarget, passwordTarget, remoteRouteName, false, cancel);
     }
 
+    public async Task AddRouteByIpAsync(string netIdTarget, string ipAddressTarget, string routeName, string usernameTarget, SecureString passwordTarget, string remoteRouteName, CancellationToken cancel = default)
+    {
+        await AddLocalRouteEntryByIpAsync(netIdTarget, ipAddressTarget, routeName, cancel);
+        await AddRemoteRouteEntryByIpAsync(ipAddressTarget, usernameTarget, passwordTarget, remoteRouteName, false, cancel);
+    }
+
     public async Task AddRouteByNameAsync(string netIdTarget, string hostnameTarget, string routeName, string usernameTarget, string passwordTarget, string remoteRouteName, CancellationToken cancel = default)
+    {
+        await AddLocalRouteEntryByNameAsync(netIdTarget, hostnameTarget, routeName, cancel);
+        await AddRemoteRouteEntryByNameAsync(hostnameTarget, usernameTarget, passwordTarget, remoteRouteName, false, cancel);
+    }
+
+    public async Task AddRouteByNameAsync(string netIdTarget, string hostnameTarget, string routeName, string usernameTarget, SecureString passwordTarget, string remoteRouteName, CancellationToken cancel = default)
     {
         await AddLocalRouteEntryByNameAsync(netIdTarget, hostnameTarget, routeName, cancel);
         await AddRemoteRouteEntryByNameAsync(hostnameTarget, usernameTarget, passwordTarget, remoteRouteName, false, cancel);

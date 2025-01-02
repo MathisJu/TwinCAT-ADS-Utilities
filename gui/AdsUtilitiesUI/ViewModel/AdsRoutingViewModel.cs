@@ -272,6 +272,7 @@ public class AdsRoutingViewModel : ViewModelTargetAccessPage
                 await routingClient.AddRemoteRouteEntryByIpAsync(AddRouteSelection.HostName, AddRouteSelection.Username, AddRouteSelection.Password, AddRouteSelection.RemoteName, true);
             }
         }
+        await _TargetService.Reload_Routes();
     }
 
 }

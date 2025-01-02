@@ -82,7 +82,7 @@ namespace AdsUtilitiesUI
                 if ((inputControl is TextBox inputTextBox && inputTextBox.Text == string.Empty)
                     || (inputControl is PasswordBox inputPassword && string.IsNullOrEmpty(inputPassword.Password)))
                 {
-                    HighlightControl(inputControl, Colors.LightPink, 750);
+                    HighlightControl(inputControl, Colors.LightPink, 750);      // ToDo: Check if input is needed (e.g. password not needed for local route only)
                 }
             }
         }

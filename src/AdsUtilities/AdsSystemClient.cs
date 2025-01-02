@@ -8,6 +8,8 @@ public class AdsSystemClient : IDisposable
 {
     public string NetId { get { return _netId.ToString(); } }
 
+    public bool IsConnected { get; private set; } = false;
+
     private readonly AdsClient _adsClient = new();
 
     private AmsNetId? _netId;
@@ -23,7 +25,13 @@ public class AdsSystemClient : IDisposable
         _adsClient.Connect(_netId, AmsPort.SystemService);
         var readState = await _adsClient.ReadStateAsync(cancel);
         _adsClient.Disconnect();
-        return readState.Succeeded;
+
+        if (readState.Succeeded)
+        {
+            IsConnected = true;
+            return true;
+        }
+        return false;
     }
 
     public async Task<bool> Connect()
@@ -33,6 +41,8 @@ public class AdsSystemClient : IDisposable
 
     public async Task RebootAsync(uint delaySec = 0, CancellationToken cancel = default) 
     {
+        if (!IsConnected) throw new InvalidOperationException("Client is not connected");
+
         _adsClient.Connect(_netId, (int)Constants.AdsPortSystemService);
         var res = await _adsClient.WriteControlAsync(AdsState.Shutdown, 1, BitConverter.GetBytes(delaySec), cancel);
         _adsClient.Disconnect();
@@ -47,6 +57,8 @@ public class AdsSystemClient : IDisposable
 
     public async Task SetRegEntryAsync(string subKey, string valueName, RegEditTypeCode registryTypeCode, byte[] value, CancellationToken cancel)
     {
+        if (!IsConnected) throw new InvalidOperationException("Client is not connected");
+
         WriteRequestHelper setRegRequest = new WriteRequestHelper()
             .AddStringUTF8(subKey)
             .AddStringUTF8(valueName)
@@ -60,6 +72,8 @@ public class AdsSystemClient : IDisposable
 
     public async Task<byte[]> QueryRegEntryAsync(string subKey, string valueName, uint byteSize, CancellationToken cancel = default)
     {
+        if (!IsConnected) throw new InvalidOperationException("Client is not connected");
+
         WriteRequestHelper readRegRequest = new WriteRequestHelper()
             .AddStringUTF8(subKey)
             .AddStringUTF8(valueName);
@@ -75,6 +89,8 @@ public class AdsSystemClient : IDisposable
 
     public async Task<SystemInfo> GetSystemInfoAsync(CancellationToken cancel = default)
     {
+        if (!IsConnected) throw new InvalidOperationException("Client is not connected");
+
         byte[] rdBfr = new byte[2048];
 
         _adsClient.Connect(_netId, (int)Constants.AdsPortSystemService);
@@ -122,6 +138,9 @@ public class AdsSystemClient : IDisposable
 
     public async Task<DateTime> GetSystemTimeAsync(CancellationToken cancel = default)
     {
+        if (!IsConnected) throw new InvalidOperationException("Client is not connected");
+        
+
         byte[] rdBfr = new byte[16]; 
 
         _adsClient.Connect(_netId, (int)Constants.AdsPortSystemService);
@@ -132,6 +151,8 @@ public class AdsSystemClient : IDisposable
 
     private DateTime ConvertByteArrayToDateTime(byte[] byteArray)
     {
+        if (!IsConnected) throw new InvalidOperationException("Client is not connected");
+
         if (byteArray == null || byteArray.Length < 16)
             throw new ArgumentException("byte array has to contain 16 elements");
 
@@ -149,6 +170,8 @@ public class AdsSystemClient : IDisposable
 
     public async Task<List<CpuUsage>> GetTcCpuUsageAsync(CancellationToken cancel = default)
     {
+        if (!IsConnected) throw new InvalidOperationException("Client is not connected");
+
         byte[] rdBfr = new byte[2400]; //Read buffer is sufficient for up to 100 CPU Cores (Increase size if needed)
 
         _adsClient.Connect(_netId, (int)Constants.AdsPortR0RTime);
@@ -168,6 +191,8 @@ public class AdsSystemClient : IDisposable
 
     public async Task<RouterStatusInfo> GetRouterStatusInfoAsync(CancellationToken cancel = default)
     {
+        if (!IsConnected) throw new InvalidOperationException("Client is not connected");
+
         ReadRequestHelper readRequest = new(32);
         _adsClient.Connect(_netId, (int)Constants.AdsPortRouter);
         await _adsClient.ReadAsync(1, 1, readRequest, cancel);
@@ -184,6 +209,8 @@ public class AdsSystemClient : IDisposable
 
     public async Task<short> GetPlatformLevelAsync(CancellationToken cancel = default)
     {
+        if (!IsConnected) throw new InvalidOperationException("Client is not connected");
+
         _adsClient.Connect(_netId, (int)Constants.AdsPortLicenseServer);
         short platformLevel = (await _adsClient.ReadAnyAsync<short>(Constants.AdsIGrpLicenseInfo, 0x2, cancel)).Value;
         _adsClient.Disconnect();
@@ -193,6 +220,8 @@ public class AdsSystemClient : IDisposable
 
     private async Task<byte[]> GetSystemIdBytesAsync(CancellationToken cancel = default)
     {
+        if (!IsConnected) throw new InvalidOperationException("Client is not connected");
+
         byte[] rdBfr = new byte[16];
 
         _adsClient.Connect(_netId, (int)Constants.AdsPortLicenseServer);
@@ -204,12 +233,16 @@ public class AdsSystemClient : IDisposable
 
     public async Task<Guid> GetSystemIdGuidAsync(CancellationToken cancel = default)
     {
+        if (!IsConnected) throw new InvalidOperationException("Client is not connected");
+
         byte[] sysId = await GetSystemIdBytesAsync(cancel);
         return new Guid(sysId);
     }
 
     public async Task<string> GetSystemIdStringAsync(CancellationToken cancel = default)
     {
+        if (!IsConnected) throw new InvalidOperationException("Client is not connected");
+
         byte[] sysId = await GetSystemIdBytesAsync(cancel);
         return string.Format("{0:X2}{1:X2}{2:X2}{3:X2}-{4:X2}{5:X2}-{6:X2}{7:X2}-{8:X2}{9:X2}-{10:X2}{11:X2}{12:X2}{13:X2}{14:X2}{15:X2}",
             sysId[3], sysId[2], sysId[1], sysId[0],
@@ -221,6 +254,8 @@ public class AdsSystemClient : IDisposable
 
     public async Task<uint> GetVolumeNumberAsync(CancellationToken cancel = default)
     {
+        if (!IsConnected) throw new InvalidOperationException("Client is not connected");
+
         _adsClient.Connect(_netId, (int)Constants.AdsPortLicenseServer);
         uint volumeNo = (await _adsClient.ReadAnyAsync<uint>(Constants.AdsIGrpLicenseInfo, 0x5, cancel)).Value;
         _adsClient.Disconnect();

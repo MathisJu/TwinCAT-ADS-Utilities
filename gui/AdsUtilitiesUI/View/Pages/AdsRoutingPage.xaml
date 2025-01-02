@@ -99,7 +99,8 @@
                       ItemsSource="{Binding TargetInfoList}" SelectedItem="{Binding TargetListSelection}" 
                       AutoGenerateColumns="False" Height="auto" VerticalScrollBarVisibility="Auto"
                       GridLinesVisibility="None" IsReadOnly="True"
-                      HeadersVisibility="Column">
+                      HeadersVisibility="Column"
+                      SelectionMode="Single">
                 <DataGrid.Columns>
                     <DataGridTextColumn Header="Hostname" Binding="{Binding Name}" Width="3*"/>
                     <DataGridTextColumn Header="IP Address" Binding="{Binding IpAddress}" Width="3*"/>

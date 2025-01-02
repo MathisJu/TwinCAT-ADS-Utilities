@@ -30,7 +30,7 @@ public enum LogLevel
 
 public class LogMessage
 {
-    public string Message { get; set; }
+    public string? Message { get; set; }
     public DateTime Timestamp { get; set; }
     public LogLevel LogLevel { get; set; } // LogLevel for filtering
 }

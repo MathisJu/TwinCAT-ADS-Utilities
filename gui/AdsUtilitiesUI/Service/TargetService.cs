@@ -39,7 +39,7 @@ public class TargetService : INotifyPropertyChanged
 {
     public TargetService()
     {
-        Task.Run(async () => await Reload_Routes());
+        Task.Run(Reload_Routes);
     }
 
     private StaticRouteStatus _currentTarget;
@@ -112,60 +112,58 @@ public class TargetService : INotifyPropertyChanged
     public async Task<List<StaticRouteStatus>> LoadAllRoutesAsync(string netId)
     {
         using AdsRoutingClient adsRoutingClient = new();
-        await adsRoutingClient.Connect(netId);
+        bool connected = await adsRoutingClient.Connect(netId);
+        if (!connected)
+        {
+            return [];  // ToDo: Handle connection loss
+        }
+            
         List<StaticRoutesInfo> routes = await adsRoutingClient.GetRoutesListAsync();
         ConcurrentBag<StaticRouteStatus> routesStatus = new();
 
+        var semaphore = new SemaphoreSlim(10);
+
         await Task.WhenAll(routes.Select(async route =>
         {
-            bool isOnline = await IsTargetOnline(route.NetId);
-            StaticRouteStatus routeStatus = new()
+            await semaphore.WaitAsync();
+            try
             {
-                NetId = route.NetId,
-                Name = route.Name,
-                IpAddress = route.IpAddress,
-                IsOnline = isOnline,
-                DisplayName = isOnline ? route.Name : route.Name + " (offline)"
-            };
-            routesStatus.Add(routeStatus);
-        }));
-        return routesStatus.ToList();
-    }
-
-    public async Task<List<StaticRoutesInfo>> LoadOnlineRoutesAsync(string netId)
-    {
-        using AdsRoutingClient adsRoutingClient = new();
-        await adsRoutingClient.Connect(netId);
-        List<StaticRoutesInfo> routes = await adsRoutingClient.GetRoutesListAsync();
-        List<StaticRoutesInfo> routesOnline = new();
-        if (netId == AmsNetId.Local.ToString())
-        {
-            StaticRoutesInfo localRoute = new()
-            {
-                NetId = netId,
-                Name = "<local>",
-                IpAddress = "0.0.0.0"
-            };
-            routesOnline.Add(localRoute);
-        }
-        foreach (var route in routes)
-        {
-            if (await IsTargetOnline(route.NetId))
-            {
-                routesOnline.Add(route);
+                bool isOnline = await IsTargetOnline(route.NetId);
+                string deviceType = string.Empty;
+                if (isOnline)
+                {
+                    using AdsSystemClient systemClient = new();
+                    await systemClient.Connect(route.NetId);
+                    var deviceInfo = await systemClient.GetSystemInfoAsync();
+                    deviceType = deviceInfo.HardwareModel;
+                }
+                StaticRouteStatus routeStatus = new()
+                {
+                    NetId = route.NetId,
+                    Name = route.Name,
+                    IpAddress = route.IpAddress,
+                    IsOnline = isOnline,
+                    DisplayName = isOnline ? ((deviceType != string.Empty) ? route.Name + $" ({deviceType})" : route.Name) : route.Name + " (offline)"
+                };
+                routesStatus.Add(routeStatus);
             }
-        }
-        return routesOnline;
+            finally
+            {
+                semaphore.Release();
+            }
+        }));
+
+        var routesStatusList = routesStatus.ToList();
+        routesStatusList.Sort((x, y) => string.Compare(x.Name, y.Name));
+        return routesStatusList;
     }
 
-    public static async Task<bool> IsTargetOnline(string netId)
+    public async Task<bool> IsTargetOnline(string netId)
     {
-        AdsClient client = new AdsClient();
-        client.Timeout = 50;
+        using AdsClient client = new ();
+        client.Timeout = 250;
         client.Connect(netId, 10000);
-        bool available = (await client.ReadStateAsync(new CancellationToken())).ErrorCode is AdsErrorCode.NoError;
-        client.Disconnect();
-        client.Dispose();
+        bool available = (await client.ReadStateAsync(default)).ErrorCode is AdsErrorCode.NoError;
         return available;
     }
 }
