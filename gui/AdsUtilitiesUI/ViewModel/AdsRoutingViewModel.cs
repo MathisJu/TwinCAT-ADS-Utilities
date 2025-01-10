@@ -14,6 +14,8 @@ using System.Windows;
 using System.Windows.Data;
 using TwinCAT.Ads;
 using TwinCAT.TypeSystem;
+using System.IO;
+using System.Text.Json;
 
 namespace AdsUtilitiesUI;
 
@@ -89,7 +91,6 @@ public class AdsRoutingViewModel : ViewModelTargetAccessPage
     private string _IpOrHostnameInput;
     public string IpOrHostnameInput { get => _IpOrHostnameInput; set { _IpOrHostnameInput = value; OnPropertyChanged(); } }
 
-  
 
     public void LoadNetworkAdapters(object sender, StaticRoutesInfo newTarget) 
     {
@@ -116,7 +117,6 @@ public class AdsRoutingViewModel : ViewModelTargetAccessPage
             NetworkAdapterPairs.Add(pair);
         }
     }
-
 
     public AsyncRelayCommand BroadcastCommand { get; }
 

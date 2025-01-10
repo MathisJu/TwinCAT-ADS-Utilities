@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace AdsUtilitiesUI.ViewModels
 {
-    public abstract class ViewModelTargetAccessPage : ViewModelBase
+    public abstract class ViewModelTargetAccessPage : ViewModelBase // A ViewModel template for all pages that access target access functions
     {
         public TargetService _TargetService
         {

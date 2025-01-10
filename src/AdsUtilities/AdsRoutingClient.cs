@@ -23,6 +23,8 @@ public class AdsRoutingClient : IDisposable
 
     private AmsNetId? _netId;
 
+    public bool IsConnected { get; private set; } = false;
+
     public void ConfigureLogger(ILogger logger)
     {
         _logger = logger;
@@ -39,7 +41,13 @@ public class AdsRoutingClient : IDisposable
         _adsClient.Connect(_netId, AmsPort.SystemService);
         var readState = await _adsClient.ReadStateAsync(cancel);
         _adsClient.Disconnect();
-        return readState.Succeeded;
+
+        if (readState.Succeeded)
+        {
+            IsConnected = true;
+            return true;
+        }
+        return false;
     }
 
     public async Task<bool> Connect()
@@ -73,16 +81,22 @@ public class AdsRoutingClient : IDisposable
 
     public async Task RemoveLocalRouteEntryAsync(string routeName)
     {
+        if (!IsConnected) throw new InvalidOperationException("Client is not connected");
+
         _adsClient.Connect(_netId, (int)Constants.AdsPortSystemService);
         WriteRequestHelper deleteRouteReq = new WriteRequestHelper()
             .AddStringUTF8(routeName);
 
-        await _adsClient.WriteAsync(Constants.AdsIGrpSysServDelRemote, 0, deleteRouteReq);
+        var wRes = await _adsClient.WriteAsync(Constants.AdsIGrpSysServDelRemote, 0, deleteRouteReq);
         _adsClient.Disconnect();
+
+        //wRes.ThrowOnError();  // There seems to be a timeout even if the command succeeds
     }
 
     public async Task AddLocalRouteEntryByIpAsync(string netIdEntry, string ipAddressEntry, string routeNameEntry, CancellationToken cancel = default, bool temporary = false) 
     {
+        if (!IsConnected) throw new InvalidOperationException("Client is not connected");
+
         WriteRequestHelper addRouteRequest = new WriteRequestHelper()
             .Add(netIdEntry.Split('.').Select(byte.Parse).ToArray())
             .Add(temporary? Segments.ROUTETYPE_TEMP_LOCAL : Segments.ROUTETYPE_STATIC_LOCAL)
@@ -95,12 +109,16 @@ public class AdsRoutingClient : IDisposable
             .AddStringUTF8(routeNameEntry);
 
         _adsClient.Connect(_netId, (int)Constants.AdsPortSystemService);
-        await _adsClient.WriteAsync(Constants.AdsIGrpSysServAddRemote, 0, addRouteRequest, cancel);
+        var wRes = await _adsClient.WriteAsync(Constants.AdsIGrpSysServAddRemote, 0, addRouteRequest, cancel);
         _adsClient.Disconnect();
+
+        wRes.ThrowOnError();
     }
 
     public async Task AddLocalRouteEntryByNameAsync(string netIdEntry, string hostnameEntry, string routeNameEntry, CancellationToken cancel = default, bool temporary = false)
     {
+        if (!IsConnected) throw new InvalidOperationException("Client is not connected");
+
         WriteRequestHelper addRouteRequest = new WriteRequestHelper()
             .Add(netIdEntry.Split('.').Select(byte.Parse).ToArray())
             .Add(temporary ? Segments.ROUTETYPE_TEMP_LOCAL : Segments.ROUTETYPE_STATIC_LOCAL)
@@ -113,8 +131,10 @@ public class AdsRoutingClient : IDisposable
             .AddStringUTF8(routeNameEntry);
 
         _adsClient.Connect(_netId, (int)Constants.AdsPortSystemService);
-        await _adsClient.WriteAsync(Constants.AdsIGrpSysServAddRemote, 0, addRouteRequest, cancel);
+        var wRes = await _adsClient.WriteAsync(Constants.AdsIGrpSysServAddRemote, 0, addRouteRequest, cancel);
         _adsClient.Disconnect();
+
+        wRes.ThrowOnError();
     }
 
     public async Task AddRemoteRouteEntryByIpAsync(string ipAddressRemote, string usernameRemote, string passwordRemote, string remoteRouteName, bool temporary = false, CancellationToken cancel = default)
@@ -176,6 +196,8 @@ public class AdsRoutingClient : IDisposable
 
     private async Task AddRemoteRouteEntryInternalAsync(string ipAddressRemote, string usernameRemote, string passwordRemote, string remoteRouteName, CancellationToken cancel, string? hostNameRemote = null, bool temporary = false)
     {
+        if (!IsConnected) throw new InvalidOperationException("Client is not connected");
+
         if (!IPAddress.TryParse(ipAddressRemote, out IPAddress? ipBytes))
         {
             _logger?.LogError("Could not add a route entry on remote system because the provided IP address is invalid");
@@ -263,6 +285,8 @@ public class AdsRoutingClient : IDisposable
 
     public async Task<string?> GetIpFromHostname(string hostname, CancellationToken cancel= default)
     {
+        if (!IsConnected) throw new InvalidOperationException("Client is not connected");
+
         WriteRequestHelper getIpRequest = new WriteRequestHelper()
             .AddStringUTF8(hostname);
 
@@ -271,6 +295,8 @@ public class AdsRoutingClient : IDisposable
         _adsClient.Connect(_netId, (int)Constants.AdsPortSystemService);
         var rwResult = await _adsClient.ReadWriteAsync(Constants.AdsIGrpSysServIpHelperApi, Constants.AdsIOffsIpHelperApiIpAddrByHostName, ipAddressBuffer, getIpRequest.GetBytes(), cancel);
         _adsClient.Disconnect();
+
+        rwResult.ThrowOnError();
 
         return ipAddressBuffer.All(b => b == 0) ? null : new IPAddress(ipAddressBuffer).ToString();
     }
@@ -339,7 +365,7 @@ public class AdsRoutingClient : IDisposable
             return;
         }
 
-        string staticRoutesPath = "/TwinCAT/3.1/Target/StaticRoutes.xml";
+        string staticRoutesPath = "/TwinCAT/3.1/Target/StaticRoutes.xml";   // ToDo: Get path at runtime
         using AdsFileClient routesEditor = new();
         await routesEditor.Connect(_netId.ToString());
         byte[] staticRoutesContent = await routesEditor.FileReadFullAsync(staticRoutesPath, false, cancel);
@@ -368,7 +394,7 @@ public class AdsRoutingClient : IDisposable
 
     public async Task AddAdsMqttRouteAsync(string brokerAddress, uint brokerPort, string topic, bool unidirectional = false, uint qualityOfService = default, string user = default, string password = default, CancellationToken cancel = default)
     {
-        string staticRoutesPath = "/TwinCAT/3.1/Target/StaticRoutes.xml";
+        string staticRoutesPath = "/TwinCAT/3.1/Target/StaticRoutes.xml";   // ToDo: Get path at runtime
 
         using AdsFileClient routesEditor = new();
         await routesEditor.Connect(_netId.ToString());
@@ -418,6 +444,8 @@ public class AdsRoutingClient : IDisposable
 
     public async Task<List<StaticRoutesInfo>> GetRoutesListAsync(CancellationToken cancel = default)
     {
+        if (!IsConnected) throw new InvalidOperationException("Client is not connected");
+
         // Read ADS routes from target system 
         _adsClient.Connect(_netId, (int)Constants.AdsPortSystemService);
         List<StaticRoutesInfo> routesList = new();
@@ -447,29 +475,39 @@ public class AdsRoutingClient : IDisposable
         return routesList;
     }
 
-    public string GetFingerprint()
+    public async Task<string> GetFingerprint(CancellationToken cancel = default)
     {
+        if (!IsConnected) throw new InvalidOperationException("Client is not connected");
+
         byte[] rdBfr = new byte[129];
 
         _adsClient.Connect(_netId, (int)Constants.AdsPortSystemService);
-        _adsClient.Read(Constants.AdsIGrpSysServTcSystemInfo, 9, rdBfr);
+        var rRes = await _adsClient.ReadAsync(Constants.AdsIGrpSysServTcSystemInfo, 9, rdBfr, cancel);
         _adsClient.Disconnect();
+
+        rRes.ThrowOnError();
 
         return Encoding.UTF8.GetString(rdBfr);
     }
 
     public async Task<List<NetworkInterfaceInfo>> GetNetworkInterfacesAsync(CancellationToken cancel = default)
     {
+        if (!IsConnected) throw new InvalidOperationException("Client is not connected");
+
         byte[] readBfr = new byte[4];
         _adsClient.Connect(_netId, (int)Constants.AdsPortSystemService);
-        await _adsClient.ReadAsync(Constants.AdsIGrpSysServIpHelperApi, Constants.AdsIOffsIpHelperApiAdaptersInfo, readBfr, cancel);
+        var rRes = await _adsClient.ReadAsync(Constants.AdsIGrpSysServIpHelperApi, Constants.AdsIOffsIpHelperApiAdaptersInfo, readBfr, cancel);
+
+        rRes.ThrowOnError();
 
         uint nicBfrSize = BitConverter.ToUInt32(readBfr, 0);  
         byte[] nicBfr = new byte[nicBfrSize];
 
-        await _adsClient.ReadAsync(Constants.AdsIGrpSysServIpHelperApi, Constants.AdsIOffsIpHelperApiAdaptersInfo, nicBfr, cancel);
+        rRes = await _adsClient.ReadAsync(Constants.AdsIGrpSysServIpHelperApi, Constants.AdsIOffsIpHelperApiAdaptersInfo, nicBfr, cancel);
         _adsClient.Disconnect();
-        
+
+        rRes.ThrowOnError();
+
         const uint bytesPerNic = 640;             // Info on every NIC takes 640 bytes. There might be a data field in the byte array that contains that size. For now it's statically defined
         uint numOfNics = nicBfrSize / bytesPerNic;  
         List<NetworkInterfaceInfo> nicList = new();
@@ -503,6 +541,8 @@ public class AdsRoutingClient : IDisposable
         ushort secondsTimeout = 5,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
+        if (!IsConnected) throw new InvalidOperationException("Client is not connected");
+
         if (!IPAddress.TryParse(ipAddress, out var ip))
             yield break;
 
@@ -523,15 +563,10 @@ public class AdsRoutingClient : IDisposable
         var deviceNotiResult = await _adsClient.AddDeviceNotificationAsync(Constants.AdsIGrpSysServBroadcast, 0, 2048, sttngs, null, cancellationToken);
 
         TriggerBroadcastPacket broadcastPacket = new(ip.GetAddressBytes(), AmsNetId.Local.ToBytes());
-        try
-        {
-            await _adsClient.WriteAsync(Constants.AdsIGrpSysServBroadcast, 1, StructConverter.StructureToByteArray(broadcastPacket), cancellationToken);  // This tells the system service to send a broadcast telegram on the selected NIC
-        }
-        catch (AdsErrorException ex)
-        {
-            // ToDo: Add logging
-        }
-        
+
+        var wRes = await _adsClient.WriteAsync(Constants.AdsIGrpSysServBroadcast, 1, StructConverter.StructureToByteArray(broadcastPacket), cancellationToken);  // This tells the system service to send a broadcast telegram on the selected NIC
+
+        wRes.ThrowOnError();
 
         var timeout = TimeSpan.FromSeconds(secondsTimeout);
         var startTime = DateTime.UtcNow;
@@ -584,6 +619,8 @@ public class AdsRoutingClient : IDisposable
 
     public async Task<List<TargetInfo>> AdsBroadcastSearchAsync(List<NetworkInterfaceInfo> interfacesToBroadcastOn, ushort secondsTimeout = 5, CancellationToken cancellationToken = default)
     {
+        if (!IsConnected) throw new InvalidOperationException("Client is not connected");
+
         List<TargetInfo> broadcastResults = new();
 
         void RecievedBroadcastResponse(object sender, AdsNotificationEventArgs e)
@@ -642,6 +679,8 @@ public class AdsRoutingClient : IDisposable
         ushort secondsTimeout = 5,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
+        if (!IsConnected) throw new InvalidOperationException("Client is not connected");
+
         BlockingCollection<TargetInfo> broadcastResults = new();
         TaskCompletionSource completionSource = new();
 
@@ -669,14 +708,11 @@ public class AdsRoutingClient : IDisposable
             IPAddress broadcastAddress = CalculateBroadcastAddress(nic);
 
             TriggerBroadcastPacket broadcastPacket = new(broadcastAddress.GetAddressBytes(), AmsNetId.Local.ToBytes());
-            try
-            {
-                await _adsClient.WriteAsync(Constants.AdsIGrpSysServBroadcast, 1, StructConverter.StructureToByteArray(broadcastPacket), cancellationToken);  // This tells the system service to send a broadcast telegram on the selected NIC
-            }
-            catch (AdsErrorException ex)
-            {
-                _logger?.LogInformation("Could not perform an ADS broadcast search on adapter '{nicName}'. The request was aborted due to error: '{error}'.", nic.Name, ex.Message);
-            }
+            
+            var wRes = await _adsClient.WriteAsync(Constants.AdsIGrpSysServBroadcast, 1, StructConverter.StructureToByteArray(broadcastPacket), cancellationToken);  // This tells the system service to send a broadcast telegram on the selected NIC
+            
+            if (wRes.Failed)
+                _logger?.LogInformation("Could not perform an ADS broadcast search on adapter '{nicName}'. The request was aborted due to error: '{error}'.", nic.Name, wRes.ErrorCode);
         }
 
         var timeout = TimeSpan.FromSeconds(secondsTimeout);
@@ -900,17 +936,19 @@ public class AdsRoutingClient : IDisposable
         }
 
         return targetInfo;
+
+        static bool MatchHeader(byte[] data, int index, byte[] header)
+        {
+            if (index + header.Length > data.Length) return false;
+            for (int i = 0; i < header.Length; i++)
+            {
+                if (data[index + i] != header[i]) return false;
+            }
+            return true;
+        }
     }
 
-    private static bool MatchHeader(byte[] data, int index, byte[] header)
-    {
-        if (index + header.Length > data.Length) return false;
-        for (int i = 0; i < header.Length; i++)
-        {
-            if (data[index + i] != header[i]) return false;
-        }
-        return true;
-    }
+    
 
     public async Task ChangeNetIdAsync(string netIdNew, bool rebootNow = false, CancellationToken cancel = default)
     {

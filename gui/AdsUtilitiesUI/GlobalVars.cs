@@ -13,8 +13,9 @@ namespace AdsUtilitiesUI
     {
         // For config file in AppData
         public static readonly string AppFolder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "AdsUtilities");
-        public static readonly string ConfigFileName = "cerhost_config.json";
-        public static readonly string ConfigFilePath = Path.Combine(AppFolder, ConfigFileName);
+        public static readonly string CerhostConfigFileName = "cerhost_config.json";
+        public static readonly string NetworkCardSelectionFileName = "network_card_selections.json";
+
 
     }
 }

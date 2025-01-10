@@ -25,7 +25,6 @@ public class AdsIoClient : IDisposable
         _logger = logger;
     }
 
-
     public AdsIoClient()
     {
         

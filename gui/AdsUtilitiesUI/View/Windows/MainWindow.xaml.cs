@@ -33,7 +33,6 @@ public partial class MainWindow : Window
         //Loaded += _viewModel.MainWindow_Initilaize;
     }
 
-
     private void CmbBx_SelectRoute_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
 

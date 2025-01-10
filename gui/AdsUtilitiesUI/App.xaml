@@ -6,39 +6,6 @@
     
     <Application.Resources>
         
-        <!-- Custom Button style -->
-        <Style TargetType="Button">
-            <Setter Property="Background" Value="Gainsboro" />
-            <Setter Property="Foreground" Value="Black" />
-            <Setter Property="BorderBrush" Value="DimGray" />
-            <Setter Property="Padding" Value="10,5" />
-            <Setter Property="FontSize" Value="12" />
-            <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="Button">
-                        <Border Background="{TemplateBinding Background}"
-                            CornerRadius="2"
-                            BorderBrush="{TemplateBinding BorderBrush}"
-                            BorderThickness="{TemplateBinding BorderThickness}">
-                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                        </Border>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter Property="Background" Value="LightGray"/>
-                            </Trigger>
-                            <Trigger Property="IsPressed" Value="True">
-                                <Setter Property="Background" Value="Silver"/>
-                                <Setter Property="Opacity" Value="0.8"/>
-                            </Trigger>
-                            <Trigger Property="IsEnabled" Value="False">
-                                <Setter Property="Background" Value="Transparent"/>
-                                <Setter Property="Foreground" Value="#FF666666"/>
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
+        
     </Application.Resources>
 </Application>

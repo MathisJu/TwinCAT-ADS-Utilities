@@ -16,7 +16,7 @@
                 </Style>
             </TabControl.Resources>
 
-            <TabItem Header="General">
+            <TabItem Header="General Info">
                 <ScrollViewer>
                     <StackPanel Margin="15,10,15,10">
                         <Grid>
@@ -119,7 +119,7 @@
                     </StackPanel>
                 </ScrollViewer>
             </TabItem>
-            <TabItem Header="TwinCAT">
+            <TabItem Header="About TwinCAT">
                 <ScrollViewer>
                     <StackPanel Margin="15,10,15,10">
                         <Grid>
@@ -311,6 +311,63 @@
                                             Margin="10"
                                             HorizontalAlignment="Right"
                                             Command="{Binding DataContext.InstallRteDriverCommand, RelativeSource={RelativeSource AncestorType=Page}}"
+                                            CommandParameter="{Binding}" />
+                                </StackPanel>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+            </TabItem>
+            <TabItem Header="Manage Routes">
+                <ScrollViewer>
+                    <ItemsControl ItemsSource="{Binding AdsRoutes}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <StackPanel Margin="15,10,15,10">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="Auto"/>
+                                            <RowDefinition Height="Auto"/>
+                                            <RowDefinition Height="Auto"/>
+                                        </Grid.RowDefinitions>
+
+                                        <!-- Row 1 -->
+                                        <Border Grid.Row="0" Grid.Column="0" Background="#F0F0F0" BorderBrush="LightGray" BorderThickness="0,0,0,1">
+                                            <TextBlock Text="Display Name:" Padding="5"/>
+                                        </Border>
+                                        <Border Grid.Row="0" Grid.Column="1" BorderBrush="LightGray" BorderThickness="0,0,0,1">
+                                            <TextBlock Text="{Binding Name}" Padding="5"/>
+                                        </Border>
+
+                                        <!-- Row 2 -->
+                                        <Border Grid.Row="1" Grid.Column="0" Background="#F0F0F0" BorderBrush="LightGray" BorderThickness="0,0,0,1">
+                                            <TextBlock Text="Address:" Padding="5"/>
+                                        </Border>
+                                        <Border Grid.Row="1" Grid.Column="1" BorderBrush="LightGray" BorderThickness="0,0,0,1">
+                                            <TextBlock Text="{Binding IpAddress}" Padding="5"/>
+                                        </Border>
+
+                                        <!-- Row 3 -->
+                                        <Border Grid.Row="2" Grid.Column="0" Background="#F0F0F0" BorderBrush="LightGray" BorderThickness="0,0,0,1">
+                                            <TextBlock Text="NetId:" Padding="5"/>
+                                        </Border>
+                                        <Border Grid.Row="2" Grid.Column="1" BorderBrush="LightGray" BorderThickness="0,0,0,1">
+                                            <TextBlock Text="{Binding NetId}" Padding="5"/>
+                                        </Border>
+                                    </Grid>
+
+                                    <!-- Button to install the RTE Driver -->
+                                    <Button Content="Remove route entry"
+                                            Width="125"
+                                            Padding="5"
+                                            Margin="10"
+                                            HorizontalAlignment="Right"
+                                            Command="{Binding DataContext.DeleteRouteEntryCommand, RelativeSource={RelativeSource AncestorType=Page}}"
                                             CommandParameter="{Binding}" />
                                 </StackPanel>
                             </DataTemplate>

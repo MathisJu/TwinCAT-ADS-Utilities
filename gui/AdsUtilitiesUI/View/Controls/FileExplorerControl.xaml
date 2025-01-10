@@ -30,6 +30,23 @@
                         <Image Source="/AdsUtilitiesUI;component/Images/icon_info_16x.png" Width="16" Height="16"/>
                     </MenuItem.Icon>
                 </MenuItem>
+                <MenuItem Header="Reload" Click="Reload_Click" >
+                    <MenuItem.Icon>
+                        <Image Source="/AdsUtilitiesUI;component/Images/icon_refresh_16x.png" Width="16" Height="16"/>
+                    </MenuItem.Icon>
+                    <MenuItem.Style>
+                        <Style TargetType="MenuItem">
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsDirectory}" Value="True">
+                                    <Setter Property="Visibility" Value="Visible"/>
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding IsDirectory}" Value="False">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </MenuItem.Style>
+                </MenuItem>
             </ContextMenu>
             <Style TargetType="{x:Type TreeViewItem}">
                 <EventSetter Event="Expanded" Handler="TreeViewItem_Expanded"/>

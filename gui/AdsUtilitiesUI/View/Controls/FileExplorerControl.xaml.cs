@@ -226,6 +226,15 @@ namespace AdsUtilitiesUI
             propertiesWindow.Show();
         }
 
+        private void Reload_Click(object sender, RoutedEventArgs e)
+        {
+            FileSystemItem? fileItem = GetSelectedFileSystemItem(sender);
+
+            if (fileItem == null) return;
+
+            _ = fileItem.LoadChildren();
+        }
+
         private async Task RenameFile(FileSystemItem fileItem, string newName)
         {
             using AdsFileClient fileClient = new();

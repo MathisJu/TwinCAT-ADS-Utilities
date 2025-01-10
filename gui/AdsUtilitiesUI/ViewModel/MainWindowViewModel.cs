@@ -4,6 +4,7 @@ using AdsUtilitiesUI.ViewModels;
 using System.Collections.ObjectModel;
 using System.Net;
 using System.Net.Sockets;
+using System.Windows.Input;
 
 
 namespace AdsUtilitiesUI;
@@ -49,6 +50,7 @@ class MainWindowViewModel : ViewModelBase
         };
         SelectedTab = Tabs[0];
     }
+
 
     private void TargetService_OnTargetChanged(object sender, StaticRouteStatus newTarget)
     {

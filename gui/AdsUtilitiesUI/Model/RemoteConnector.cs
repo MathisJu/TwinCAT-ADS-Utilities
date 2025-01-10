@@ -19,20 +19,14 @@ namespace AdsUtilitiesUI.Model
             // HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Terminal Server -- fDenyTSConnections > 0
             // (runas) netsh advfirewall firewall set rule group=\"Remote Desktop\" new enable=Yes
 
-            try
-            {
-                // start RDP client with given IP address
-                Process rdpProcess = new();
-                rdpProcess.StartInfo.FileName = "mstsc";
-                rdpProcess.StartInfo.Arguments = $"/v:{ipAddress}";
-                rdpProcess.StartInfo.UseShellExecute = true;
-                rdpProcess.StartInfo.WindowStyle = ProcessWindowStyle.Normal;
-                rdpProcess.Start();
-            }
-            catch (Exception ex)
-            {
-                ;
-            }
+
+            // start RDP client with given IP address
+            Process rdpProcess = new();
+            rdpProcess.StartInfo.FileName = "mstsc";
+            rdpProcess.StartInfo.Arguments = $"/v:{ipAddress}";
+            rdpProcess.StartInfo.UseShellExecute = true;
+            rdpProcess.StartInfo.WindowStyle = ProcessWindowStyle.Normal;
+            rdpProcess.Start();
         }
 
         public static async Task CerhostConnect(string ipAddress)
@@ -41,7 +35,6 @@ namespace AdsUtilitiesUI.Model
 
             if (string.IsNullOrEmpty(cerhostPath))
                 return;
-
 
             using TcpClient tcpClient = new ();
             var connectTask = tcpClient.ConnectAsync(ipAddress, 987);
@@ -184,7 +177,7 @@ namespace AdsUtilitiesUI.Model
             {
                 FileName = "powershell.exe",
                 Arguments = $"-NoExit -Command \"{sshCommand}\"",
-                UseShellExecute = true,   // --> PowerShell window visible
+                UseShellExecute = true,
                 CreateNoWindow = false    
             };
 
@@ -205,10 +198,13 @@ namespace AdsUtilitiesUI.Model
                 Directory.CreateDirectory(GlobalVars.AppFolder);
             }
 
+            string configFilePath = Path.Combine(GlobalVars.AppFolder, GlobalVars.CerhostConfigFileName);
+
+
             // Check if config file exists and contains the correct path
-            if (File.Exists(GlobalVars.ConfigFilePath))
+            if (File.Exists(configFilePath))
             {
-                string json = await File.ReadAllTextAsync(GlobalVars.ConfigFilePath);
+                string json = await File.ReadAllTextAsync(configFilePath);
                 string cerhostPath = JsonSerializer.Deserialize<string>(json);
                 if (File.Exists(cerhostPath))
                 {
@@ -227,7 +223,7 @@ namespace AdsUtilitiesUI.Model
             {
                 // Save path in config file
                 string json = JsonSerializer.Serialize(openFileDialog.FileName);
-                await File.WriteAllTextAsync(GlobalVars.ConfigFilePath, json);
+                await File.WriteAllTextAsync(configFilePath, json);
                 return openFileDialog.FileName;
             }
 

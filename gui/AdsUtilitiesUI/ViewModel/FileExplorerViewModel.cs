@@ -59,7 +59,7 @@ public class FileExplorerViewModel : INotifyPropertyChanged // ToDo: ViewModelTa
 
     private void LoadRootDirectories()
     {
-        string rootDirectory = "/";   // ToDo: Make compatible with different OS's. Could for example simply add multiple rootFolders to ObservableCollection. Just using "/" is not possible because writing does not work
+        string rootDirectory = "/";   
 
         FileSystemItem rootFolder = new(
             DeviceNetID: Target.NetId,
@@ -100,15 +100,11 @@ public class FileExplorerViewModel : INotifyPropertyChanged // ToDo: ViewModelTa
 
         var progressWindow = new CopyProgressWindow(sourceFile, targetFolder);
         var cts = new CancellationTokenSource(); 
-        progressWindow.CancellationRequested += () => cts.Cancel(); // Event for Cancel-Button
+        progressWindow.CancellationRequested += cts.Cancel; // Event for Cancel-Button
 
         progressWindow.Show();
 
-        var progress = new Progress<double>(value =>
-        {
-            // Update ProgressBar
-            progressWindow.SetProgress(value);
-        });
+        var progress = new Progress<double>(progressWindow.SetProgress);
 
         try
         {
@@ -174,21 +170,21 @@ public class FileSystemItem
         this.IsDirectory = IsDirectory;
         if (IsRoot)
         {
-            this.Image = LoadBitmapImage("Images/harddrive.png");
+            Image = LoadBitmapImage("Images/harddrive.png");
         }
         else if (IsDirectory)
         {
             if (IsHidden)
-                this.Image = LoadBitmapImage("Images/folderdrive_hidden.png");
+                Image = LoadBitmapImage("Images/folderdrive_hidden.png");
             else
-                this.Image = LoadBitmapImage("Images/folderdrive.png");
+                Image = LoadBitmapImage("Images/folderdrive.png");
         }
         else
         {
             if (IsHidden)
-                this.Image = LoadBitmapImage("Images/file_simple_hidden.png");
+                Image = LoadBitmapImage("Images/file_simple_hidden.png");
             else
-                this.Image = LoadBitmapImage("Images/file_simple.png");
+                Image = LoadBitmapImage("Images/file_simple.png");
         }
     }
     public static string ConvertByteSize(long byteSize)
@@ -212,11 +208,13 @@ public class FileSystemItem
         using AdsFileClient fileClient = new();
         await fileClient.Connect(DeviceNetID);
         string fullPath = System.IO.Path.Combine(ParentDirectory, Name);
-        await foreach (var file in fileClient.GetFolderContentStreamAsync(fullPath))   // ToDo: Use async version
+        Children.Clear();
+
+        await foreach (var file in fileClient.GetFolderContentStreamAsync(fullPath))
         {
             FileSystemItem item = new
             (
-                DeviceNetID: this.DeviceNetID,
+                DeviceNetID: DeviceNetID,
                 Name: file.fileName,
                 AlternativeName: file.alternativeFileName,
                 IsDirectory: file.isDirectory,
@@ -230,14 +228,13 @@ public class FileSystemItem
                 IsReadOnly : file.isReadOnly,
                 IsEncrypted: file.isEncrypted,
                 IsRoot: false
-
-            ) ;
+            );
             if (item.IsDirectory)
             {
                 item.Children.Add(null); // Placeholder for Lazy Loading
             }
 
-            Children.Add(item);     // ToDo: Should test if item already exists for reloading the directory content e.g. after copying a file
+            Children.Add(item);
         }
     }
     private static BitmapImage LoadBitmapImage(string relativePath)

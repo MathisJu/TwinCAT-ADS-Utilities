@@ -1,4 +1,5 @@
-﻿using System.Text;
+﻿using Microsoft.Extensions.Logging;
+using System.Text;
 using System.Xml;
 using TwinCAT.Ads;
 
@@ -12,7 +13,14 @@ public class AdsSystemClient : IDisposable
 
     private readonly AdsClient _adsClient = new();
 
+    private ILogger? _logger;
+
     private AmsNetId? _netId;
+
+    public void ConfigureLogger(ILogger logger)
+    {
+        _logger = logger;
+    }
 
     public AdsSystemClient()
     {
@@ -44,8 +52,10 @@ public class AdsSystemClient : IDisposable
         if (!IsConnected) throw new InvalidOperationException("Client is not connected");
 
         _adsClient.Connect(_netId, (int)Constants.AdsPortSystemService);
-        var res = await _adsClient.WriteControlAsync(AdsState.Shutdown, 1, BitConverter.GetBytes(delaySec), cancel);
+        var wcRes = await _adsClient.WriteControlAsync(AdsState.Shutdown, 1, BitConverter.GetBytes(delaySec), cancel);
         _adsClient.Disconnect();
+
+        wcRes.ThrowOnError();
     }
 
     // ToDo: Redo this. There already is an ads command to enable remote control on CE. Using file access in not necessary
@@ -66,8 +76,10 @@ public class AdsSystemClient : IDisposable
             .Add(value);
 
         _adsClient.Connect(_netId, (int)Constants.AdsPortSystemService);
-        await _adsClient.WriteAsync(Constants.AdsIGrpSysServRegHklm, 0, setRegRequest.GetBytes(), cancel);
+        var rwResult = await _adsClient.WriteAsync(Constants.AdsIGrpSysServRegHklm, 0, setRegRequest.GetBytes(), cancel);
         _adsClient.Disconnect();
+
+        rwResult.ThrowOnError();
     }
 
     public async Task<byte[]> QueryRegEntryAsync(string subKey, string valueName, uint byteSize, CancellationToken cancel = default)
@@ -81,9 +93,10 @@ public class AdsSystemClient : IDisposable
         byte[] readBuffer = new byte[byteSize];
 
         _adsClient.Connect(_netId, (int)Constants.AdsPortSystemService);
-        await _adsClient.ReadWriteAsync(Constants.AdsIGrpSysServRegHklm, 0, readBuffer, readRegRequest.GetBytes(), cancel);
+        var rwResult = await _adsClient.ReadWriteAsync(Constants.AdsIGrpSysServRegHklm, 0, readBuffer, readRegRequest.GetBytes(), cancel);
         _adsClient.Disconnect();
 
+        rwResult.ThrowOnError();
         return readBuffer;
     }
 
@@ -94,8 +107,10 @@ public class AdsSystemClient : IDisposable
         byte[] rdBfr = new byte[2048];
 
         _adsClient.Connect(_netId, (int)Constants.AdsPortSystemService);
-        await _adsClient.ReadAsync(Constants.AdsIGrpSysServTcSystemInfo, 1, rdBfr, cancel);
+        var rRes = await _adsClient.ReadAsync(Constants.AdsIGrpSysServTcSystemInfo, 1, rdBfr, cancel);
         _adsClient.Disconnect();
+
+        rRes.ThrowOnError();
 
         string sysInfo = Encoding.UTF8.GetString(rdBfr);
         if (string.IsNullOrEmpty(sysInfo)) return new SystemInfo();
@@ -140,19 +155,19 @@ public class AdsSystemClient : IDisposable
     {
         if (!IsConnected) throw new InvalidOperationException("Client is not connected");
         
-
         byte[] rdBfr = new byte[16]; 
 
         _adsClient.Connect(_netId, (int)Constants.AdsPortSystemService);
-        var readResult = await _adsClient.ReadAsync(Constants.AdsIGrpSysServTimeServices, 1, rdBfr, cancel);
+        var rRes = await _adsClient.ReadAsync(Constants.AdsIGrpSysServTimeServices, 1, rdBfr, cancel);
         _adsClient.Disconnect();
+
+        rRes.ThrowOnError();
+
         return ConvertByteArrayToDateTime(rdBfr);
     }
 
     private DateTime ConvertByteArrayToDateTime(byte[] byteArray)
     {
-        if (!IsConnected) throw new InvalidOperationException("Client is not connected");
-
         if (byteArray == null || byteArray.Length < 16)
             throw new ArgumentException("byte array has to contain 16 elements");
 
@@ -175,11 +190,13 @@ public class AdsSystemClient : IDisposable
         byte[] rdBfr = new byte[2400]; //Read buffer is sufficient for up to 100 CPU Cores (Increase size if needed)
 
         _adsClient.Connect(_netId, (int)Constants.AdsPortR0RTime);
-        var readResult = await _adsClient.ReadAsync(1, 15, rdBfr, cancel); //Retrieve new Data       ToDo: add idxGrp and idxOffs to constants
+        var rRes = await _adsClient.ReadAsync(1, 15, rdBfr, cancel); //Retrieve new Data       ToDo: add idxGrp and idxOffs to constants
         _adsClient.Disconnect();
 
+        rRes.ThrowOnError();
+
         List<CpuUsage> cpuInfo = new();
-        for (int i = 0; i < readResult.ReadBytes / 24; i++)
+        for (int i = 0; i < rRes.ReadBytes / 24; i++)
         {
             int baseIdx = i * 24;
             int latencyWarning = (rdBfr[13 + baseIdx] << 8) + rdBfr[baseIdx + 12];
@@ -195,7 +212,9 @@ public class AdsSystemClient : IDisposable
 
         ReadRequestHelper readRequest = new(32);
         _adsClient.Connect(_netId, (int)Constants.AdsPortRouter);
-        await _adsClient.ReadAsync(1, 1, readRequest, cancel);
+        var rRes = await _adsClient.ReadAsync(1, 1, readRequest, cancel);
+
+        rRes.ThrowOnError();
 
         RouterStatusInfo routerInfo = new()
         {
@@ -212,10 +231,12 @@ public class AdsSystemClient : IDisposable
         if (!IsConnected) throw new InvalidOperationException("Client is not connected");
 
         _adsClient.Connect(_netId, (int)Constants.AdsPortLicenseServer);
-        short platformLevel = (await _adsClient.ReadAnyAsync<short>(Constants.AdsIGrpLicenseInfo, 0x2, cancel)).Value;
+        var rRes = await _adsClient.ReadAnyAsync<short>(Constants.AdsIGrpLicenseInfo, 0x2, cancel);
         _adsClient.Disconnect();
 
-        return platformLevel;
+        rRes.ThrowOnError();
+
+        return rRes.Value;
     }
 
     private async Task<byte[]> GetSystemIdBytesAsync(CancellationToken cancel = default)
@@ -225,24 +246,22 @@ public class AdsSystemClient : IDisposable
         byte[] rdBfr = new byte[16];
 
         _adsClient.Connect(_netId, (int)Constants.AdsPortLicenseServer);
-        await _adsClient.ReadAsync(Constants.AdsIGrpLicenseInfo, 0x1, rdBfr, cancel);
+        var rRes = await _adsClient.ReadAsync(Constants.AdsIGrpLicenseInfo, 0x1, rdBfr, cancel);
         _adsClient.Disconnect();
+
+        rRes.ThrowOnError();
 
         return rdBfr;
     }
 
     public async Task<Guid> GetSystemIdGuidAsync(CancellationToken cancel = default)
     {
-        if (!IsConnected) throw new InvalidOperationException("Client is not connected");
-
         byte[] sysId = await GetSystemIdBytesAsync(cancel);
         return new Guid(sysId);
     }
 
     public async Task<string> GetSystemIdStringAsync(CancellationToken cancel = default)
     {
-        if (!IsConnected) throw new InvalidOperationException("Client is not connected");
-
         byte[] sysId = await GetSystemIdBytesAsync(cancel);
         return string.Format("{0:X2}{1:X2}{2:X2}{3:X2}-{4:X2}{5:X2}-{6:X2}{7:X2}-{8:X2}{9:X2}-{10:X2}{11:X2}{12:X2}{13:X2}{14:X2}{15:X2}",
             sysId[3], sysId[2], sysId[1], sysId[0],
@@ -257,10 +276,12 @@ public class AdsSystemClient : IDisposable
         if (!IsConnected) throw new InvalidOperationException("Client is not connected");
 
         _adsClient.Connect(_netId, (int)Constants.AdsPortLicenseServer);
-        uint volumeNo = (await _adsClient.ReadAnyAsync<uint>(Constants.AdsIGrpLicenseInfo, 0x5, cancel)).Value;
+        var rRes = await _adsClient.ReadAnyAsync<uint>(Constants.AdsIGrpLicenseInfo, 0x5, cancel);
         _adsClient.Disconnect();
 
-        return volumeNo;
+        rRes.ThrowOnError();
+
+        return rRes.Value;
     }
 
     public void Dispose()

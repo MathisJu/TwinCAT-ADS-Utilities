@@ -18,6 +18,8 @@ public class DeviceInfoViewModel : ViewModelTargetAccessPage
 
     public ObservableCollection<NetworkInterfaceInfo> NetworkInterfaces { get; set; }
 
+    public ObservableCollection<StaticRoutesInfo> AdsRoutes { get; set; }
+
     private SystemInfo _systemInfo;
     public SystemInfo SystemInfo
     {
@@ -110,6 +112,8 @@ public class DeviceInfoViewModel : ViewModelTargetAccessPage
 
     public ICommand RebootCommand { get; }
 
+    public ICommand DeleteRouteEntryCommand { get; }
+
     public DeviceInfoViewModel(TargetService targetService, ILoggerService loggerService)
     {
         _TargetService = targetService;
@@ -124,16 +128,19 @@ public class DeviceInfoViewModel : ViewModelTargetAccessPage
         _updateTimer.AutoReset = true;
         _updateTimer.Start();
         
-        InstallRteDriverCommand = new AsyncRelayCommand(async (parameter) => await InstallRteDriver(parameter), CanInstallRteDriver);
-        SetTickCommand = new AsyncRelayCommand(async async => await ExecuteSetTick());
-        RebootCommand = new AsyncRelayCommand(async async => await RebootTarget());
+        InstallRteDriverCommand = new AsyncRelayCommand(InstallRteDriver, CanInstallRteDriver);
+        SetTickCommand = new AsyncRelayCommand(ExecuteSetTick);
+        RebootCommand = new AsyncRelayCommand(RebootTarget);
+        DeleteRouteEntryCommand = new AsyncRelayCommand(DeleteRouteEntry);
 
-        NetworkInterfaces = new ObservableCollection<NetworkInterfaceInfo>(); 
+        NetworkInterfaces = new ObservableCollection<NetworkInterfaceInfo>();
+        AdsRoutes = new();
     }
 
     public async Task UpdateDeviceInfo()
     {
         await LoadNetworkInterfacesAsync();
+        await LoadAdsRoutesAsync();
         await LoadSystemInfoAsync();
         await UpdateTcState();
         await UpdateRouterUsage();
@@ -280,6 +287,20 @@ public class DeviceInfoViewModel : ViewModelTargetAccessPage
         }
     }
 
+    public async Task LoadAdsRoutesAsync(CancellationToken cancel = default)
+    {
+        using AdsRoutingClient routingClient = new();
+        await routingClient.Connect(Target?.NetId);
+        var routes = await routingClient.GetRoutesListAsync(cancel);
+
+        AdsRoutes.Clear();
+        foreach (var route in routes)
+        {
+            AdsRoutes.Add(route);
+        }
+
+    }
+
     private async Task InstallRteDriver(object networkInterface)
     {
         if (networkInterface is NetworkInterfaceInfo nic)
@@ -295,6 +316,18 @@ public class DeviceInfoViewModel : ViewModelTargetAccessPage
             return;
         }
         _LoggerService.LogError("Unexpected Error occured");
+    }
+
+    private async Task DeleteRouteEntry(object routeEntry)
+    {
+        if (routeEntry is StaticRoutesInfo routeInfo)
+        {
+            using AdsRoutingClient routingClient = new();
+            await routingClient.Connect(Target?.NetId);
+            await routingClient.RemoveLocalRouteEntryAsync(routeInfo.Name);
+            await LoadAdsRoutesAsync();
+            return;
+        }
     }
 
     private async Task ExecuteSetTick()
