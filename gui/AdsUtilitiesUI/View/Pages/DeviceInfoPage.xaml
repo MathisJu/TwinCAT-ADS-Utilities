@@ -320,7 +320,7 @@
             </TabItem>
             <TabItem Header="Manage Routes">
                 <ScrollViewer>
-                    <ItemsControl ItemsSource="{Binding AdsRoutes}">
+                    <ItemsControl ItemsSource="{Binding _TargetService.AvailableTargets}">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
                                 <StackPanel Margin="15,10,15,10">

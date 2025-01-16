@@ -25,7 +25,12 @@
     <None Remove="Images\icon_delete_16x.png" />
     <None Remove="Images\icon_info.png" />
     <None Remove="Images\icon_info_16x.png" />
+    <None Remove="Images\icon_rc_1024x.png" />
+    <None Remove="Images\icon_rc_512x.png" />
+    <None Remove="Images\icon_rc_64x.png" />
     <None Remove="Images\icon_refresh_16x.png" />
+    <None Remove="Images\icon_refresh_512x.png" />
+    <None Remove="Images\icon_refresh_64x.png" />
     <None Remove="Images\icon_rename.png" />
     <None Remove="Images\icon_rename_16x.png" />
     <None Remove="Images\IsHiddenVisible.png" />
@@ -90,8 +95,20 @@
     <Resource Include="Images\icon_info_16x.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Resource>
+    <Resource Include="Images\icon_rc_512x.png">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Resource>
+    <Resource Include="Images\icon_rc_64x.png">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Resource>
     <Resource Include="Images\icon_refresh_16x.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Resource>
+    <Resource Include="Images\icon_refresh_512x.png">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Resource>
+    <Resource Include="Images\icon_refresh_64x.png">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Resource>
     <Resource Include="Images\icon_rename.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>

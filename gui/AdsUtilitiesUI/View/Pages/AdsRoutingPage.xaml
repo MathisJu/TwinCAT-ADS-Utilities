@@ -147,8 +147,8 @@
                 <TextBox x:Name="InputHostname" Grid.Row="3" Grid.Column="1" Margin="2" Text="{Binding AddRouteSelection.HostName}"/>
                 
                 <!-- IP or Hostname -->
-                <RadioButton IsChecked="{Binding AddRouteSelection.AddByIpAddress}" Grid.Row="2" Grid.Column="0" HorizontalAlignment="Right" VerticalAlignment="Center" GroupName="IpOrHostname"/>
-                <RadioButton IsChecked="{Binding AddRouteSelection.AddByHostname}" Grid.Row="3" Grid.Column="0" HorizontalAlignment="Right" VerticalAlignment="Center" GroupName="IpOrHostname"/>
+                <RadioButton x:Name="addByIp" IsChecked="{Binding AddRouteSelection.AddByIpAddress}" Grid.Row="2" Grid.Column="0" HorizontalAlignment="Right" VerticalAlignment="Center" GroupName="IpOrHostname"/>
+                <RadioButton x:Name="addByName" IsChecked="{Binding AddRouteSelection.AddByHostname}" Grid.Row="3" Grid.Column="0" HorizontalAlignment="Right" VerticalAlignment="Center" GroupName="IpOrHostname"/>
 
                 <!-- Remote Route Name -->
                 <TextBlock Grid.Row="0" Grid.Column="3" Text="Remote Route Name" VerticalAlignment="Center" Margin="2" />
@@ -165,18 +165,18 @@
                 <!-- Target Route Settings -->
                 <GroupBox Header="Target Route"  Grid.Column="3" Grid.Row="1" Margin="0 5" Padding="5 5 30 5" Grid.RowSpan="4" VerticalAlignment="Top" HorizontalAlignment="Left">
                     <StackPanel>
-                        <RadioButton IsChecked="{Binding AddRouteSelection.TypeNoneLocal}" Content="None" GroupName="TargetRoute"/>
-                        <RadioButton IsChecked="{Binding AddRouteSelection.TypeStaticLocal}" Content="Static" GroupName="TargetRoute"/>
-                        <RadioButton IsChecked="{Binding AddRouteSelection.TypeTempLocal}" Content="Temporary" GroupName="TargetRoute"/>
+                        <RadioButton x:Name="localNone" IsChecked="{Binding AddRouteSelection.TypeNoneLocal}" Content="None" GroupName="TargetRoute"/>
+                        <RadioButton x:Name="localStatic" IsChecked="{Binding AddRouteSelection.TypeStaticLocal}" Content="Static" GroupName="TargetRoute"/>
+                        <RadioButton x:Name="localTemp" IsChecked="{Binding AddRouteSelection.TypeTempLocal}" Content="Temporary" GroupName="TargetRoute"/>
                     </StackPanel>
                 </GroupBox>
 
                 <!-- Remote Route Settings -->
                 <GroupBox Header="Remote Route"  Grid.Column="4" Grid.Row="1" Margin="0 5" Padding="5 5 30 5" Grid.RowSpan="4" VerticalAlignment="Top" HorizontalAlignment="Left">
                     <StackPanel>
-                        <RadioButton IsChecked="{Binding AddRouteSelection.TypeNoneRemote}"  Content="None" GroupName="RemoteRoute" />
-                        <RadioButton IsChecked="{Binding AddRouteSelection.TypeStaticRemote}" Content="Static" GroupName="RemoteRoute"/>
-                        <RadioButton IsChecked="{Binding AddRouteSelection.TypeTempRemote}"  Content="Temporary" GroupName="RemoteRoute" />
+                        <RadioButton x:Name="remoteNone" IsChecked="{Binding AddRouteSelection.TypeNoneRemote}"  Content="None" GroupName="RemoteRoute" />
+                        <RadioButton x:Name="remoteStatic" IsChecked="{Binding AddRouteSelection.TypeStaticRemote}" Content="Static" GroupName="RemoteRoute"/>
+                        <RadioButton x:Name="remoteTemp" IsChecked="{Binding AddRouteSelection.TypeTempRemote}"  Content="Temporary" GroupName="RemoteRoute" />
                     </StackPanel>
                 </GroupBox>
 

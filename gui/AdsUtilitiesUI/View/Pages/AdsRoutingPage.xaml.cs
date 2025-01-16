@@ -76,13 +76,44 @@ namespace AdsUtilitiesUI
 
         private void AddRouteButton_Click(object sender, RoutedEventArgs e)
         {
-            Span<Control> inputControls = [InputName, InputNetid, InputIp, InputHostname, InputNameRemote, InputUsername, InputPassword];
-            foreach (Control inputControl in inputControls)
+            // ToDo: The logic for checking for missing inputs is also implemented in viewmodel, but I don't know how to call this method from there
+            Span<Control> controlsLocalIp = [InputName, InputNetid, InputIp];
+            Span<Control> controlsLocalName = [InputName, InputNetid, InputHostname];
+            Span<Control> controlsRemoteIp = [InputIp, InputUsername, InputPassword, InputNameRemote];
+            Span<Control> controlsRemoteName = [InputHostname, InputUsername, InputPassword, InputNameRemote];
+
+            List<Control> requiredControls = [];
+
+            if (localNone.IsChecked is not true)
+            {
+                if (addByIp.IsChecked is true)
+                {
+                    requiredControls.AddRange(controlsLocalIp);
+                }
+                else
+                {
+                    requiredControls.AddRange(controlsLocalName);
+                }
+            }
+
+            if (remoteNone.IsChecked is not true)
+            {
+                if (addByIp.IsChecked is true)
+                {
+                    requiredControls.AddRange(controlsRemoteIp);
+                }
+                else
+                {
+                    requiredControls.AddRange(controlsRemoteName);
+                }
+            }
+
+            foreach (Control inputControl in requiredControls)
             {
                 if ((inputControl is TextBox inputTextBox && inputTextBox.Text == string.Empty)
                     || (inputControl is PasswordBox inputPassword && string.IsNullOrEmpty(inputPassword.Password)))
                 {
-                    HighlightControl(inputControl, Colors.LightPink, 750);      // ToDo: Check if input is needed (e.g. password not needed for local route only)
+                    HighlightControl(inputControl, Colors.LightPink, 500);
                 }
             }
         }

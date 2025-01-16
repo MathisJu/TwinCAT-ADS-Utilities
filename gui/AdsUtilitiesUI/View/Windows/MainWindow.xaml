@@ -23,8 +23,8 @@
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="auto"/>
                 <ColumnDefinition Width="2*"/>
-                <ColumnDefinition Width="*"/>
-                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="auto"/>
+                <ColumnDefinition Width="auto"/>
                 <ColumnDefinition Width="3*"/>
 
             </Grid.ColumnDefinitions>
@@ -55,13 +55,24 @@
                     Grid.Column="2"
                     Margin="5 5"
                     Command="{Binding ReloadRoutesCommand}"
-                    Content="Refresh Routes">
+                    Background="Transparent"
+                    BorderThickness="0"
+                    ToolTip="Reload Routes">
+                <Button.Content>
+                    <Image Source="pack://application:,,,/Images/icon_refresh_64x.png" Stretch="Uniform"/>
+                </Button.Content>
             </Button>
             <Button Name="Bttn_RemoteControl"
                     Grid.Column="3"
                     Margin="5 5"
                     Command="{Binding RemoteConnectCommand}"
-                    Content="Remote Control">
+                    Background="Transparent"
+                    BorderThickness="0"
+                    ToolTip="Take Remote Control">
+                <Button.Content>
+                    <Image Source="pack://application:,,,/Images/icon_rc_64x.png" Stretch="Uniform"/>
+                </Button.Content>
+                      
             </Button>
 
         </Grid>

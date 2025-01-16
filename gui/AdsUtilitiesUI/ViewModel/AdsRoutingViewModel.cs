@@ -16,6 +16,8 @@ using TwinCAT.Ads;
 using TwinCAT.TypeSystem;
 using System.IO;
 using System.Text.Json;
+using System.Printing;
+using System.Windows.Controls;
 
 namespace AdsUtilitiesUI;
 
@@ -200,7 +202,12 @@ public class AdsRoutingViewModel : ViewModelTargetAccessPage
     {
         if (Target is null) return;
 
-        if (!AddRouteSelection.AllParametersProvided()) return;
+        if (!AddRouteSelection.RequiredParamsProvided())
+        {
+            _LoggerService.LogError("Add route - missing required input");
+            return;
+        }
+
 
         // Check if adding route via hostname makes sense if that option is selected
         if (AddRouteSelection.AddByHostname)
@@ -432,22 +439,46 @@ public class AddRouteInfo : INotifyPropertyChanged
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
     }
 
-    public bool AllParametersProvided()
+    public bool RequiredParamsProvided()
     {
-        if (string.IsNullOrWhiteSpace(Name))
+        Span<string> paramsLocalIp = [Name, NetId, IpAddress];
+        Span<string> paramsLocalName = [Name, NetId, HostName];
+        Span<string> paramsRemoteIp = [IpAddress, Username, Password, RemoteName];
+        Span<string> paramsRemoteName = [HostName, Username, Password, RemoteName];
+
+        List<string> requiredParams = [];
+
+        if (TypeNoneLocal && TypeNoneRemote)
             return false;
-        if (string.IsNullOrWhiteSpace(NetId))
+
+        if (!TypeNoneLocal)
+        {
+            if (AddByIpAddress)
+            {
+                requiredParams.AddRange(paramsLocalIp);
+            }
+            else
+            {
+                requiredParams.AddRange(paramsLocalName);
+            }
+        }
+
+        if (!TypeNoneRemote)
+        {
+            if (AddByIpAddress)
+            {
+                requiredParams.AddRange(paramsRemoteIp);
+            }
+            else
+            {
+                requiredParams.AddRange(paramsRemoteName);
+            }
+        }
+
+        if(requiredParams.Any(string.IsNullOrEmpty))
+        {
             return false;
-        if(string.IsNullOrWhiteSpace(IpAddress) && AddByIpAddress)
-            return false;
-        if(string.IsNullOrWhiteSpace(HostName) && AddByHostname)
-            return false;
-        if(string.IsNullOrWhiteSpace(RemoteName))
-            return false;
-        if (string.IsNullOrWhiteSpace(Username)) 
-            return false;
-        if (string.IsNullOrWhiteSpace(Password)) 
-            return false;
+        }
         return true;
     }
 }

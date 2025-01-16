@@ -161,7 +161,7 @@ public class TargetService : INotifyPropertyChanged
     public async Task<bool> IsTargetOnline(string netId)
     {
         using AdsClient client = new ();
-        client.Timeout = 250;
+        client.Timeout = 100;
         client.Connect(netId, 10000);
         bool available = (await client.ReadStateAsync(default)).ErrorCode is AdsErrorCode.NoError;
         return available;
