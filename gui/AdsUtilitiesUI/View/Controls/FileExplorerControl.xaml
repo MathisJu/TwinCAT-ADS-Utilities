@@ -17,22 +17,22 @@
             <ContextMenu x:Key="FileContextMenu">
                 <MenuItem Header="Rename" Click="Rename_Click">
                     <MenuItem.Icon>
-                        <Image Source="/AdsUtilitiesUI;component/Images/icon_rename_16x.png" Width="16" Height="16"/>
+                        <ContentControl Template="{StaticResource Icon_Rename}" />
                     </MenuItem.Icon>
                 </MenuItem>
                 <MenuItem Header="Delete" Click="Delete_Click">
                     <MenuItem.Icon>
-                        <Image Source="/AdsUtilitiesUI;component/Images/icon_delete_16x.png" Width="16" Height="16"/>
+                        <ContentControl Template="{StaticResource Icon_Delete}" />
                     </MenuItem.Icon>
                 </MenuItem>
                 <MenuItem Header="Properties" Click="Properties_Click" >
                     <MenuItem.Icon>
-                        <Image Source="/AdsUtilitiesUI;component/Images/icon_info_16x.png" Width="16" Height="16"/>
+                        <ContentControl Template="{StaticResource Icon_Info}" />
                     </MenuItem.Icon>
                 </MenuItem>
                 <MenuItem Header="Reload" Click="Reload_Click" >
                     <MenuItem.Icon>
-                        <Image Source="/AdsUtilitiesUI;component/Images/icon_refresh_16x.png" Width="16" Height="16"/>
+                        <ContentControl Template="{StaticResource Icon_Refresh}" />
                     </MenuItem.Icon>
                     <MenuItem.Style>
                         <Style TargetType="MenuItem">
